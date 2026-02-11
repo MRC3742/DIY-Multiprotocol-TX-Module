@@ -24,6 +24,7 @@
 // For code readability
 #define SLT_PAYLOADSIZE_V1		7
 #define SLT_PAYLOADSIZE_V1_4	5
+#define SLT_PAYLOADSIZE_SLT6	6	// 6 bytes: AETR (8-bit) + CH5 + CH6
 #define SLT_PAYLOADSIZE_V2		11
 #define SLT_NFREQCHANNELS		15
 #define SLT_TXID_SIZE			4
@@ -137,19 +138,37 @@ static void __attribute__((unused)) SLT_build_packet()
 	uint8_t e = 0; // byte where extension 2 bits for every 10-bit channel are packed
 	for (uint8_t i = 0; i < 4; ++i)
 	{
-		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
-		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6)
-			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
-		packet[i] = v;
-		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
+		if(sub_protocol == SLT6)
+		{
+			// SLT6 uses 8-bit AETR only (no extension bits)
+			packet[i] = convert_channel_8b(CH_AETR[i]);
+		}
+		else
+		{
+			// Other protocols use 10-bit AETR with extension bits
+			uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
+			if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM)
+				v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
+			packet[i] = v;
+			e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
+		}
 	}
-	// Extra bits for AETR
+	
+	// SLT6: Add CH5 and CH6 at bytes 4-5 (no extension bits)
+	if(sub_protocol == SLT6)
+	{
+		packet[4] = convert_channel_8b(CH5);
+		packet[5] = convert_channel_8b(CH6);
+		return;	// 6 bytes total: AETR (8-bit) + CH5 + CH6
+	}
+	
+	// Extra bits for AETR (other protocols)
 	packet[4] = e;
 
-	//->V1_4CH and SLT6 stop here (5 bytes total: AETR + extension bits)
+	//->V1_4CH stops here (5 bytes total: AETR + extension bits)
 	
-	if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
-		return;	// Only 5 bytes transmitted for these protocols
+	if(sub_protocol == SLT_V1_4)
+		return;	// Only 5 bytes transmitted for V1_4
 
 	// 8-bit channels (for V1, V2, Q100, Q200, MR100, RF_SIM)
 	packet[5] = convert_channel_8b(CH5);
@@ -297,7 +316,7 @@ void SLT_init()
 	}
 	else if(sub_protocol == SLT6)
 	{
-		packet_length = SLT_PAYLOADSIZE_V1_4;		// 5 bytes (AETR + extension bits)
+		packet_length = SLT_PAYLOADSIZE_SLT6;		// 6 bytes (AETR 8-bit + CH5 + CH6)
 		#ifdef MULTI_SYNC
 			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
 		#endif
