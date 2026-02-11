@@ -24,7 +24,6 @@
 // For code readability
 #define SLT_PAYLOADSIZE_V1		7
 #define SLT_PAYLOADSIZE_V1_4	5
-#define SLT_PAYLOADSIZE_SLT6	6	// 6 bytes: AETR (8-bit) + CH5 + CH6
 #define SLT_PAYLOADSIZE_V2		11
 #define SLT_NFREQCHANNELS		15
 #define SLT_TXID_SIZE			4
@@ -154,12 +153,14 @@ static void __attribute__((unused)) SLT_build_packet()
 		}
 	}
 	
-	// SLT6: Add CH5 and CH6 at bytes 4-5 (no extension bits)
+	// SLT6: Encode CH5/CH6 in byte 4
 	if(sub_protocol == SLT6)
 	{
-		packet[4] = convert_channel_8b(CH5);
-		packet[5] = convert_channel_8b(CH6);
-		return;	// 6 bytes total: AETR (8-bit) + CH5 + CH6
+		// Byte 4: Upper 4 bits = CH5 (4-bit), Lower 4 bits = CH6 (4-bit)
+		uint8_t ch5_4bit = convert_channel_8b(CH5) >> 4;  // Take upper 4 bits of 8-bit value
+		uint8_t ch6_4bit = convert_channel_8b(CH6) >> 4;  // Take upper 4 bits of 8-bit value
+		packet[4] = (ch5_4bit << 4) | ch6_4bit;
+		return;	// 5 bytes total: AETR (8-bit) + encoded CH5/CH6
 	}
 	
 	// Extra bits for AETR (other protocols)
@@ -316,7 +317,7 @@ void SLT_init()
 	}
 	else if(sub_protocol == SLT6)
 	{
-		packet_length = SLT_PAYLOADSIZE_SLT6;		// 6 bytes (AETR 8-bit + CH5 + CH6)
+		packet_length = SLT_PAYLOADSIZE_V1_4;		// 5 bytes (AETR 8-bit + encoded CH5/CH6)
 		#ifdef MULTI_SYNC
 			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
 		#endif
