@@ -46,11 +46,11 @@ enum{
 };
 
 enum{
-	// flags going to packet[5] upper bits (SLT6) - flight mode
-	FLAG_SLT6_FMODE0	= 0x00,	// 00 - Mode 0
-	FLAG_SLT6_FMODE1	= 0x40,	// 01 - Mode 1
-	FLAG_SLT6_FMODE2	= 0x80,	// 10 - Mode 2
-	FLAG_SLT6_FMODE3	= 0xC0,	// 11 - Mode 3
+	// flags going to packet[5] upper bits (SLT6) - flight mode (3-position switch)
+	FLAG_SLT6_FMODE0	= 0x00,	// 00 - Mode 0 (Low)
+	FLAG_SLT6_FMODE1	= 0x40,	// 01 - Mode 1 (Middle)
+	FLAG_SLT6_FMODE2	= 0x80,	// 10 - Mode 2 (High)
+	// Note: 0xC0 (11) is not used - only 3 positions
 };
 
 enum {
@@ -133,13 +133,18 @@ static void __attribute__((unused)) SLT_send_packet(uint8_t len)
 
 static uint8_t __attribute__((unused)) SLT6_get_flight_mode(uint16_t ch5_val)
 {
-	// Convert CH5 analog value (0-1023) to 2-bit flight mode (0-3)
-	// Extract bits 9-8 of 10-bit value for flight mode
-	// 0-255: Mode 0 (bits 7-6 = 00)
-	// 256-511: Mode 1 (bits 7-6 = 01)
-	// 512-767: Mode 2 (bits 7-6 = 10)
-	// 768-1023: Mode 3 (bits 7-6 = 11)
-	uint8_t mode = (ch5_val >> 8) & 0x03;
+	// Convert CH5 analog value (0-1023) to 3-position flight mode (0-2)
+	// SLT6 transmitter uses a 3-position switch, not 4
+	// Low:    0-340   → Mode 0 (bits 7-6 = 00)
+	// Middle: 341-682 → Mode 1 (bits 7-6 = 01)
+	// High:   683-1023 → Mode 2 (bits 7-6 = 10)
+	uint8_t mode;
+	if (ch5_val <= 340)
+		mode = 0;  // Low position
+	else if (ch5_val <= 682)
+		mode = 1;  // Middle position
+	else
+		mode = 2;  // High position
 	return mode << 6;  // Shift to packet byte bits 7-6
 }
 
