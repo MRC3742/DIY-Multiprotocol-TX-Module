@@ -45,6 +45,14 @@ enum{
 	FLAG_MR100_PICTURE	= 0x01,
 };
 
+enum{
+	// flags going to packet[5] upper bits (SLT6) - flight mode
+	FLAG_SLT6_FMODE0	= 0x00,	// 00 - Mode 0
+	FLAG_SLT6_FMODE1	= 0x40,	// 01 - Mode 1
+	FLAG_SLT6_FMODE2	= 0x80,	// 10 - Mode 2
+	FLAG_SLT6_FMODE3	= 0xC0,	// 11 - Mode 3
+};
+
 enum {
 	SLT_BUILD=0,
 	SLT_DATA1,
@@ -123,6 +131,24 @@ static void __attribute__((unused)) SLT_send_packet(uint8_t len)
 	packet_sent = 1;
 }
 
+static uint8_t __attribute__((unused)) SLT6_get_flight_mode()
+{
+	// Convert CH5 analog value (0-1023) to 2-bit flight mode (0-3)
+	// 0-255: Mode 0 (bits 7-6 = 00)
+	// 256-511: Mode 1 (bits 7-6 = 01)
+	// 512-767: Mode 2 (bits 7-6 = 10)
+	// 768-1023: Mode 3 (bits 7-6 = 11)
+	uint16_t ch5_val = convert_channel_10b(CH5, false);
+	if (ch5_val < 256)
+		return FLAG_SLT6_FMODE0;
+	else if (ch5_val < 512)
+		return FLAG_SLT6_FMODE1;
+	else if (ch5_val < 768)
+		return FLAG_SLT6_FMODE2;
+	else
+		return FLAG_SLT6_FMODE3;
+}
+
 static void __attribute__((unused)) SLT_build_packet()
 {
 	static uint8_t calib_counter=0;
@@ -149,10 +175,23 @@ static void __attribute__((unused)) SLT_build_packet()
 	//->V1_4CH stops here
 
 	// 8-bit channels
-	packet[5] = convert_channel_8b(CH5);
-	packet[6] = convert_channel_8b(CH6);
+	if(sub_protocol == SLT6)
+	{
+		// For SLT6: packet[5] contains flight mode in upper 2 bits (7-6) and CH5 lower 6 bits (5-0)
+		uint16_t ch5_10bit = convert_channel_10b(CH5, false);
+		uint8_t ch5_6bit = (ch5_10bit >> 4) & 0x3F;  // Take upper 6 bits of 10-bit value
+		uint8_t flight_mode = SLT6_get_flight_mode();
+		packet[5] = flight_mode | ch5_6bit;
+		// packet[6] contains CH6 (panic button)
+		packet[6] = convert_channel_8b(CH6);
+	}
+	else
+	{
+		packet[5] = convert_channel_8b(CH5);
+		packet[6] = convert_channel_8b(CH6);
+	}
 
-	//->V1 stops here
+	//->V1 and SLT6 stop here
 
 	if(sub_protocol == Q200)
 		packet[6] =  GET_FLAG(CH9_SW , FLAG_Q200_FMODE)
@@ -228,7 +267,7 @@ uint16_t SLT_callback()
 		case SLT_DATA2:
 			phase++;
 			SLT_send_packet(packet_length);
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT6)
 				return SLT_V1_TIMING_PACKET;
 			if(sub_protocol == SLT_V1_4)
 			{
@@ -242,7 +281,7 @@ uint16_t SLT_callback()
 			if (++packet_count >= 100)
 			{// Send bind packet
 				packet_count = 0;
-				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
 				{
 					phase = SLT_BIND2;
 					return SLT_V1_TIMING_BIND2;
@@ -254,7 +293,7 @@ uint16_t SLT_callback()
 			else
 			{// Continue to send normal packets
 				phase = SLT_BUILD;
-				if(sub_protocol == SLT_V1)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT6)
 					return 20000 - SLT_TIMING_BUILD;
 				if(sub_protocol==SLT_V1_4)
 					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
@@ -268,7 +307,7 @@ uint16_t SLT_callback()
 		case SLT_BIND2:
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT6)
 				return 20000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
@@ -285,7 +324,7 @@ void SLT_init()
 	packet_sent = 0;
 	hopping_frequency_no = 0;
 
-	if(sub_protocol == SLT_V1)
+	if(sub_protocol == SLT_V1 || sub_protocol == SLT6)
 	{
 		packet_length = SLT_PAYLOADSIZE_V1;
 		#ifdef MULTI_SYNC
