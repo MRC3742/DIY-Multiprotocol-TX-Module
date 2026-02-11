@@ -134,13 +134,13 @@ static void __attribute__((unused)) SLT_send_packet(uint8_t len)
 static uint8_t __attribute__((unused)) SLT6_get_flight_mode(uint16_t ch5_val)
 {
 	// Convert CH5 analog value (0-1023) to 2-bit flight mode (0-3)
-	// Use upper 2 bits of 10-bit value for efficient conversion
+	// Extract bits 9-8 of 10-bit value for flight mode
 	// 0-255: Mode 0 (bits 7-6 = 00)
 	// 256-511: Mode 1 (bits 7-6 = 01)
 	// 512-767: Mode 2 (bits 7-6 = 10)
 	// 768-1023: Mode 3 (bits 7-6 = 11)
 	uint8_t mode = (ch5_val >> 8) & 0x03;
-	return mode << 6;  // Shift to bits 7-6
+	return mode << 6;  // Shift to packet byte bits 7-6
 }
 
 static void __attribute__((unused)) SLT_build_packet()
@@ -173,7 +173,7 @@ static void __attribute__((unused)) SLT_build_packet()
 	{
 		// For SLT6: packet[5] contains flight mode in upper 2 bits (7-6) and CH5 lower 6 bits (5-0)
 		uint16_t ch5_10bit = convert_channel_10b(CH5, false);
-		uint8_t ch5_6bit = (ch5_10bit >> 4) & 0x3F;  // Take upper 6 bits of 10-bit value
+		uint8_t ch5_6bit = (ch5_10bit >> 4) & 0x3F;  // Extract bits 9-4 of 10-bit value
 		uint8_t flight_mode = SLT6_get_flight_mode(ch5_10bit);
 		packet[5] = flight_mode | ch5_6bit;
 		// packet[6] contains CH6 (panic button)
