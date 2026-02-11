@@ -137,39 +137,20 @@ static void __attribute__((unused)) SLT_build_packet()
 	uint8_t e = 0; // byte where extension 2 bits for every 10-bit channel are packed
 	for (uint8_t i = 0; i < 4; ++i)
 	{
-		if(sub_protocol == SLT6)
-		{
-			// SLT6 uses 8-bit AETR only (no extension bits)
-			packet[i] = convert_channel_8b(CH_AETR[i]);
-		}
-		else
-		{
-			// Other protocols use 10-bit AETR with extension bits
-			uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
-			if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM)
-				v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
-			packet[i] = v;
-			e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
-		}
+		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 && sub_protocol != SLT6 ? CH_AETR[i] : i, false);
+		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6)
+			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
+		packet[i] = v;
+		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
 	}
 	
-	// SLT6: Encode CH5/CH6 in byte 4
-	if(sub_protocol == SLT6)
-	{
-		// Byte 4: Upper 4 bits = CH5 (4-bit), Lower 4 bits = CH6 (4-bit)
-		uint8_t ch5_4bit = convert_channel_8b(CH5) >> 4;  // Take upper 4 bits of 8-bit value
-		uint8_t ch6_4bit = convert_channel_8b(CH6) >> 4;  // Take upper 4 bits of 8-bit value
-		packet[4] = (ch5_4bit << 4) | ch6_4bit;
-		return;	// 5 bytes total: AETR (8-bit) + encoded CH5/CH6
-	}
-	
-	// Extra bits for AETR (other protocols)
+	// Extra bits for AETR
 	packet[4] = e;
 
-	//->V1_4CH stops here (5 bytes total: AETR + extension bits)
+	//->V1_4CH and SLT6 stop here (5 bytes total: AETR + extension bits)
 	
-	if(sub_protocol == SLT_V1_4)
-		return;	// Only 5 bytes transmitted for V1_4
+	if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
+		return;	// Only 5 bytes transmitted for V1_4 and SLT6
 
 	// 8-bit channels (for V1, V2, Q100, Q200, MR100, RF_SIM)
 	packet[5] = convert_channel_8b(CH5);
