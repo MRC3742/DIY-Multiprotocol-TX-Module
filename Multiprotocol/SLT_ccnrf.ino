@@ -45,14 +45,6 @@ enum{
 	FLAG_MR100_PICTURE	= 0x01,
 };
 
-enum{
-	// flags going to packet[5] upper bits (SLT6) - flight mode (3-position switch)
-	FLAG_SLT6_FMODE0	= 0x00,	// 00 - Mode 0 (Low)
-	FLAG_SLT6_FMODE1	= 0x40,	// 01 - Mode 1 (Middle)
-	FLAG_SLT6_FMODE2	= 0x80,	// 10 - Mode 2 (High)
-	// Note: 0xC0 (11) is not used - only 3 positions
-};
-
 enum {
 	SLT_BUILD=0,
 	SLT_DATA1,
@@ -131,23 +123,6 @@ static void __attribute__((unused)) SLT_send_packet(uint8_t len)
 	packet_sent = 1;
 }
 
-static uint8_t __attribute__((unused)) SLT6_get_flight_mode(uint16_t ch5_val)
-{
-	// Convert CH5 analog value (0-1023) to 3-position flight mode (0-2)
-	// SLT6 transmitter uses a 3-position switch, not 4
-	// Low:    0-341   → Mode 0 (bits 7-6 = 00)
-	// Middle: 342-682 → Mode 1 (bits 7-6 = 01)
-	// High:   683-1023 → Mode 2 (bits 7-6 = 10)
-	uint8_t mode;
-	if (ch5_val <= 341)
-		mode = 0;  // Low position
-	else if (ch5_val <= 682)
-		mode = 1;  // Middle position
-	else
-		mode = 2;  // High position
-	return mode << 6;  // Shift to packet byte bits 7-6
-}
-
 static void __attribute__((unused)) SLT_build_packet()
 {
 	static uint8_t calib_counter=0;
@@ -171,26 +146,16 @@ static void __attribute__((unused)) SLT_build_packet()
 	// Extra bits for AETR
 	packet[4] = e;
 
-	//->V1_4CH stops here
+	//->V1_4CH and SLT6 stop here (5 bytes total: AETR + extension bits)
+	
+	if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
+		return;	// Only 5 bytes transmitted for these protocols
 
-	// 8-bit channels
-	if(sub_protocol == SLT6)
-	{
-		// For SLT6: packet[5] contains flight mode in upper 2 bits (7-6) and CH5 lower 6 bits (5-0)
-		uint16_t ch5_10bit = convert_channel_10b(CH5, false);
-		uint8_t ch5_6bit = (ch5_10bit >> 4) & 0x3F;  // Extract bits 9-4 of 10-bit value
-		uint8_t flight_mode = SLT6_get_flight_mode(ch5_10bit);
-		packet[5] = flight_mode | ch5_6bit;
-		// packet[6] contains CH6 (panic button)
-		packet[6] = convert_channel_8b(CH6);
-	}
-	else
-	{
-		packet[5] = convert_channel_8b(CH5);
-		packet[6] = convert_channel_8b(CH6);
-	}
+	// 8-bit channels (for V1, V2, Q100, Q200, MR100, RF_SIM)
+	packet[5] = convert_channel_8b(CH5);
+	packet[6] = convert_channel_8b(CH6);
 
-	//->V1 and SLT6 stop here
+	//->V1 stops here
 
 	if(sub_protocol == Q200)
 		packet[6] =  GET_FLAG(CH9_SW , FLAG_Q200_FMODE)
@@ -323,9 +288,16 @@ void SLT_init()
 	packet_sent = 0;
 	hopping_frequency_no = 0;
 
-	if(sub_protocol == SLT_V1 || sub_protocol == SLT6)
+	if(sub_protocol == SLT_V1)
 	{
 		packet_length = SLT_PAYLOADSIZE_V1;
+		#ifdef MULTI_SYNC
+			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
+		#endif
+	}
+	else if(sub_protocol == SLT6)
+	{
+		packet_length = SLT_PAYLOADSIZE_V1_4;		// 5 bytes (AETR + extension bits)
 		#ifdef MULTI_SYNC
 			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
 		#endif
