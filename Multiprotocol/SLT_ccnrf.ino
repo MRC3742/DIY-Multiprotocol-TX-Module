@@ -135,11 +135,11 @@ static uint8_t __attribute__((unused)) SLT6_get_flight_mode(uint16_t ch5_val)
 {
 	// Convert CH5 analog value (0-1023) to 3-position flight mode (0-2)
 	// SLT6 transmitter uses a 3-position switch, not 4
-	// Low:    0-340   → Mode 0 (bits 7-6 = 00)
-	// Middle: 341-682 → Mode 1 (bits 7-6 = 01)
+	// Low:    0-341   → Mode 0 (bits 7-6 = 00)
+	// Middle: 342-682 → Mode 1 (bits 7-6 = 01)
 	// High:   683-1023 → Mode 2 (bits 7-6 = 10)
 	uint8_t mode;
-	if (ch5_val <= 340)
+	if (ch5_val <= 341)
 		mode = 0;  // Low position
 	else if (ch5_val <= 682)
 		mode = 1;  // Middle position
