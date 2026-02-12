@@ -235,10 +235,19 @@ uint16_t SLT_callback()
 			SLT_send_packet(packet_length);
 			if(sub_protocol == SLT_V1)
 				return SLT_V1_TIMING_PACKET;
-			if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
+			if(sub_protocol == SLT_V1_4)
 			{
 				phase++;						//Packets are sent two times only
 				return SLT_V1_4_TIMING_PACKET;
+			}
+			if(sub_protocol == SLT6)
+			{
+				// SLT6 sends 3 packets like V1, but with custom timing
+				// Pattern: 48ms, 174ms, 48ms intervals
+				if(phase == SLT_DATA2)
+					return 1643;	// After DATA1, wait 1.643ms (like V1_4)
+				else
+					return 48000;	// After DATA2, wait 48ms before DATA3
 			}
 			//V2
 			return SLT_V2_TIMING_PACKET;
@@ -262,7 +271,9 @@ uint16_t SLT_callback()
 				if(sub_protocol == SLT_V1)
 					return 20000 - SLT_TIMING_BUILD;
 				if(sub_protocol == SLT6)
-					return 83000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;	// 83ms measured from hardware
+					// SLT6: After DATA3, wait 174ms before next BUILD
+					// Pattern: 48ms + 174ms + 48ms = 270ms per 3-packet cycle
+					return 174000 - SLT_TIMING_BUILD;
 				if(sub_protocol==SLT_V1_4)
 					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
 				//V2
@@ -278,7 +289,8 @@ uint16_t SLT_callback()
 			if(sub_protocol == SLT_V1)
 				return 20000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT6)
-				return 83000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;	// 83ms measured from hardware
+				// SLT6: After bind, wait for full cycle timing
+				return 174000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
 			//V2
@@ -305,7 +317,7 @@ void SLT_init()
 	{
 		packet_length = SLT_PAYLOADSIZE_SLT6;		// 5 bytes (AETR 10-bit)
 		#ifdef MULTI_SYNC
-			packet_period = 83000;					// 83ms (12.06 Hz) measured from hardware
+			packet_period = 270000;					// 270ms per 3-packet cycle (measured from hardware)
 		#endif
 	}
 	else if(sub_protocol == SLT_V1_4)
