@@ -138,7 +138,7 @@ static void __attribute__((unused)) SLT_build_packet()
 	for (uint8_t i = 0; i < 4; ++i)
 	{
 		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
-		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM)
+		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6_Tx)
 			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
 		packet[i] = v;
 		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
@@ -210,6 +210,7 @@ static void __attribute__((unused)) SLT_send_bind_packet()
 #define SLT_V1_TIMING_BIND2		1000
 #define SLT_V2_TIMING_BIND1		6507
 #define SLT_V2_TIMING_BIND2		2112
+#define SLT6_TIMING_SUBCYCLE	6000
 uint16_t SLT_callback()
 {
 	switch (phase)
@@ -217,11 +218,37 @@ uint16_t SLT_callback()
 		case SLT_BUILD:
 			//debugln_time("b ");
 			#ifdef MULTI_SYNC
-				telemetry_set_input_sync(packet_period);
+				if(sub_protocol != SLT6_Tx || num_ch == 0)
+					telemetry_set_input_sync(packet_period);
 			#endif
-			SLT_build_packet();
-			NRF250K_SetPower();					//Change power level
-			NRF250K_SetTXAddr(rx_tx_addr, SLT_TXID_SIZE);
+			if(sub_protocol == SLT6_Tx)
+			{
+				if(num_ch == 0)
+					SLT_build_packet();		// Build packet + hop frequency
+				else
+				{// Just hop frequency for sub-cycles 1 and 2
+					NRF250K_SetFreqOffset();
+					NRF250K_Hopping(hopping_frequency_no);
+					if (++hopping_frequency_no >= SLT_NFREQCHANNELS)
+						hopping_frequency_no = 0;
+				}
+				NRF250K_SetPower();
+				// Set TX address based on sub-cycle
+				uint8_t addr[SLT_TXID_SIZE];
+				memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
+				if(num_ch == 1)
+					addr[0] ^= 0x06;
+				else if(num_ch == 2)
+					addr[0] ^= 0x09;
+				NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
+				packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
+			}
+			else
+			{
+				SLT_build_packet();
+				NRF250K_SetPower();					//Change power level
+				NRF250K_SetTXAddr(rx_tx_addr, SLT_TXID_SIZE);
+			}
 			phase++;
 			return SLT_TIMING_BUILD;
 		case SLT_DATA1:
@@ -230,7 +257,7 @@ uint16_t SLT_callback()
 			SLT_send_packet(packet_length);
 			if(sub_protocol == SLT_V1)
 				return SLT_V1_TIMING_PACKET;
-			if(sub_protocol == SLT_V1_4)
+			if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6_Tx)
 			{
 				phase++;						//Packets are sent two times only
 				return SLT_V1_4_TIMING_PACKET;
@@ -239,6 +266,23 @@ uint16_t SLT_callback()
 			return SLT_V2_TIMING_PACKET;
 		case SLT_DATA3:
 			SLT_send_packet(packet_length);
+			if(sub_protocol == SLT6_Tx)
+			{
+				if(++num_ch >= 3)
+				{
+					num_ch = 0;
+					packet_count++;
+				}
+				// Bind replaces the 6-byte sub-cycle
+				if(num_ch == 1 && packet_count >= 52)
+				{
+					packet_count = 0;
+					phase = SLT_BIND1;
+					return SLT_V1_TIMING_BIND2;
+				}
+				phase = SLT_BUILD;
+				return SLT6_TIMING_SUBCYCLE - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
+			}
 			if (++packet_count >= 100)
 			{// Send bind packet
 				packet_count = 0;
@@ -262,10 +306,34 @@ uint16_t SLT_callback()
 				return 13730 - SLT_TIMING_BUILD;
 			}
 		case SLT_BIND1:
+			if(sub_protocol == SLT6_Tx)
+			{// Send 4-byte TX ID then first 6-byte data to bind address
+				uint8_t saved_pkt[SLT_PAYLOADSIZE_V1];
+				memcpy(saved_pkt, packet, SLT_PAYLOADSIZE_V1);
+				SLT_wait_radio();
+				NRF250K_Hopping(SLT_NFREQCHANNELS);	//Bind channel
+				BIND_IN_PROGRESS;
+				NRF250K_SetPower();
+				BIND_DONE;
+				NRF250K_SetTXAddr((uint8_t *)"\x7E\xB8\x63\xA9", SLT_TXID_SIZE);
+				memcpy((void*)packet, (void*)rx_tx_addr, SLT_TXID_SIZE);
+				SLT_send_packet(SLT_TXID_SIZE);		// Send 4-byte TX ID
+				memcpy(packet, saved_pkt, SLT_PAYLOADSIZE_V1);
+				SLT_send_packet(6);					// Send first 6-byte data
+				phase++;
+				return SLT_V1_4_TIMING_PACKET;
+			}
 			SLT_send_bind_packet();
 			phase++;
 			return SLT_V2_TIMING_BIND2;
 		case SLT_BIND2:
+			if(sub_protocol == SLT6_Tx)
+			{// Send second 6-byte data to bind address
+				SLT_send_packet(6);
+				num_ch = 2;							// Continue with 5-byte sub-cycle
+				phase = SLT_BUILD;
+				return SLT6_TIMING_SUBCYCLE - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
+			}
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
 			if(sub_protocol == SLT_V1)
@@ -303,6 +371,14 @@ void SLT_init()
 		rx_tx_addr[1]=0x71;
 		#ifdef SLT_V1_4_FORCE_ID	// ID taken from TX dumps
 			memcpy(rx_tx_addr,"\xF4\x71\x8D\x01",SLT_TXID_SIZE);
+		#endif
+	}
+	else if(sub_protocol == SLT6_Tx)
+	{
+		packet_length = SLT_PAYLOADSIZE_V1;
+		num_ch = 0;
+		#ifdef MULTI_SYNC
+			packet_period = 18000;								//18ms
 		#endif
 	}
 	else //V2
