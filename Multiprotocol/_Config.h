@@ -850,6 +850,7 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 		MR100
 		V1_4CH
 		RF_SIM
+		SLT6
 	PROTO_SYMAX
 		SYMAX
 		SYMAX5C

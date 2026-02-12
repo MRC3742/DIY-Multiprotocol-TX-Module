@@ -24,6 +24,7 @@
 // For code readability
 #define SLT_PAYLOADSIZE_V1		7
 #define SLT_PAYLOADSIZE_V1_4	5
+#define SLT_PAYLOADSIZE_SLT6	5	// 5 bytes: AETR (10-bit) like V1_4
 #define SLT_PAYLOADSIZE_V2		11
 #define SLT_NFREQCHANNELS		15
 #define SLT_TXID_SIZE			4
@@ -137,18 +138,22 @@ static void __attribute__((unused)) SLT_build_packet()
 	uint8_t e = 0; // byte where extension 2 bits for every 10-bit channel are packed
 	for (uint8_t i = 0; i < 4; ++i)
 	{
-		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
-		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM)
+		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 && sub_protocol != SLT6 ? CH_AETR[i] : i, false);
+		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6)
 			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
 		packet[i] = v;
 		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
 	}
+	
 	// Extra bits for AETR
 	packet[4] = e;
 
-	//->V1_4CH stops here
+	//->V1_4 and SLT6 stop here (5 bytes total: AETR + extension bits)
+	
+	if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
+		return;	// Only 5 bytes transmitted for V1_4 and SLT6
 
-	// 8-bit channels
+	// 8-bit channels (for V1, V2, Q100, Q200, MR100, RF_SIM)
 	packet[5] = convert_channel_8b(CH5);
 	packet[6] = convert_channel_8b(CH6);
 
@@ -235,6 +240,15 @@ uint16_t SLT_callback()
 				phase++;						//Packets are sent two times only
 				return SLT_V1_4_TIMING_PACKET;
 			}
+			if(sub_protocol == SLT6)
+			{
+				// SLT6 sends 3 packets like V1, but with custom timing
+				// Pattern: 48ms, 174ms, 48ms intervals
+				if(phase == SLT_DATA2)
+					return 1643;	// After DATA1, wait 1.643ms (like V1_4)
+				else
+					return 48000;	// After DATA2, wait 48ms before DATA3
+			}
 			//V2
 			return SLT_V2_TIMING_PACKET;
 		case SLT_DATA3:
@@ -242,7 +256,7 @@ uint16_t SLT_callback()
 			if (++packet_count >= 100)
 			{// Send bind packet
 				packet_count = 0;
-				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
 				{
 					phase = SLT_BIND2;
 					return SLT_V1_TIMING_BIND2;
@@ -256,6 +270,10 @@ uint16_t SLT_callback()
 				phase = SLT_BUILD;
 				if(sub_protocol == SLT_V1)
 					return 20000 - SLT_TIMING_BUILD;
+				if(sub_protocol == SLT6)
+					// SLT6: After DATA3, wait 174ms before next BUILD
+					// Pattern: 48ms + 174ms + 48ms = 270ms per 3-packet cycle
+					return 174000 - SLT_TIMING_BUILD;
 				if(sub_protocol==SLT_V1_4)
 					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
 				//V2
@@ -270,6 +288,9 @@ uint16_t SLT_callback()
 			phase = SLT_BUILD;
 			if(sub_protocol == SLT_V1)
 				return 20000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
+			if(sub_protocol == SLT6)
+				// SLT6: After bind, wait for full cycle timing
+				return 174000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
 			//V2
@@ -290,6 +311,13 @@ void SLT_init()
 		packet_length = SLT_PAYLOADSIZE_V1;
 		#ifdef MULTI_SYNC
 			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
+		#endif
+	}
+	else if(sub_protocol == SLT6)
+	{
+		packet_length = SLT_PAYLOADSIZE_SLT6;		// 5 bytes (AETR 10-bit)
+		#ifdef MULTI_SYNC
+			packet_period = 270000;					// 270ms per 3-packet cycle (measured from hardware)
 		#endif
 	}
 	else if(sub_protocol == SLT_V1_4)
