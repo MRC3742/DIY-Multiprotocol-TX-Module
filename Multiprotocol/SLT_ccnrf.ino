@@ -141,46 +141,17 @@ static void __attribute__((unused)) SLT_build_packet()
 		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 && sub_protocol != SLT6 ? CH_AETR[i] : i, false);
 		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6)
 			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
-		
-		// SLT6: Use 9-bit AETR to make room for CH5/CH6 in byte 4
-		if(sub_protocol == SLT6)
-			v = v >> 1;	// Convert 10-bit (0-1023) to 9-bit (0-511)
-		
-		packet[i] = v;	// Low 8 bits
-		
-		// Pack extension bits
-		if(sub_protocol == SLT6)
-			e = (e >> 1) | (uint8_t) ((v >> 7) & 0x80);	// Pack 1 high bit for 9-bit channel
-		else
-			e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);	// Pack 2 high bits for 10-bit channel
+		packet[i] = v;
+		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
 	}
 	
 	// Extra bits for AETR
 	packet[4] = e;
 
-	//->V1_4CH stops here (5 bytes total: AETR + extension bits)
+	//->V1_4 and SLT6 stop here (5 bytes total: AETR + extension bits)
 	
-	if(sub_protocol == SLT_V1_4)
-		return;	// Only 5 bytes transmitted for V1_4
-	
-	//->SLT6: Add CH5 and CH6 to byte 4, then stop (5 bytes total)
-	
-	if(sub_protocol == SLT6)
-	{
-		// Byte 4 for SLT6: [A8|E8|T8|R8|FM1|FM0|PANIC|0]
-		// CH5: Flight mode switch (3-position: 0, 1, 2)
-		uint16_t ch5_raw = convert_channel_10b(CH5, false);	// Get 10-bit value (0-1023)
-		uint8_t flight_mode = (ch5_raw * 3) / 1024;			// Map to 0-2 for 3 positions
-		if(flight_mode > 2) flight_mode = 2;					// Clamp to 0-2
-		
-		// CH6: Panic button (on/off)
-		uint16_t ch6_raw = convert_channel_10b(CH6, false);	// Get 10-bit value (0-1023)
-		uint8_t panic_button = (ch6_raw > 511) ? 1 : 0;		// On if above center
-		
-		// Combine: extension bits (upper 4) + flight mode (bits 3-2) + panic (bit 1) + reserved (bit 0)
-		packet[4] = e | (flight_mode << 2) | (panic_button << 1);
-		return;	// Only 5 bytes transmitted for SLT6
-	}
+	if(sub_protocol == SLT_V1_4 || sub_protocol == SLT6)
+		return;	// Only 5 bytes transmitted for V1_4 and SLT6
 
 	// 8-bit channels (for V1, V2, Q100, Q200, MR100, RF_SIM)
 	packet[5] = convert_channel_8b(CH5);
