@@ -233,13 +233,13 @@ uint16_t SLT_callback()
 						hopping_frequency_no = 0;
 				}
 				NRF250K_SetPower();
-				// Set TX address based on sub-cycle
+				// Set TX address based on sub-cycle: 3 NRF24L01 RX pipes
 				uint8_t addr[SLT_TXID_SIZE];
 				memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
 				if(num_ch == 1)
-					addr[0] ^= 0x06;
+					addr[0] ^= 0x06;			// 6-byte payload pipe
 				else if(num_ch == 2)
-					addr[0] ^= 0x09;
+					addr[0] ^= 0x09;			// 5-byte payload pipe
 				NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
 				packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
 			}
@@ -273,7 +273,7 @@ uint16_t SLT_callback()
 					num_ch = 0;
 					packet_count++;
 				}
-				// Bind replaces the 6-byte sub-cycle
+				// Bind replaces the 6-byte sub-cycle every ~52 triples (~1s)
 				if(num_ch == 1 && packet_count >= 52)
 				{
 					packet_count = 0;

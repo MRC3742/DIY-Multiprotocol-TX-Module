@@ -1498,6 +1498,10 @@ The RealFlight "reset" button found on the RealFlight USB-transmitter, can now b
 
 RealFlight 8 crashes when trying to save file with reset-button defined.
 
+Please save radio-profile with a new name without setting reset-button in RF8. Then edit the radio-profile definition in  ~\Documents\RealFlight8\RadioProfiles\ in an ordinary fileeditor.
+
+Find the [Reset21] section and change Input=INT:-1 to Input=INT:9 
+
 ### Sub_protocol SLT6_Tx - *7*
 Models: Blade Revolution 90 FP helicopter (SLT6 transmitter)
 
@@ -1508,10 +1512,6 @@ A|E|T|R|FMODE|PANIC
 FMODE: flight mode switch (3-position)
 
 PANIC: panic/recovery button
-
-Please save radio-profile with a new name without setting reset-button in RF8. Then edit the radio-profile definition in  ~\Documents\RealFlight8\RadioProfiles\ in an ordinary fileeditor.
-
-Find the [Reset21] section and change Input=INT:-1 to Input=INT:9 
 
 
 ## V911S - *46*
