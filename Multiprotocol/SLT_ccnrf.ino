@@ -158,7 +158,9 @@ static void __attribute__((unused)) SLT_build_packet()
 
 	if(sub_protocol == SLT6_Tx)
 	{// SLT6 flight mode: 3-position switch on CH5 -> 0xD0/0x80/0x30
-		packet[5] = convert_channel_8b_limit_deadband(CH5, 0x30, 0x80, 0xD0, 50);
+		packet[5] = (CH5 < -50) ? 0x30 :
+            		(CH5 > 50)  ? 0xD0 :
+								  0x80 ;
 		// SLT6 panic: binary switch on CH6 -> 0xD0 (off) / 0x30 (active)
 		packet[6] = CH6_SW ? 0x30 : 0xD0;
 		return;
