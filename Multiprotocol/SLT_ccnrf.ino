@@ -28,6 +28,8 @@
 #define SLT_NFREQCHANNELS		15
 #define SLT_TXID_SIZE			4
 #define SLT_BIND_CHANNEL		0x50
+#define SLT6_ADDR_XOR_6B		0x06	// XOR for 6-byte payload pipe address
+#define SLT6_ADDR_XOR_5B		0x09	// XOR for 5-byte payload pipe address
 
 enum{
 	// flags going to packet[6] (Q200)
@@ -266,9 +268,9 @@ uint16_t SLT_callback()
 					uint8_t addr[SLT_TXID_SIZE];
 					memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
 					if(num_ch == 1)
-						addr[0] ^= 0x06;			// 6-byte payload pipe
+						addr[0] ^= SLT6_ADDR_XOR_6B;	// 6-byte payload pipe
 					else if(num_ch == 2)
-						addr[0] ^= 0x09;			// 5-byte payload pipe
+						addr[0] ^= SLT6_ADDR_XOR_5B;	// 5-byte payload pipe
 					NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
 				}
 				packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
