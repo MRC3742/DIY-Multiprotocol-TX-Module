@@ -195,13 +195,16 @@ static void __attribute__((unused)) SLT_build_packet()
 // SLT6: configure radio channel and TX address for the current sub-cycle
 // Called from SLT_DATA3 (pre-configure for next) and SLT_init (first sub-cycle)
 // This gives the NRF24L01 PLL >4ms to settle before the next payload write
+// Matches original SLT6 TX config phase: EN_AA, SETUP_RETR, RF_SETUP, TX_ADDR, FLUSH_TX, RF_CH
 static void __attribute__((unused)) SLT6_configure_radio()
 {
-	// Set RF channel: 7B uses hop_no+0, 6B uses hop_no+3, 5B uses hop_no+6
-	uint8_t ch_offset = num_ch * 3;  // 0, 3, 6
-	uint8_t ch_idx = (hopping_frequency_no + ch_offset) % SLT_NFREQCHANNELS;
-	NRF250K_SetFreqOffset();
-	NRF250K_Hopping(ch_idx);
+	// Refresh critical NRF24L01 registers every sub-cycle (matches original TX)
+	// Protects against register corruption from power glitches or SPI noise
+	#ifdef NRF24L01_INSTALLED
+		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);		// No auto-ack
+		NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);	// No retransmits
+		NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf_setup);	// Refresh bitrate + power
+	#endif
 
 	// Set TX address: each sub-cycle uses a different NRF24L01 RX pipe address
 	uint8_t addr[SLT_TXID_SIZE];
@@ -211,6 +214,15 @@ static void __attribute__((unused)) SLT6_configure_radio()
 	else if(num_ch == 2)
 		addr[0] ^= SLT6_ADDR_XOR_5B;	// 5-byte payload pipe
 	NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
+
+	// Flush TX FIFO and set RF channel (matches original TX config sequence)
+	#ifdef NRF24L01_INSTALLED
+		NRF24L01_FlushTx();
+	#endif
+	uint8_t ch_offset = num_ch * 3;  // 0, 3, 6
+	uint8_t ch_idx = (hopping_frequency_no + ch_offset) % SLT_NFREQCHANNELS;
+	NRF250K_SetFreqOffset();
+	NRF250K_Hopping(ch_idx);
 
 	// Set payload length for this sub-cycle
 	packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
