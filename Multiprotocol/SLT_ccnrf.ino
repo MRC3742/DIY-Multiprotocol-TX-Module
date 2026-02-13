@@ -32,6 +32,8 @@
 #define SLT6_ADDR_XOR_5B		0x09	// XOR for 5-byte payload pipe address
 #define SLT6_TIMING_PAIR		1633	// Time between first and second payload copy (from capture)
 #define SLT6_TIMING_SUBCYCLE	5998	// Sub-cycle period (capture mean: 5997.5us)
+#define SLT6_CH_MIN				182		// 10-bit AETR minimum (captures: 180-185, symmetric around 512)
+#define SLT6_CH_MAX				842		// 10-bit AETR maximum (captures: 829-843, symmetric around 512)
 
 enum{
 	// flags going to packet[6] (Q200)
@@ -231,11 +233,13 @@ static void __attribute__((unused)) SLT6_configure_radio()
 // SLT6: build packet data from current channel values (no radio config)
 static void __attribute__((unused)) SLT6_build_packet()
 {
-	// Build AETR + extension byte (same encoding as V1)
+	// Build AETR + extension byte
+	// SLT6 uses reduced 10-bit range (182-842, not full 0-1023)
+	// Values outside this range cause the receiver to drop packets
 	uint8_t e = 0;
 	for (uint8_t i = 0; i < 4; ++i)
 	{
-		uint16_t v = convert_channel_10b(CH_AETR[i], false);
+		uint16_t v = convert_channel_16b_limit(CH_AETR[i], SLT6_CH_MIN, SLT6_CH_MAX);
 		packet[i] = v;
 		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
 	}
