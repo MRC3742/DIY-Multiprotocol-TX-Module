@@ -214,8 +214,15 @@ static void __attribute__((unused)) SLT6_build_packet_and_hop()
 	}
 	packet[4] = e;
 
-	// SLT6 flight mode: 3-position on CH5 -> 0xD0/0x80/0x30
-	packet[5] = convert_channel_8b_limit_deadband(CH5, 0x30, 0x80, 0xD0, 50);
+	// SLT6 flight mode: 3-position snap on CH5 -> 0x30/0x80/0xD0
+	// Discrete values only (receiver rejects intermediate values)
+	// Thresholds at ±60% of full channel range from center
+	if(Channel_data[CH5] > CHANNEL_MID + 492)
+		packet[5] = 0xD0;
+	else if(Channel_data[CH5] < CHANNEL_MID - 492)
+		packet[5] = 0x30;
+	else
+		packet[5] = 0x80;
 	// SLT6 panic: binary switch on CH6 -> 0xD0 (off) / 0x30 (active)
 	packet[6] = CH6_SW ? 0x30 : 0xD0;
 }
