@@ -192,18 +192,33 @@ static void __attribute__((unused)) SLT_build_packet()
 		calib_counter = 0;
 }
 
-// SLT6: build packet from current channel values and set RF channel
-// Each sub-cycle (7B/6B/5B) hops independently using offset in 15-ch sequence
-// hopping_frequency_no advances once per triple, not per sub-cycle
-static void __attribute__((unused)) SLT6_build_packet_and_hop()
+// SLT6: configure radio channel and TX address for the current sub-cycle
+// Called from SLT_DATA3 (pre-configure for next) and SLT_init (first sub-cycle)
+// This gives the NRF24L01 PLL >4ms to settle before the next payload write
+static void __attribute__((unused)) SLT6_configure_radio()
 {
-	// Set RF channel for this sub-cycle
-	// 7B: hop_no, 6B: (hop_no+3)%15, 5B: (hop_no+6)%15
+	// Set RF channel: 7B uses hop_no+0, 6B uses hop_no+3, 5B uses hop_no+6
 	uint8_t ch_offset = num_ch * 3;  // 0, 3, 6
 	uint8_t ch_idx = (hopping_frequency_no + ch_offset) % SLT_NFREQCHANNELS;
 	NRF250K_SetFreqOffset();
 	NRF250K_Hopping(ch_idx);
 
+	// Set TX address: each sub-cycle uses a different NRF24L01 RX pipe address
+	uint8_t addr[SLT_TXID_SIZE];
+	memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
+	if(num_ch == 1)
+		addr[0] ^= SLT6_ADDR_XOR_6B;	// 6-byte payload pipe
+	else if(num_ch == 2)
+		addr[0] ^= SLT6_ADDR_XOR_5B;	// 5-byte payload pipe
+	NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
+
+	// Set payload length for this sub-cycle
+	packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
+}
+
+// SLT6: build packet data from current channel values (no radio config)
+static void __attribute__((unused)) SLT6_build_packet()
+{
 	// Build AETR + extension byte (same encoding as V1)
 	uint8_t e = 0;
 	for (uint8_t i = 0; i < 4; ++i)
@@ -253,8 +268,8 @@ uint16_t SLT_callback()
 {
 	if(sub_protocol == SLT6_Tx)
 	{// SLT6: 3 sub-cycles per ~18ms, each sends to a different address/channel/payload size
-		// Merged BUILD+DATA1 into SLT_DATA1 and second copy in SLT_DATA3
-		// to reduce callbacks from 9 to 6 per triple, minimizing timing jitter
+		// Radio (channel + address) is pre-configured in SLT_DATA3 for the NEXT sub-cycle
+		// giving the NRF24L01 PLL >4ms to settle before transmitting
 		switch (phase)
 		{
 			case SLT_DATA1:
@@ -262,22 +277,10 @@ uint16_t SLT_callback()
 					if(num_ch == 0)
 						telemetry_set_input_sync(packet_period);
 				#endif
-				// Wait for previous TX to complete before changing radio settings
-				SLT_wait_radio();
-				// Build packet with current channel values and set RF channel
-				SLT6_build_packet_and_hop();
+				// Channel and address were pre-configured in previous SLT_DATA3
+				// (or in SLT_init for the very first packet)
+				SLT6_build_packet();
 				NRF250K_SetPower();
-				// Set TX address based on sub-cycle: 3 NRF24L01 RX pipes
-				{
-					uint8_t addr[SLT_TXID_SIZE];
-					memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
-					if(num_ch == 1)
-						addr[0] ^= SLT6_ADDR_XOR_6B;	// 6-byte payload pipe
-					else if(num_ch == 2)
-						addr[0] ^= SLT6_ADDR_XOR_5B;	// 5-byte payload pipe
-					NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
-				}
-				packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
 				// Send first copy of payload
 				NRF250K_WritePayload(packet, packet_length);
 				packet_sent = 1;
@@ -294,6 +297,11 @@ uint16_t SLT_callback()
 					if (++hopping_frequency_no >= SLT_NFREQCHANNELS)
 						hopping_frequency_no = 0;
 				}
+				// Wait for second copy to finish before changing radio settings
+				SLT_wait_radio();
+				// Pre-configure channel and address for the NEXT sub-cycle
+				// PLL has >4ms to settle before next SLT_DATA1 writes payload
+				SLT6_configure_radio();
 				phase = SLT_DATA1;
 				return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR;
 		}
@@ -432,10 +440,14 @@ void SLT_init()
 		NRF250K_SetTXAddr((uint8_t *)"\x7E\xB8\x63\xA9", SLT_TXID_SIZE);
 		memcpy((void*)packet, (void*)rx_tx_addr, SLT_TXID_SIZE);
 		SLT_send_packet(SLT_TXID_SIZE);
+		SLT_wait_radio();
+		// Pre-configure channel and address for first sub-cycle
+		// so PLL is settled before first SLT_DATA1 callback
+		SLT6_configure_radio();
 	}
 
 	if(sub_protocol == SLT6_Tx)
-		phase = SLT_DATA1;	// SLT6 starts with merged BUILD+DATA1 phase
+		phase = SLT_DATA1;
 	else
 		phase = SLT_BUILD;
 }
