@@ -30,6 +30,7 @@
 #define SLT_BIND_CHANNEL		0x50
 #define SLT6_CH_MIN				182		// 10-bit AETR minimum (captures: 180-185, symmetric around 512)
 #define SLT6_CH_MAX				842		// 10-bit AETR maximum (captures: 829-843, symmetric around 512)
+#define SLT6_SW_THRESHOLD		273		// ~33% of half-range (820/3) for 3-position switch zones
 
 enum{
 	// flags going to packet[6] (Q200)
@@ -157,14 +158,18 @@ static void __attribute__((unused)) SLT_build_packet()
 	// 8-bit channels
 	if(sub_protocol == SLT6_Tx)
 	{// SLT6: discrete flight mode (0x30/0x80/0xD0) and panic (0xD0/0x30)
-		// Thresholds at ±60% of full stick range (492 = 0.6 * 820)
-		if(Channel_data[CH5] > CHANNEL_MID + 492)
+		// Flight mode: 3 positions at ~33% each
+		if(Channel_data[CH5] > CHANNEL_MID + SLT6_SW_THRESHOLD)
 			packet[5] = 0xD0;
-		else if(Channel_data[CH5] < CHANNEL_MID - 492)
+		else if(Channel_data[CH5] < CHANNEL_MID - SLT6_SW_THRESHOLD)
 			packet[5] = 0x30;
 		else
 			packet[5] = 0x80;
-		packet[6] = CH6_SW ? 0x30 : 0xD0;
+		// Panic: only active when CH6 is below -33%, center and up = no panic
+		if(Channel_data[CH6] < CHANNEL_MID - SLT6_SW_THRESHOLD)
+			packet[6] = 0x30;		// Panic active
+		else
+			packet[6] = 0xD0;		// No panic (center or up)
 	}
 	else
 	{
