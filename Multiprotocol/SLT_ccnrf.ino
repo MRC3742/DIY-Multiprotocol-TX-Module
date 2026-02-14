@@ -20,6 +20,7 @@
 
 //#define SLT_Q200_FORCE_ID
 //#define SLT_V1_4_FORCE_ID
+//#define SLT6_TX_FORCE_ID
 
 // For code readability
 #define SLT_PAYLOADSIZE_V1		7
@@ -422,6 +423,9 @@ void SLT_init()
 		packet_length = SLT_PAYLOADSIZE_V1;
 		num_ch = 0;
 		hopping_frequency_no = 1;	// SLT6 starts hopping at index 1, not 0 (verified from captures)
+		#ifdef SLT6_TX_FORCE_ID	// ID taken from SLT6 TX SPI captures (bind packet payload)
+			memcpy(rx_tx_addr, "\x47\x01\x9A\xAA", SLT_TXID_SIZE);
+		#endif
 		#ifdef MULTI_SYNC
 			packet_period = 18000;								//18ms
 		#endif
