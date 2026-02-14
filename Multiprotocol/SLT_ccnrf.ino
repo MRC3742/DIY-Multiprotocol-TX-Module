@@ -28,10 +28,6 @@
 #define SLT_NFREQCHANNELS		15
 #define SLT_TXID_SIZE			4
 #define SLT_BIND_CHANNEL		0x50
-#define SLT6_ADDR_XOR_6B		0x06	// XOR for 6-byte payload pipe address
-#define SLT6_ADDR_XOR_5B		0x09	// XOR for 5-byte payload pipe address
-#define SLT6_TIMING_PAIR		1633	// Time between first and second payload copy (from capture)
-#define SLT6_TIMING_SUBCYCLE	5998	// Sub-cycle period (capture mean: 5997.5us)
 #define SLT6_CH_MIN				182		// 10-bit AETR minimum (captures: 180-185, symmetric around 512)
 #define SLT6_CH_MAX				842		// 10-bit AETR maximum (captures: 829-843, symmetric around 512)
 
@@ -143,7 +139,11 @@ static void __attribute__((unused)) SLT_build_packet()
 	uint8_t e = 0; // byte where extension 2 bits for every 10-bit channel are packed
 	for (uint8_t i = 0; i < 4; ++i)
 	{
-		uint16_t v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
+		uint16_t v;
+		if(sub_protocol == SLT6_Tx)
+			v = convert_channel_16b_limit(CH_AETR[i], SLT6_CH_MIN, SLT6_CH_MAX);
+		else
+			v = convert_channel_10b(sub_protocol != SLT_V1_4 ? CH_AETR[i] : i, false);
 		if(sub_protocol>SLT_V2 && (i==CH2 || i==CH3) && sub_protocol != SLT_V1_4 && sub_protocol != RF_SIM && sub_protocol != SLT6_Tx)
 			v=1023-v;	// reverse throttle and elevator channels for Q100/Q200/MR100 protocols
 		packet[i] = v;
@@ -155,10 +155,24 @@ static void __attribute__((unused)) SLT_build_packet()
 	//->V1_4CH stops here
 
 	// 8-bit channels
-	packet[5] = convert_channel_8b(CH5);
-	packet[6] = convert_channel_8b(CH6);
+	if(sub_protocol == SLT6_Tx)
+	{// SLT6: discrete flight mode (0x30/0x80/0xD0) and panic (0xD0/0x30)
+		// Thresholds at ±60% of full stick range (492 = 0.6 * 820)
+		if(Channel_data[CH5] > CHANNEL_MID + 492)
+			packet[5] = 0xD0;
+		else if(Channel_data[CH5] < CHANNEL_MID - 492)
+			packet[5] = 0x30;
+		else
+			packet[5] = 0x80;
+		packet[6] = CH6_SW ? 0x30 : 0xD0;
+	}
+	else
+	{
+		packet[5] = convert_channel_8b(CH5);
+		packet[6] = convert_channel_8b(CH6);
+	}
 
-	//->V1_4CH and SLT6 stop here (SLT6 uses SLT6_build_packet_and_hop instead)
+	//->V1_4CH and SLT6 stops here
 
 	if(sub_protocol == Q200)
 		packet[6] =  GET_FLAG(CH9_SW , FLAG_Q200_FMODE)
@@ -194,70 +208,6 @@ static void __attribute__((unused)) SLT_build_packet()
 		calib_counter = 0;
 }
 
-// SLT6: configure radio channel and TX address for the current sub-cycle
-// Called from SLT_DATA3 (pre-configure for next) and SLT_init (first sub-cycle)
-// This gives the NRF24L01 PLL >4ms to settle before the next payload write
-// Matches original SLT6 TX config phase: EN_AA, SETUP_RETR, RF_SETUP, TX_ADDR, FLUSH_TX, RF_CH
-static void __attribute__((unused)) SLT6_configure_radio()
-{
-	// Refresh critical NRF24L01 registers every sub-cycle (matches original TX)
-	// Protects against register corruption from power glitches or SPI noise
-	#ifdef NRF24L01_INSTALLED
-		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);		// No auto-ack
-		NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);	// No retransmits
-		NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf_setup);	// Refresh bitrate + power
-	#endif
-
-	// Set TX address: each sub-cycle uses a different NRF24L01 RX pipe address
-	uint8_t addr[SLT_TXID_SIZE];
-	memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
-	if(num_ch == 1)
-		addr[0] ^= SLT6_ADDR_XOR_6B;	// 6-byte payload pipe
-	else if(num_ch == 2)
-		addr[0] ^= SLT6_ADDR_XOR_5B;	// 5-byte payload pipe
-	NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
-
-	// Flush TX FIFO and set RF channel (matches original TX config sequence)
-	#ifdef NRF24L01_INSTALLED
-		NRF24L01_FlushTx();
-	#endif
-	uint8_t ch_offset = num_ch * 3;  // 0, 3, 6
-	uint8_t ch_idx = (hopping_frequency_no + ch_offset) % SLT_NFREQCHANNELS;
-	NRF250K_SetFreqOffset();
-	NRF250K_Hopping(ch_idx);
-
-	// Set payload length for this sub-cycle
-	packet_length = SLT_PAYLOADSIZE_V1 - num_ch;	// 7, 6, 5
-}
-
-// SLT6: build packet data from current channel values (no radio config)
-static void __attribute__((unused)) SLT6_build_packet()
-{
-	// Build AETR + extension byte
-	// SLT6 uses reduced 10-bit range (182-842, not full 0-1023)
-	// Values outside this range cause the receiver to drop packets
-	uint8_t e = 0;
-	for (uint8_t i = 0; i < 4; ++i)
-	{
-		uint16_t v = convert_channel_16b_limit(CH_AETR[i], SLT6_CH_MIN, SLT6_CH_MAX);
-		packet[i] = v;
-		e = (e >> 2) | (uint8_t) ((v >> 2) & 0xC0);
-	}
-	packet[4] = e;
-
-	// SLT6 flight mode: 3-position snap on CH5 -> 0x30/0x80/0xD0
-	// Discrete values only (receiver rejects intermediate values)
-	// Thresholds at ±60% of full channel range from center
-	if(Channel_data[CH5] > CHANNEL_MID + 492)
-		packet[5] = 0xD0;
-	else if(Channel_data[CH5] < CHANNEL_MID - 492)
-		packet[5] = 0x30;
-	else
-		packet[5] = 0x80;
-	// SLT6 panic: binary switch on CH6 -> 0xD0 (off) / 0x30 (active)
-	packet[6] = CH6_SW ? 0x30 : 0xD0;
-}
-
 static void __attribute__((unused)) SLT_send_bind_packet()
 {
 	SLT_wait_radio();
@@ -282,48 +232,6 @@ static void __attribute__((unused)) SLT_send_bind_packet()
 #define SLT_V2_TIMING_BIND2		2112
 uint16_t SLT_callback()
 {
-	if(sub_protocol == SLT6_Tx)
-	{// SLT6: 3 sub-cycles per ~18ms, each sends to a different address/channel/payload size
-		// Radio (channel + address) is pre-configured in SLT_DATA3 for the NEXT sub-cycle
-		// giving the NRF24L01 PLL >4ms to settle before transmitting
-		switch (phase)
-		{
-			case SLT_DATA1:
-				#ifdef MULTI_SYNC
-					if(num_ch == 0)
-						telemetry_set_input_sync(packet_period);
-				#endif
-				// Channel and address were pre-configured in previous SLT_DATA3
-				// (or in SLT_init for the very first packet)
-				SLT6_build_packet();
-				NRF250K_SetPower();
-				// Send first copy of payload
-				NRF250K_WritePayload(packet, packet_length);
-				packet_sent = 1;
-				phase = SLT_DATA3;
-				return SLT6_TIMING_PAIR;
-			case SLT_DATA3:
-				// Send second copy of payload
-				SLT_send_packet(packet_length);
-				// Advance to next sub-cycle
-				num_ch++;
-				if(num_ch >= 3)
-				{// Triple complete, advance hopping and start new triple
-					num_ch = 0;
-					if (++hopping_frequency_no >= SLT_NFREQCHANNELS)
-						hopping_frequency_no = 0;
-				}
-				// Wait for second copy to finish before changing radio settings
-				SLT_wait_radio();
-				// Pre-configure channel and address for the NEXT sub-cycle
-				// PLL has >4ms to settle before next SLT_DATA1 writes payload
-				SLT6_configure_radio();
-				phase = SLT_DATA1;
-				return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR;
-		}
-		return SLT6_TIMING_SUBCYCLE;
-	}
-
 	switch (phase)
 	{
 		case SLT_BUILD:
@@ -340,7 +248,7 @@ uint16_t SLT_callback()
 		case SLT_DATA2:
 			phase++;
 			SLT_send_packet(packet_length);
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT6_Tx)
 				return SLT_V1_TIMING_PACKET;
 			if(sub_protocol == SLT_V1_4)
 			{
@@ -354,7 +262,7 @@ uint16_t SLT_callback()
 			if (++packet_count >= 100)
 			{// Send bind packet
 				packet_count = 0;
-				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4 || sub_protocol == SLT6_Tx)
 				{
 					phase = SLT_BIND2;
 					return SLT_V1_TIMING_BIND2;
@@ -366,7 +274,7 @@ uint16_t SLT_callback()
 			else
 			{// Continue to send normal packets
 				phase = SLT_BUILD;
-				if(sub_protocol == SLT_V1)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT6_Tx)
 					return 20000 - SLT_TIMING_BUILD;
 				if(sub_protocol==SLT_V1_4)
 					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
@@ -380,7 +288,7 @@ uint16_t SLT_callback()
 		case SLT_BIND2:
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT6_Tx)
 				return 20000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
@@ -397,7 +305,7 @@ void SLT_init()
 	packet_sent = 0;
 	hopping_frequency_no = 0;
 
-	if(sub_protocol == SLT_V1)
+	if(sub_protocol == SLT_V1 || sub_protocol == SLT6_Tx)
 	{
 		packet_length = SLT_PAYLOADSIZE_V1;
 		#ifdef MULTI_SYNC
@@ -415,15 +323,6 @@ void SLT_init()
 		rx_tx_addr[1]=0x71;
 		#ifdef SLT_V1_4_FORCE_ID	// ID taken from TX dumps
 			memcpy(rx_tx_addr,"\xF4\x71\x8D\x01",SLT_TXID_SIZE);
-		#endif
-	}
-	else if(sub_protocol == SLT6_Tx)
-	{
-		packet_length = SLT_PAYLOADSIZE_V1;
-		num_ch = 0;
-		hopping_frequency_no = 1;	// SLT6 starts hopping at index 1, not 0 (verified from captures)
-		#ifdef MULTI_SYNC
-			packet_period = 18000;								//18ms
 		#endif
 	}
 	else //V2
@@ -447,26 +346,7 @@ void SLT_init()
 	SLT_RF_init();
 	SLT_set_freq();
 
-	if(sub_protocol == SLT6_Tx)
-	{// SLT6: Single bind packet at startup only (4-byte TX ID on bind channel)
-		SLT_wait_radio();
-		NRF250K_Hopping(SLT_NFREQCHANNELS);	//Bind channel
-		BIND_IN_PROGRESS;
-		NRF250K_SetPower();
-		BIND_DONE;
-		NRF250K_SetTXAddr((uint8_t *)"\x7E\xB8\x63\xA9", SLT_TXID_SIZE);
-		memcpy((void*)packet, (void*)rx_tx_addr, SLT_TXID_SIZE);
-		SLT_send_packet(SLT_TXID_SIZE);
-		SLT_wait_radio();
-		// Pre-configure channel and address for first sub-cycle
-		// so PLL is settled before first SLT_DATA1 callback
-		SLT6_configure_radio();
-	}
-
-	if(sub_protocol == SLT6_Tx)
-		phase = SLT_DATA1;
-	else
-		phase = SLT_BUILD;
+	phase = SLT_BUILD;
 }
 
 #endif
