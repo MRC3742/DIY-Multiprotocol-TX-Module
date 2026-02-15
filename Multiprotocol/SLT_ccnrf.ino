@@ -86,56 +86,6 @@ static void __attribute__((unused)) SLT_RF_init()
 	NRF250K_SetTXAddr(rx_tx_addr, SLT_TXID_SIZE);
 }
 
-#ifdef NRF24L01_INSTALLED
-// SLT6: Initialize NRF24L01 directly at 250Kbps for native Si24R1-compatible output
-static void __attribute__((unused)) SLT6_RF_init()
-{
-	rf_switch(SW_NRF);
-	NRF24L01_Initialize();
-	NRF24L01_SetBitrate(NRF24L01_BR_250K);
-	NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);		// No auto acknowledgment
-	NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x01);	// Enable pipe 0
-	NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, SLT_TXID_SIZE - 2);	// 4-byte address (SETUP_AW=2)
-	NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);	// No retransmits
-	NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);		// Disable dynamic payload
-	NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);		// No features (use W_TX_PAYLOAD not W_TX_PAYLOAD_NOACK)
-	NRF24L01_SetTxRxMode(TX_EN);						// TX mode, CRC enabled
-	NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, rx_tx_addr, SLT_TXID_SIZE);
-}
-
-// SLT6: Set TX address on NRF24L01 directly
-static void __attribute__((unused)) SLT6_set_addr(uint8_t* addr)
-{
-	NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, addr, SLT_TXID_SIZE);
-}
-
-// SLT6: Set RF channel on NRF24L01 directly
-static void __attribute__((unused)) SLT6_set_channel(uint8_t channel)
-{
-	NRF24L01_WriteReg(NRF24L01_05_RF_CH, channel);
-}
-
-// SLT6: Wait for TX complete on NRF24L01
-static void __attribute__((unused)) SLT6_wait_tx()
-{
-	if (packet_sent)
-		while (!(NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_TX_DS)))
-			;
-	// Clear TX_DS and MAX_RT flags
-	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
-	packet_sent = 0;
-}
-
-// SLT6: Send packet via NRF24L01 directly
-static void __attribute__((unused)) SLT6_send_packet(uint8_t len)
-{
-	SLT6_wait_tx();
-	NRF24L01_FlushTx();
-	NRF24L01_WritePayload(packet, len);
-	packet_sent = 1;
-}
-#endif
-
 static void __attribute__((unused)) SLT_set_freq(void)
 {
 	// Frequency hopping sequence generation
@@ -290,20 +240,18 @@ static void __attribute__((unused)) SLT6_build_packet()
 		packet[6] = 0xD0;
 }
 
-#ifdef NRF24L01_INSTALLED
-// SLT6: configure radio for a sub-cycle (set address and channel) using NRF24L01 directly
+// SLT6: configure radio for a sub-cycle (set address and channel)
 static void __attribute__((unused)) SLT6_configure_radio(uint8_t addr_xor, uint8_t hop_offset)
 {
-	SLT6_wait_tx();
+	SLT_wait_radio();
 	// Set TX address with XOR on byte[0]
 	uint8_t addr[SLT_TXID_SIZE];
 	memcpy(addr, rx_tx_addr, SLT_TXID_SIZE);
 	addr[0] ^= addr_xor;
-	SLT6_set_addr(addr);
-	// Set RF channel directly
-	SLT6_set_channel(hopping_frequency[(hopping_frequency_no + hop_offset) % SLT_NFREQCHANNELS]);
+	NRF250K_SetTXAddr(addr, SLT_TXID_SIZE);
+	// Set RF channel
+	NRF250K_Hopping((hopping_frequency_no + hop_offset) % SLT_NFREQCHANNELS);
 }
-#endif
 
 static void __attribute__((unused)) SLT_send_bind_packet()
 {
@@ -314,26 +262,11 @@ static void __attribute__((unused)) SLT_send_bind_packet()
 	BIND_DONE;
 	NRF250K_SetTXAddr((uint8_t *)"\x7E\xB8\x63\xA9", SLT_TXID_SIZE);
 	memcpy((void*)packet, (void*)rx_tx_addr, SLT_TXID_SIZE);
-	if(phase == SLT_BIND2)
+	if(phase == SLT_BIND2 || phase == SLT6_BIND)
 		SLT_send_packet(SLT_TXID_SIZE);
 	else // SLT_BIND1
 		SLT_send_packet(SLT_PAYLOADSIZE_V2);
 }
-
-#ifdef NRF24L01_INSTALLED
-// SLT6: Send bind packet via NRF24L01 directly
-static void __attribute__((unused)) SLT6_send_bind_packet()
-{
-	SLT6_wait_tx();
-	SLT6_set_channel(SLT_BIND_CHANNEL);
-	BIND_IN_PROGRESS;
-	NRF24L01_SetPower();
-	BIND_DONE;
-	SLT6_set_addr((uint8_t *)"\x7E\xB8\x63\xA9");
-	memcpy((void*)packet, (void*)rx_tx_addr, SLT_TXID_SIZE);
-	SLT6_send_packet(SLT_TXID_SIZE);
-}
-#endif
 
 #define SLT_TIMING_BUILD		1000
 #define SLT_V1_TIMING_PACKET	1000
@@ -343,8 +276,7 @@ static void __attribute__((unused)) SLT6_send_bind_packet()
 #define SLT_V2_TIMING_BIND1		6507
 #define SLT_V2_TIMING_BIND2		2112
 
-#ifdef NRF24L01_INSTALLED
-// SLT6 callback: triple-address state machine using NRF24L01 directly
+// SLT6 callback: triple-address state machine
 // Each triple: 3 sub-cycles (7B, 6B, 5B), each sent twice, with different addresses and channels
 static uint16_t __attribute__((unused)) SLT6_callback()
 {
@@ -355,34 +287,34 @@ static uint16_t __attribute__((unused)) SLT6_callback()
 				telemetry_set_input_sync(SLT6_TIMING_TRIPLE);
 			#endif
 			SLT6_build_packet();
-			NRF24L01_SetPower();
+			NRF250K_SetPower();
 			SLT6_configure_radio(SLT6_ADDR_XOR_A, 0);	// 7B sub-cycle: base address, hop+0
 			phase = SLT6_DATA_A1;
 			return SLT6_TIMING_BUILD;
 		case SLT6_DATA_A1:
-			SLT6_send_packet(7);
+			SLT_send_packet(7);
 			phase = SLT6_DATA_A2;
 			return SLT6_TIMING_PAIR;					// 1633us between copies
 		case SLT6_DATA_A2:
-			SLT6_send_packet(7);
+			SLT_send_packet(7);
 			SLT6_configure_radio(SLT6_ADDR_XOR_B, 3);	// 6B sub-cycle: XOR 0x06 address, hop+3
 			phase = SLT6_DATA_B1;
 			return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR;	// 4361us to next sub-cycle TX
 		case SLT6_DATA_B1:
-			SLT6_send_packet(6);
+			SLT_send_packet(6);
 			phase = SLT6_DATA_B2;
 			return SLT6_TIMING_PAIR;
 		case SLT6_DATA_B2:
-			SLT6_send_packet(6);
+			SLT_send_packet(6);
 			SLT6_configure_radio(SLT6_ADDR_XOR_C, 6);	// 5B sub-cycle: XOR 0x09 address, hop+6
 			phase = SLT6_DATA_C1;
 			return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR;	// 4361us
 		case SLT6_DATA_C1:
-			SLT6_send_packet(5);
+			SLT_send_packet(5);
 			phase = SLT6_DATA_C2;
 			return SLT6_TIMING_PAIR;
 		case SLT6_DATA_C2:
-			SLT6_send_packet(5);
+			SLT_send_packet(5);
 			// Advance hopping for next triple
 			if (++hopping_frequency_no >= SLT_NFREQCHANNELS)
 				hopping_frequency_no = 0;
@@ -395,21 +327,18 @@ static uint16_t __attribute__((unused)) SLT6_callback()
 			phase = SLT6_BUILD_A;
 			return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR - SLT6_TIMING_BUILD;	// Gap before next build
 		case SLT6_BIND:
-			SLT6_send_bind_packet();
+			SLT_send_bind_packet();
 			phase = SLT6_BUILD_A;
 			return SLT6_TIMING_SUBCYCLE - SLT6_TIMING_PAIR - SLT6_TIMING_BUILD;
 	}
 	return SLT6_TIMING_TRIPLE;
 }
-#endif
 
 uint16_t SLT_callback()
 {
-	// SLT6 has its own state machine using NRF24L01 directly
-	#ifdef NRF24L01_INSTALLED
-		if(sub_protocol == SLT6_Tx)
-			return SLT6_callback();
-	#endif
+	// SLT6 has its own state machine
+	if(sub_protocol == SLT6_Tx)
+		return SLT6_callback();
 
 	switch (phase)
 	{
@@ -532,14 +461,6 @@ void SLT_init()
 
 	SLT_RF_init();
 	SLT_set_freq();
-
-	#ifdef NRF24L01_INSTALLED
-		if(sub_protocol == SLT6_Tx)
-		{
-			// Switch to NRF24L01 directly for native Si24R1-compatible output
-			SLT6_RF_init();
-		}
-	#endif
 
 	if(sub_protocol == SLT6_Tx)
 		phase = SLT6_BUILD_A;

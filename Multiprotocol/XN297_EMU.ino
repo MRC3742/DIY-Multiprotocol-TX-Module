@@ -63,8 +63,10 @@ static bool __attribute__((unused)) XN297_Configure(bool crc_en, bool scramble_e
 	#if defined(NRF24L01_INSTALLED) and defined(CC2500_INSTALLED)
 		if(bitrate == XN297_1M || force_nrf)
 			xn297_rf = XN297_NRF;		// Use NRF24L01
+		else if(option == 0)
+			xn297_rf = XN297_NRF;		// 250K default: use NRF24L01
 		else
-			xn297_rf = XN297_CC2500;	// Use CC2500
+			xn297_rf = XN297_CC2500;	// 250K with option!=0: use CC2500
 	#elif defined(NRF24L01_INSTALLED) and not defined(CC2500_INSTALLED)
 		xn297_rf = XN297_NRF;			// Use NRF24L01
 	#else //CC2500 only
