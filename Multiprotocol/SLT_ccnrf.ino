@@ -204,7 +204,7 @@ static void __attribute__((unused)) SLT_send_bind_packet()
 }
 
 #define SLT_TIMING_BUILD		1000
-#define SLT_V1_TIMING_PACKET	1000
+#define SLT_V1_TIMING_PACKET	1600
 #define SLT_V1_4_TIMING_PACKET	1643
 #define SLT_V2_TIMING_PACKET	2042
 #define SLT_V1_TIMING_BIND2		1000
@@ -229,7 +229,10 @@ uint16_t SLT_callback()
 			phase++;
 			SLT_send_packet(packet_length);
 			if(sub_protocol == SLT_V1)
+			{
+				phase++;						//Packets are sent two times only
 				return SLT_V1_TIMING_PACKET;
+			}
 			if(sub_protocol == SLT_V1_4)
 			{
 				phase++;						//Packets are sent two times only
@@ -239,7 +242,7 @@ uint16_t SLT_callback()
 			return SLT_V2_TIMING_PACKET;
 		case SLT_DATA3:
 			SLT_send_packet(packet_length);
-			if (++packet_count >= 100)
+			if (++packet_count >= ((sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4) ? 88 : 100))
 			{// Send bind packet
 				packet_count = 0;
 				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4)
@@ -255,7 +258,7 @@ uint16_t SLT_callback()
 			{// Continue to send normal packets
 				phase = SLT_BUILD;
 				if(sub_protocol == SLT_V1)
-					return 20000 - SLT_TIMING_BUILD;
+					return 17700 - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET;
 				if(sub_protocol==SLT_V1_4)
 					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
 				//V2
@@ -269,7 +272,7 @@ uint16_t SLT_callback()
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
 			if(sub_protocol == SLT_V1)
-				return 20000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2;
+				return 17700 - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
 			//V2
@@ -289,7 +292,7 @@ void SLT_init()
 	{
 		packet_length = SLT_PAYLOADSIZE_V1;
 		#ifdef MULTI_SYNC
-			packet_period = 20000+2*SLT_V1_TIMING_PACKET;		//22ms
+			packet_period = 17700;								//~17.7ms
 		#endif
 	}
 	else if(sub_protocol == SLT_V1_4)
