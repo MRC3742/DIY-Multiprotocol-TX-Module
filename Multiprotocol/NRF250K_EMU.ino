@@ -16,6 +16,7 @@
 
 #include "iface_nrf250k.h"
 
+extern bool xn297_rf;
 uint8_t cc2500_nrf_tx_addr[5], cc2500_nrf_addr_len;
 
 static void __attribute__((unused)) NRF250K_SetTXAddr(uint8_t* addr, uint8_t len)
