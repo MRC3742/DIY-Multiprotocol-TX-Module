@@ -82,7 +82,7 @@ enum {
 
 static void __attribute__((unused)) SLT_RF_init()
 {
-	NRF250K_Init();
+	XN297_Configure(XN297_CRCEN, XN297_SCRAMBLED, XN297_250K, true);	// SLT uses raw NRF24L01, not XN297 emulation
 	NRF250K_SetTXAddr(rx_tx_addr, SLT_TXID_SIZE);
 }
 
