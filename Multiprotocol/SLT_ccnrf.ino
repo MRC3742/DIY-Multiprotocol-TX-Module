@@ -245,7 +245,7 @@ uint16_t SLT_callback()
 			{// Last data packet of the frame
 				phase = SLT_LAST_DATA;
 			}
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
 				return SLT_V1_TIMING_PACKET;
 			if(sub_protocol == SLT_V1_4)
 				return SLT_V1_4_TIMING_PACKET;
@@ -253,14 +253,14 @@ uint16_t SLT_callback()
 				return SLT_Q100_TIMING_PACKET;
 			if(sub_protocol == MR100)
 				return SLT_MR100_TIMING_PACKET;
-			//V2/Q200/RF_SIM
+			//Q200
 			return SLT_V2_TIMING_PACKET;
 		case SLT_LAST_DATA:
 			SLT_send_packet(packet_length);
 			if (++packet_count >= num_ch)
 			{// Send bind packet
 				packet_count = 0;
-				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V1_4 || sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
 				{
 					phase = SLT_BIND2;
 					return SLT_V1_TIMING_BIND2;
@@ -275,14 +275,14 @@ uint16_t SLT_callback()
 					phase = SLT_BIND1;
 					return SLT_Q100_TIMING_BIND1;
 				}
-				//V2/Q200
+				//Q200
 				phase = SLT_BIND1;
 				return SLT_V2_TIMING_BIND1;
 			}
 			else
 			{// Continue to send normal packets
 				phase = SLT_BUILD;
-				if(sub_protocol == SLT_V1)
+				if(sub_protocol == SLT_V1 || sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
 					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET;
 				if(sub_protocol == SLT_V1_4)
 					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
@@ -290,7 +290,7 @@ uint16_t SLT_callback()
 					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET;
 				if(sub_protocol == MR100)
 					return SLT_FRAME_PERIOD - 8*SLT_MR100_TIMING_PACKET;
-				//V2/Q200/RF_SIM
+				//Q200
 				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 2*SLT_V2_TIMING_PACKET;
 			}
 		case SLT_BIND1:
@@ -302,7 +302,7 @@ uint16_t SLT_callback()
 		case SLT_BIND2:
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
-			if(sub_protocol == SLT_V1)
+			if(sub_protocol == SLT_V1 || sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
 				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
 				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET - SLT_V1_TIMING_BIND2;
@@ -310,7 +310,7 @@ uint16_t SLT_callback()
 				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET - SLT_Q100_TIMING_BIND1 - SLT_Q100_TIMING_BIND2;
 			if(sub_protocol == MR100)
 				return SLT_FRAME_PERIOD - 8*SLT_MR100_TIMING_PACKET - SLT_MR100_TIMING_BIND2;
-			//V2/Q200/RF_SIM
+			//Q200
 			return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 2*SLT_V2_TIMING_PACKET - SLT_V2_TIMING_BIND1 - SLT_V2_TIMING_BIND2;
 	}
 	return 19000;
@@ -365,13 +365,20 @@ void SLT_init()
 			packet_period = SLT_FRAME_PERIOD;
 		#endif
 	}
-	else //V2, Q200, RF_SIM
+	else if(sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
+	{
+		packet_length = SLT_PAYLOADSIZE_V2;
+		rf_ch_num = 1;									//2 packets per frame (same as V1)
+		num_ch = 88;									//Bind every 88 frames (same as V1)
+		#ifdef MULTI_SYNC
+			packet_period = SLT_FRAME_PERIOD;
+		#endif
+	}
+	else //Q200
 	{
 		packet_length = SLT_PAYLOADSIZE_V2;
 		rf_ch_num = 2;									//3 packets per frame
-		num_ch = 50;									//Bind every 50 frames for Q200
-		if(sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
-			num_ch = 100;
+		num_ch = 50;									//Bind every 50 frames
 		#ifdef MULTI_SYNC
 			packet_period = SLT_FRAME_PERIOD;
 		#endif
