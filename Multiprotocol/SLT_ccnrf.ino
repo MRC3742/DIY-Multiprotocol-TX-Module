@@ -209,6 +209,7 @@ static void __attribute__((unused)) SLT_send_bind_packet()
 		SLT_send_packet(packet_length);
 }
 
+#define SLT_FRAME_PERIOD		18000
 #define SLT_TIMING_BUILD		1000
 #define SLT_V1_TIMING_PACKET	1600
 #define SLT_V1_4_TIMING_PACKET	1643
@@ -282,15 +283,15 @@ uint16_t SLT_callback()
 			{// Continue to send normal packets
 				phase = SLT_BUILD;
 				if(sub_protocol == SLT_V1)
-					return 17700 - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET;
+					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET;
 				if(sub_protocol == SLT_V1_4)
-					return 18000 - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
+					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET;
 				if(sub_protocol == Q100)
-					return 17933 - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET;
+					return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET;
 				if(sub_protocol == MR100)
-					return 17930 - 8*SLT_MR100_TIMING_PACKET;
+					return SLT_FRAME_PERIOD - 8*SLT_MR100_TIMING_PACKET;
 				//V2/Q200/RF_SIM
-				return 13730 - SLT_TIMING_BUILD;
+				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 2*SLT_V2_TIMING_PACKET;
 			}
 		case SLT_BIND1:
 			SLT_send_bind_packet();
@@ -302,15 +303,15 @@ uint16_t SLT_callback()
 			SLT_send_bind_packet();
 			phase = SLT_BUILD;
 			if(sub_protocol == SLT_V1)
-				return 17700 - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET - SLT_V1_TIMING_BIND2;
+				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_TIMING_PACKET - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == SLT_V1_4)
-				return 18000 - SLT_TIMING_BUILD - SLT_V1_TIMING_BIND2 - SLT_V1_4_TIMING_PACKET;
+				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - SLT_V1_4_TIMING_PACKET - SLT_V1_TIMING_BIND2;
 			if(sub_protocol == Q100)
-				return 17933 - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET - SLT_Q100_TIMING_BIND1 - SLT_Q100_TIMING_BIND2;
+				return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 6*SLT_Q100_TIMING_PACKET - SLT_Q100_TIMING_BIND1 - SLT_Q100_TIMING_BIND2;
 			if(sub_protocol == MR100)
-				return 17930 - 8*SLT_MR100_TIMING_PACKET - SLT_MR100_TIMING_BIND2;
+				return SLT_FRAME_PERIOD - 8*SLT_MR100_TIMING_PACKET - SLT_MR100_TIMING_BIND2;
 			//V2/Q200/RF_SIM
-			return 13730 - SLT_TIMING_BUILD - SLT_V2_TIMING_BIND1 - SLT_V2_TIMING_BIND2;
+			return SLT_FRAME_PERIOD - SLT_TIMING_BUILD - 2*SLT_V2_TIMING_PACKET - SLT_V2_TIMING_BIND1 - SLT_V2_TIMING_BIND2;
 	}
 	return 19000;
 }
@@ -328,7 +329,7 @@ void SLT_init()
 		rf_ch_num = 1;									//2 packets per frame
 		num_ch = 88;									//Bind every 88 frames
 		#ifdef MULTI_SYNC
-			packet_period = 17700;								//~17.7ms
+			packet_period = SLT_FRAME_PERIOD;
 		#endif
 	}
 	else if(sub_protocol == SLT_V1_4)
@@ -337,7 +338,7 @@ void SLT_init()
 		rf_ch_num = 1;									//2 packets per frame
 		num_ch = 88;									//Bind every 88 frames
 		#ifdef MULTI_SYNC
-			packet_period = 18000;								//18ms
+			packet_period = SLT_FRAME_PERIOD;
 		#endif
 		 //Force high part of the ID otherwise the RF frequencies do not match, only tested the 2 last bytes...
 		rx_tx_addr[0]=0xF4;
@@ -352,7 +353,7 @@ void SLT_init()
 		rf_ch_num = 6;									//7 packets per frame
 		num_ch = 50;									//Bind every 50 frames
 		#ifdef MULTI_SYNC
-			packet_period = 17933;							//~18ms
+			packet_period = SLT_FRAME_PERIOD;
 		#endif
 	}
 	else if(sub_protocol == MR100)
@@ -361,7 +362,7 @@ void SLT_init()
 		rf_ch_num = 8;									//9 packets per frame
 		num_ch = 83;									//Bind every ~83 frames
 		#ifdef MULTI_SYNC
-			packet_period = 17930;							//~18ms
+			packet_period = SLT_FRAME_PERIOD;
 		#endif
 	}
 	else //V2, Q200, RF_SIM
@@ -372,7 +373,7 @@ void SLT_init()
 		if(sub_protocol == SLT_V2 || sub_protocol == RF_SIM)
 			num_ch = 100;
 		#ifdef MULTI_SYNC
-			packet_period = 13730+2*SLT_V2_TIMING_PACKET;		//~18ms
+			packet_period = SLT_FRAME_PERIOD;
 		#endif
 	}
 
