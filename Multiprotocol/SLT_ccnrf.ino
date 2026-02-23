@@ -66,33 +66,20 @@ static void __attribute__((unused)) SLT_set_freq(void)
 	for (uint8_t i = 0; i < SLT_TXID_SIZE; ++i)
 	{
 		uint8_t next_i = (i+1) % SLT_TXID_SIZE; // is & 3 better than % 4 ?
-		if(sub_protocol == MR100)
-		{
-			uint8_t base = i < 2 ? 0x03 : 0x08;
-			hopping_frequency[i*4 + 0]  = (rx_tx_addr[i] & 0x1f) + base;
-			hopping_frequency[i*4 + 1]  = ((rx_tx_addr[i] >> 2) & 0x0f) + base;
-			hopping_frequency[i*4 + 2]  = (rx_tx_addr[i] >> 4) + (rx_tx_addr[next_i] & 0x01)*0x10 + base;
-			hopping_frequency[i*4 + 3]  = (rx_tx_addr[i] >> 6) + (rx_tx_addr[next_i] & 0x07)*0x04 + base;
-		}
-		else
-		{
-			uint8_t base = i < 2 ? 0x03 : 0x10;
-			hopping_frequency[i*4 + 0]  = (rx_tx_addr[i] & 0x3f) + base;
-			hopping_frequency[i*4 + 1]  = (rx_tx_addr[i] >> 2) + base;
-			hopping_frequency[i*4 + 2]  = (rx_tx_addr[i] >> 4) + (rx_tx_addr[next_i] & 0x03)*0x10 + base;
-			hopping_frequency[i*4 + 3]  = (rx_tx_addr[i] >> 6) + (rx_tx_addr[next_i] & 0x0f)*0x04 + base;
-		}
+		uint8_t base = i < 2 ? 0x03 : 0x10;
+		hopping_frequency[i*4 + 0]  = (rx_tx_addr[i] & 0x3f) + base;
+		hopping_frequency[i*4 + 1]  = (rx_tx_addr[i] >> 2) + base;
+		hopping_frequency[i*4 + 2]  = (rx_tx_addr[i] >> 4) + (rx_tx_addr[next_i] & 0x03)*0x10 + base;
+		hopping_frequency[i*4 + 3]  = (rx_tx_addr[i] >> 6) + (rx_tx_addr[next_i] & 0x0f)*0x04 + base;
 	}
 
 	// Unique freq
-	uint8_t max_freq = 0x50;	//V1 and V2
+	uint8_t max_freq = 0x50;	//V1, V2, and MR100
 	if(sub_protocol == Q200)
 		max_freq=45;
-	else if(sub_protocol == MR100)
-		max_freq=43;
 	for (uint8_t i = 0; i < SLT_NFREQCHANNELS; ++i)
 	{
-		if((sub_protocol == Q200 || sub_protocol == MR100) && hopping_frequency[i] >= max_freq)
+		if(sub_protocol == Q200 && hopping_frequency[i] >= max_freq)
 			hopping_frequency[i] = hopping_frequency[i] - max_freq + 0x03;
 		uint8_t done = 0;
 		while (!done)
