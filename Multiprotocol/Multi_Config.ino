@@ -108,7 +108,7 @@ uint16_t CONFIG_callback()
 	if(	telemetry_link )
 		return 10000;
 	// [0] = page<<4|line number
-	// line=0: VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_PATCH_LEVEL, Channel order:RUDDER<<6|THROTTLE<<4|ELEVATOR<<2|AILERON
+	// line=0: VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_PATCH_LEVEL, Channel order:RUDDER<<6|THROTTLE<<4|ELEVATOR<<2|AILERON, VERSION_UPDATED_BY string
 	// [1..21] = max 20 characters, any displayable chars followed by:
 	//    0x00    : end of line
 	//    0x80+len:  selectable text to follow
@@ -129,6 +129,7 @@ uint16_t CONFIG_callback()
 				packet_in[3]=VERSION_REVISION;
 				packet_in[4]=VERSION_PATCH_LEVEL;
 				packet_in[5]=RUDDER<<6|THROTTLE<<4|ELEVATOR<<2|AILERON;
+				memcpy(&packet_in[6],VERSION_UPDATED_BY,sizeof(VERSION_UPDATED_BY)-1);
 				break;
 			case 1:
 				//Global ID

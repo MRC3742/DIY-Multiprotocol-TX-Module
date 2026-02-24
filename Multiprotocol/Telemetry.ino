@@ -125,7 +125,7 @@ static void multi_send_status()
 {
 	if(protocol == 0) return;
 	
-	multi_send_header(MULTI_TELEMETRY_STATUS, 24);
+	multi_send_header(MULTI_TELEMETRY_STATUS, 24 + sizeof(VERSION_UPDATED_BY) - 1);
 
 	// Build flags
 	uint8_t flags=0;
@@ -156,7 +156,7 @@ static void multi_send_status()
 	}
 	Serial_write(flags);
 	
-	// Version number example: 1.1.6.1
+	// Version number example: 1.1.6.1.MRC
 	Serial_write(VERSION_MAJOR);
 	Serial_write(VERSION_MINOR);
 	Serial_write(VERSION_REVISION);
@@ -223,6 +223,10 @@ static void multi_send_status()
 		for(;j<8;j++)
 			Serial_write(0x00);
 	}
+
+	// Version updated by tag
+	for(uint8_t i=0;i<sizeof(VERSION_UPDATED_BY)-1;i++)
+		Serial_write(VERSION_UPDATED_BY[i]);
 }
 
 #ifdef MULTI_CONFIG_INO
