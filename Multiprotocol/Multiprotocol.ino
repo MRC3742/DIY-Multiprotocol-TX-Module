@@ -294,7 +294,7 @@ void setup()
 		}
 
 		delay(250);  // Brief delay for FTDI debugging
-		debugln("Multiprotocol version: %d.%d.%d.%d.%s", VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_PATCH_LEVEL, VERSION_UPDATED_BY);
+		debugln("Multiprotocol version: %d.%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_REVISION, VERSION_PATCH_LEVEL);
 	#endif
 
 	// General pinout

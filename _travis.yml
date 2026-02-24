@@ -109,9 +109,8 @@ before_script:
   - MAJOR_VERSION=$(grep "VERSION_MAJOR" "Multiprotocol/Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); print $N}')
   - MINOR_VERSION=$(grep "VERSION_MINOR" "Multiprotocol/Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); print $N}')
   - REVISION_VERSION=$(grep "VERSION_REVISION" "Multiprotocol//Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); print $N}')
-  - PATCH_VERSION=$(grep "VERSION_PATCH_LEVEL" "Multiprotocol//Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); print $N}')
-  - UPDATED_BY=$(grep "VERSION_UPDATED_BY" "Multiprotocol//Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); gsub(/"/,"",$N); print $N}')
-  - if [ -n "$UPDATED_BY" ]; then MULTI_VERSION=$MAJOR_VERSION.$MINOR_VERSION.$REVISION_VERSION.$PATCH_VERSION.$UPDATED_BY; else MULTI_VERSION=$MAJOR_VERSION.$MINOR_VERSION.$REVISION_VERSION.$PATCH_VERSION; fi
+  - PATCH_VERSION=$(grep "VERSION_PATCH" "Multiprotocol//Multiprotocol.h" | awk -v N=3 '{gsub(/\r/,""); print $N}')
+  - MULTI_VERSION=$MAJOR_VERSION.$MINOR_VERSION.$REVISION_VERSION.$PATCH_VERSION
 
   # Derive the Multi protocols from the Multi source
   - A7105_PROTOCOLS=$(sed -n 's/[\/\/]*[[:blank:]]*#define[[:blank:]]*\([[:alnum:]_]*_A7105_INO\)\(.*\)/\1/p' Multiprotocol/_Config.h)
