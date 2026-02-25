@@ -17,9 +17,9 @@
 // Version
 //******************
 #define VERSION_MAJOR		1
-#define VERSION_MINOR		3
+#define VERSION_MINOR		9
 #define VERSION_REVISION	4
-#define VERSION_PATCH_LEVEL	53
+#define VERSION_PATCH_LEVEL	54
 
 #define MODE_SERIAL 0
 
