@@ -146,7 +146,7 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [Shenqi](Protocols_Details.md#Shenqi---19)||19|Shenqi||||||||NRF24L01|LT8900
 [Shenqi2](Protocols_Details.md#Shenqi2---105)||105|Shenqi2||||||||NRF24L01|XN297
 [Skyartec](Protocols_Details.md#Skyartec---68)||68|||||||||CC2500|CC2500
-[SLT](Protocols_Details.md#SLT---11)||11|SLT_V1|SLT_V2|Q100|Q200|MR100|V1_4CH|RF_SIM||NRF24L01|CC2500
+[SLT](Protocols_Details.md#SLT---11)||11|SLT_V1*|SLT_V2*|Q100*|Q200*|MR100*|V1_4CH*|RF_SIM*|SLT6_Tx*|NRF24L01|CC2500
 [SymaX](Protocols_Details.md#Symax---10)||10|SYMAX|SYMAX5C|||||||NRF24L01|
 [Traxxas](Protocols_Details.md#Traxxas---43)||43|TQ2|TQ1|||||||CYRF6936|
 [V2x2](Protocols_Details.md#V2X2---5)||5|V2x2|JXD506|MR101||||||NRF24L01|
@@ -1407,6 +1407,8 @@ VTX+: -100%->+100% channel+
 
 ## SLT - *11*
 Autobind protocol
+* All SLT subprotococols are operating at a transmission of 250kbps which will originally default to the NRF24L01 module. This sometimes doesn't work well with every NRF24L01, as there are a few reports of hardware issues with the authenticity and accuracy of components.
+* If option (freq tune) is changed from the default "0", then upon module restart the CC2500 module (if installed) will be used instead. Any value other than "0" will also [freq fine tune](/docs/Frequency_Tuning.md) the CC2500 chip.
 
 ### Sub_protocol V1 - *0*
 
@@ -1501,6 +1503,20 @@ RealFlight 8 crashes when trying to save file with reset-button defined.
 Please save radio-profile with a new name without setting reset-button in RF8. Then edit the radio-profile definition in  ~\Documents\RealFlight8\RadioProfiles\ in an ordinary fileeditor.
 
 Find the [Reset21] section and change Input=INT:-1 to Input=INT:9 
+
+### Sub_protocol SLT6_Tx - *7*
+Models using SLT6 transmitter:  Revolution 90 FP heli, and others.
+* The complex triple layer output of this sub protocol requires the use of the NRF24L01 chip. Changing the freq tune to any value other than the default "0", upon module restart, will change to the CC2500 module (if installed) and cause intermittent, jerky servo movements.
+
+CH1|CH2|CH3|CH4|CH5|CH6
+---|---|---|---|---|---
+A|E|T|R|FMODE|PANIC
+
+FMODE: flight mode switch (3-positions available)
+* Revolution 90 FP: (only 2-positions needed) -100% or 0%=stab with alt hold, +100%=stabilized mode
+
+PANIC: panic/recovery button, -100%=down (on), +100%=up (off)
+* Revolution 90 FP: not used for this model
 
 
 ## V911S - *46*
