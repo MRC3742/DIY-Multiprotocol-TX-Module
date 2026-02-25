@@ -1407,6 +1407,8 @@ VTX+: -100%->+100% channel+
 
 ## SLT - *11*
 Autobind protocol
+* All SLT subprotococols are operating at a transmission of 250kbps which will originally default to the NRF24L01 module. This sometimes doesn't work well with every NRF24L01, as there are a few reports of hardware issues with the authenticity and accuracy of components.
+* If option (freq tune) is changed from the default "0", then upon module restart the CC2500 module (if installed) will be used instead. Any value other than "0" will also [freq fine tune](/docs/Frequency_Tuning.md) the CC2500 chip.
 
 ### Sub_protocol V1 - *0*
 
@@ -1504,17 +1506,17 @@ Find the [Reset21] section and change Input=INT:-1 to Input=INT:9
 
 ### Sub_protocol SLT6_Tx - *7*
 Models using SLT6 transmitter:  Revolution 90 FP heli, and others.
-* The complex triple layer output of this sub protocol requires the use of the NRF24L01 chip. Changing the freq tune value to any value other than "0" will change to the CC2500 (if installed) and cause intermittent, jerky servo movements.
+* The complex triple layer output of this sub protocol requires the use of the NRF24L01 chip. Changing the freq tune to any value other than the default "0", upon module restart, will change to the CC2500 module (if installed) and cause intermittent, jerky servo movements.
 
 CH1|CH2|CH3|CH4|CH5|CH6
 ---|---|---|---|---|---
 A|E|T|R|FMODE|PANIC
 
 FMODE: flight mode switch (3-positions available)
-Revolution 90 FP: (only 2-positions needed) -100% or 0%=stab with alt hold, +100%=stabilized mode
+* Revolution 90 FP: (only 2-positions needed) -100% or 0%=stab with alt hold, +100%=stabilized mode
 
 PANIC: panic/recovery button, -100%=down (on), +100%=up (off)
-Revolution 90 FP: not used for this model
+* Revolution 90 FP: not used for this model
 
 
 ## V911S - *46*
