@@ -143,8 +143,8 @@ static void __attribute__((unused)) ARES_build_packet()
 	packet[11] = ((ch[4] & 0x0F) << 4) | (ch[5] & 0x0F);
 	packet[12] = ch[5] >> 4;
 
-	// Byte 16: counter step size (1-58, coprime with 59 since 59 is prime)
-	uint8_t step = crc & 0x7F;
+	// Byte 16: counter step size (stored in crc, set to 1-58 in ARES_init)
+	uint8_t step = crc;
 
 	// Bytes 13-15: running counter with rotating bit 7 frame indicator
 	// The counter cycles 0-58 with a step, inserting 59 before wrapping to 0
@@ -230,7 +230,7 @@ uint16_t ARES_callback()
 			{
 				bind_phase = 0;
 				// Advance counter to start of next group
-				uint8_t step = crc & 0x7F;
+				uint8_t step = crc;
 				packet_count = ARES_next_counter(packet_count, step);
 				packet_count = ARES_next_counter(packet_count, step);
 				packet_count = ARES_next_counter(packet_count, step);
