@@ -235,9 +235,8 @@ void ARES_init()
 	BIND_DONE;	// Autobind protocol - no TX-initiated bind phase
 	ARES_RF_channels();
 
-	// Use captured TX ID as base; RX_num (0-63) in byte 3 for model match
-	rx_tx_addr[1] = 0xDC;
-	rx_tx_addr[2] = 0xCC;
+	// rx_tx_addr[1] and [2] are already set from MProtocol_id by the framework
+	// RX_num (0-63) in byte 3 provides model match
 	rx_tx_addr[3] = RX_num;
 
 	// Counter step and start from capture
@@ -245,6 +244,8 @@ void ARES_init()
 	packet_count = 35;
 
 	#ifdef ARES_FORCE_ID
+		rx_tx_addr[1] = 0xDC;
+		rx_tx_addr[2] = 0xCC;
 		rx_tx_addr[3] = 0x00;
 	#endif
 	phase = ARES_START;
