@@ -766,7 +766,7 @@ Models: ARES 6HPA 2.4GHz transmitter compatible receivers.
 
 Autobind protocol: the receiver automatically binds to the transmitter on power-up. To bind, power on the TX (or enable the protocol in the MPM GUI), then power on the receiver and press its bind button. The receiver LED will flash quickly until bound, then turn solid.
 
-Changing the RX number in the TX GUI changes the TX ID, providing model match capability. A receiver bound to one RX number will not respond to a different RX number.
+RX number 0 to 63 is used as part of the TX ID to provide model match. Changing the RX number will require re-binding the receiver.
 
 Option for this protocol corresponds to fine frequency tuning. This value is different for each Module and **must** be accurate otherwise the link will not be stable.
 Check the [Frequency Tuning page](/docs/Frequency_Tuning.md) to determine it.

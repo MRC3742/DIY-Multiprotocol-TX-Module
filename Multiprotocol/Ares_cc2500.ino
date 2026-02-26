@@ -235,19 +235,17 @@ void ARES_init()
 	BIND_DONE;	// Autobind protocol - no TX-initiated bind phase
 	ARES_RF_channels();
 
-	// Counter step: must be 1-58 (all coprime with 59 since 59 is prime)
-	crc = rx_tx_addr[2] % 58 + 1;
+	// Use captured TX ID as base; RX_num (0-63) in byte 3 for model match
+	rx_tx_addr[1] = 0xDC;
+	rx_tx_addr[2] = 0xCC;
+	rx_tx_addr[3] = RX_num;
 
-	// Counter start value
-	packet_count = rx_tx_addr[1] % 59;
+	// Counter step and start from capture
+	crc = 23;
+	packet_count = 35;
 
 	#ifdef ARES_FORCE_ID
-		rx_tx_addr[1] = 0xDC;
-		rx_tx_addr[2] = 0xCC;
 		rx_tx_addr[3] = 0x00;
-		// Counter step and start from capture
-		crc = 23;
-		packet_count = 35;
 	#endif
 	phase = ARES_START;
 }
