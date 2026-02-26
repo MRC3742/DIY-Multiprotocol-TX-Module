@@ -140,28 +140,13 @@ static void __attribute__((unused)) ARES_build_packet()
 	packet[12] = ch[5] >> 4;
 
 	// Bytes 13-15: hop counter with rotating frame indicator in bit 7
-	// The hop counter cycles through 0-59 using: (start + 23*n) mod 59, with 59 inserted where 0 would first occur
+	// The hop counter cycles through 0-59 using: (start + 23*n) mod 59
 	// rf_ch_num is used as the hop counter index (0-59)
-	uint8_t hop_code;
-	uint8_t n = rf_ch_num;
 	uint8_t offset = rx_tx_addr[1] % 59;
-	if (n > 0)
-	{
-		// Check if the raw formula for position (n-1) gives 0
-		uint8_t prev_val = (uint8_t)((offset + (uint16_t)23 * (n - 1)) % 59);
-		if (prev_val == 0 && n > 1)
-			hop_code = (uint8_t)((offset + (uint16_t)23 * (n - 2)) % 59);	// Shifted due to 59 insertion
-		else if (n <= ((59 - offset) * 41 % 59 + 1))  // Before the insertion point
-			hop_code = (uint8_t)((offset + (uint16_t)23 * n) % 59);
-		else
-			hop_code = (uint8_t)((offset + (uint16_t)23 * (n - 1)) % 59);
-	}
+	uint8_t hop_code;
+	if (rf_ch_num < 59)
+		hop_code = (uint8_t)((offset + (uint16_t)23 * rf_ch_num) % 59);
 	else
-		hop_code = offset;
-
-	// Simplified approach: just use (offset + 23*n) % 59 for values 0-58, insert 59 at the wrap point
-	hop_code = (uint8_t)((offset + (uint16_t)23 * (rf_ch_num % 59)) % 59);
-	if (rf_ch_num == 59)
 		hop_code = 59;
 
 	// Frame indicator: each data frame is sent 3 times

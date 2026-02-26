@@ -390,7 +390,7 @@
 //This is available natively for ER9X, ERSKY9X and OpenTX.
 
 //If you do not plan to use the Serial mode comment this line using "//" to save Flash space
-//#define ENABLE_SERIAL
+#define ENABLE_SERIAL
 
 
 /*************************/
@@ -929,4 +929,3 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 //CHANNEL2 - 3pos switch
 #define DI_CH2_read			IS_DI2_on ? PPM_MAX_100*2 : (IS_DI2_on ? PPM_MAX_100 + PPM_MIN_100 : PPM_MIN_100*2)
 */
-#define MULTI_AIR 
