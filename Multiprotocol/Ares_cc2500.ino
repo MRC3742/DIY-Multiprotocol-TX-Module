@@ -24,7 +24,6 @@
 
 #define ARES_PACKET_LEN		17
 #define ARES_NUM_FREQUENCE	60
-#define ARES_BIND_COUNT		150		// ~1sec on fixed channel
 
 enum {
 	ARES_START = 0x00,
@@ -56,6 +55,8 @@ static const PROGMEM uint8_t ARES_channels[] = {
 
 static void __attribute__((unused)) ARES_CC2500_init()
 {
+	CC2500_Strobe(CC2500_SRES);
+	delayMilliseconds(1);
 	CC2500_Strobe(CC2500_SIDLE);
 
 	for (uint8_t i = 0; i < 39; ++i)
@@ -63,6 +64,10 @@ static void __attribute__((unused)) ARES_CC2500_init()
 
 	CC2500_WriteReg(CC2500_0C_FSCTRL0, option);
 	prev_option = option;
+
+	// Write PATABLE to max power (0xFF for all 8 entries) as captured
+	for (uint8_t i = 0; i < 8; i++)
+		CC2500_WriteReg(CC2500_3E_PATABLE, 0xFF);
 
 	CC2500_SetTxRxMode(TX_EN);
 	CC2500_SetPower();
@@ -102,6 +107,17 @@ static void __attribute__((unused)) ARES_change_chan_fast()
 	CC2500_WriteReg(CC2500_25_FSCAL1, calData[hopping_frequency_no]);
 }
 
+// Advance the hop counter: cycles through 0-58 with step, inserting 59 when wrapping through 0
+static uint8_t __attribute__((unused)) ARES_next_counter(uint8_t current, uint8_t step)
+{
+	if (current == 59)
+		return 0;
+	uint8_t next = (current + step) % 59;
+	if (next == 0)
+		return 59;
+	return next;
+}
+
 static void __attribute__((unused)) ARES_build_packet()
 {
 	// Length byte: 16 data bytes follow
@@ -113,18 +129,6 @@ static void __attribute__((unused)) ARES_build_packet()
 	packet[3] = rx_tx_addr[3];
 
 	// 6 channels encoded as interleaved 12-bit values in bytes 4-12
-	// Encoding: Ch_N = (byte_H << 4) | (byte_shared >> 4 or & 0x0F)
-	// Byte layout:
-	//   byte4  = Ch1[11:4]
-	//   byte5  = Ch1[3:0] << 4 | Ch2[3:0]
-	//   byte6  = Ch2[11:4]
-	//   byte7  = Ch3[11:4]
-	//   byte8  = Ch3[3:0] << 4 | Ch4[3:0]
-	//   byte9  = Ch4[11:4]
-	//   byte10 = Ch5[11:4]
-	//   byte11 = Ch5[3:0] << 4 | Ch6[3:0]
-	//   byte12 = Ch6[11:4]
-	// Captured values: center ~2560 (0xA00), range ~1820-3300
 	uint16_t ch[6];
 	for (uint8_t i = 0; i < 6; i++)
 		ch[i] = convert_channel_16b_nolimit(i, 1820, 3300, false);
@@ -139,21 +143,23 @@ static void __attribute__((unused)) ARES_build_packet()
 	packet[11] = ((ch[4] & 0x0F) << 4) | (ch[5] & 0x0F);
 	packet[12] = ch[5] >> 4;
 
-	// Bytes 13-15: hop counter with rotating frame indicator in bit 7
-	// The hop counter cycles through 0-59 using: (start + 23*n) mod 59
-	// rf_ch_num is used as the hop counter index (0-59)
-	uint8_t offset = rx_tx_addr[1] % 59;
-	uint8_t hop_code;
-	if (rf_ch_num < 59)
-		hop_code = (uint8_t)((offset + (uint16_t)23 * rf_ch_num) % 59);
-	else
-		hop_code = 59;
+	// Byte 16: counter step size (1-58, coprime with 59 since 59 is prime)
+	uint8_t step = crc & 0x7F;
+
+	// Bytes 13-15: running counter with rotating bit 7 frame indicator
+	// The counter cycles 0-58 with a step, inserting 59 before wrapping to 0
+	// Each group of 3 packets has 3 consecutive counter values
+	// packet_count holds the current counter value
+	uint8_t c0 = packet_count;
+	uint8_t c1 = ARES_next_counter(c0, step);
+	uint8_t c2 = ARES_next_counter(c1, step);
 
 	// Frame indicator: each data frame is sent 3 times
 	// bind_phase tracks position 0/1/2 within the group of 3
-	packet[13] = hop_code;
-	packet[14] = hop_code;
-	packet[15] = hop_code;
+	packet[13] = c0;
+	packet[14] = c1;
+	packet[15] = c2;
+	packet[16] = step;
 
 	// Set the rotating frame bit (bit 7) on one of bytes 13-15
 	switch (bind_phase)
@@ -168,9 +174,6 @@ static void __attribute__((unused)) ARES_build_packet()
 			packet[15] |= 0x80;
 			break;
 	}
-
-	// Byte 16: session/protocol value derived from TX ID
-	packet[16] = rx_tx_addr[2] ^ rx_tx_addr[3];
 }
 
 static void __attribute__((unused)) ARES_send_packet()
@@ -190,7 +193,6 @@ uint16_t ARES_callback()
 		case ARES_START:
 			ARES_CC2500_init();
 			hopping_frequency_no = 0;
-			rf_ch_num = 0;
 			bind_phase = 0;
 			ARES_tune_chan();
 			phase = ARES_CALIB;
@@ -227,9 +229,11 @@ uint16_t ARES_callback()
 			if (bind_phase >= 3)
 			{
 				bind_phase = 0;
-				rf_ch_num++;
-				if (rf_ch_num >= ARES_NUM_FREQUENCE)
-					rf_ch_num = 0;
+				// Advance counter to start of next group
+				uint8_t step = crc & 0x7F;
+				packet_count = ARES_next_counter(packet_count, step);
+				packet_count = ARES_next_counter(packet_count, step);
+				packet_count = ARES_next_counter(packet_count, step);
 			}
 			phase = ARES_PREP;
 			return ARES_PACKET_PERIOD;
@@ -239,14 +243,25 @@ uint16_t ARES_callback()
 
 void ARES_init()
 {
+	BIND_DONE;	// Autobind protocol - no TX-initiated bind phase
 	ARES_RF_channels();
+
+	// Counter step: must be 1-58 (all coprime with 59 since 59 is prime)
+	crc = rx_tx_addr[2] % 58 + 1;
+
+	// Counter start value
+	packet_count = rx_tx_addr[1] % 59;
+
 	#ifdef ARES_FORCE_ID
 		rx_tx_addr[1] = 0xDC;
 		rx_tx_addr[2] = 0xCC;
 		rx_tx_addr[3] = 0x00;
+		// Counter step and start from capture
+		crc = 23;
+		packet_count = 35;
 		// Hopping table from capture
 		memcpy((void *)hopping_frequency,
-			(void *)"\x00\xB0\x6F\x1D\xB4\x74\x20\xB8\xD8\x24\xBC\xDC\x28\x48\xE0\x2C\x4C\xE4\x90\x50\xE8\x94\x54\xEC\x00\x98\x58\x04\x9B\x5C\x08\xA0\xC0\x0C\xA4\xC3\x10\x30\xC6\x14\x34\xCC\x78\x38\xD0\x7C\x3C\xD4\x80\x40\x60\x84\x44\x64\x88\xA8\x68\x8C\xAC\x6C",
+			(void *)"\xB0\x6F\x1D\xB4\x74\x20\xB8\xD8\x24\xBC\xDC\x28\x48\xE0\x2C\x4C\xE4\x90\x50\xE8\x94\x54\xEC\x00\x98\x58\x04\x9B\x5C\x08\xA0\xC0\x0C\xA4\xC3\x10\x30\xC6\x14\x34\xCC\x78\x38\xD0\x7C\x3C\xD4\x80\x40\x60\x84\x44\x64\x88\xA8\x68\x8C\xAC\x6C\x18",
 			ARES_NUM_FREQUENCE);
 	#endif
 	phase = ARES_START;
