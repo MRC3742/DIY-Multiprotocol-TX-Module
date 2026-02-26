@@ -1,3 +1,4 @@
+#line 1 "/home/runner/work/DIY-Multiprotocol-TX-Module/DIY-Multiprotocol-TX-Module/Multiprotocol/Validate.h"
 // Check selected board type
 #if defined (STM32_BOARD) && defined (ORANGE_TX)
 	#error You must comment the board type STM32_BOARD in _Config.h to compile ORANGE_TX
