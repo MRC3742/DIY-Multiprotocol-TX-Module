@@ -63,6 +63,7 @@ You've upgraded the module but the radio does not display the name of the protoc
 
 Protocol Name|Build|Protocol Number|Sub_Proto 0|Sub_Proto 1|Sub_Proto 2|Sub_Proto 3|Sub_Proto 4|Sub_Proto 5|Sub_Proto 6|Sub_Proto 7|RF Module|Emulation
 ---|---|---|---|---|---|---|---|---|---|---|---|---
+[Ares](Protocols_Details.md#ARES---108)||108|6HPA||||||||CC2500|
 [Assan](Protocols_Details.md#ASSAN---24)|AIR/SFC|24|||||||||NRF24L01|
 [Bayang](Protocols_Details.md#BAYANG---14)|AIR/SFC|14|Bayang|H8S3D|X16_AH|IRDRONE|DHD_D4|QX100|||NRF24L01|XN297
 [Bayang RX](Protocols_Details.md#BAYANG-RX---59)|AIR/SFC|59|Multi|CPPM|||||||NRF24L01|XN297
@@ -759,6 +760,23 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
 
 ***
 # CC2500 RF Module
+
+## ARES - *108*
+Models: ARES 6HPA 2.4GHz transmitter compatible receivers.
+
+Autobind protocol: the receiver automatically binds to the transmitter on power-up. To bind, power on the TX (or enable the protocol in the MPM GUI), then power on the receiver and press its bind button. The receiver LED will flash quickly until bound, then turn solid.
+
+Changing the RX number in the TX GUI changes the TX ID, providing model match capability. A receiver bound to one RX number will not respond to a different RX number.
+
+Option for this protocol corresponds to fine frequency tuning. This value is different for each Module and **must** be accurate otherwise the link will not be stable.
+Check the [Frequency Tuning page](/docs/Frequency_Tuning.md) to determine it.
+
+CH1|CH2|CH3|CH4|CH5|CH6
+---|---|---|---|---|---
+CH1|CH2|CH3|CH4|CH5|CH6
+
+### Sub_protocol 6HPA - *0*
+ARES 6HPA compatible receivers, 6 channels.
 
 ## CORONA - *37*
 Models: Corona 2.4GHz FSS and DSSS receivers.
