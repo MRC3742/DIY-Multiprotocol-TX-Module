@@ -103,7 +103,7 @@ with minimal impact on core air functionality:
 | FRSKY_RX_CC2500_INO | FrSky_Rx_cc2500.ino | ~4-5 KB | FrSky RX mode (trainer) |
 | SEND_CPPM | Multiprotocol.ino | ~200-400 B | CPPM trainer output |
 
-**Total estimated savings: ~13-17 KB** (if all RX/trainer/scanner features removed)
+**Total estimated savings: ~11-16 KB** (if all RX/trainer/scanner features removed)
 
 ### Option 3: Optimize Large PROGMEM Data Tables
 
@@ -183,7 +183,7 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 - `XERALL_NRF24L01_INO` (~2-3 KB) - Niche drone
 - `SCORPIO_CYRF6936_INO` (~1-2 KB) - Niche
 
-### Tier 2 - High Impact, Low Risk (~8-12 KB)
+### Tier 2 - High Impact, Low Risk (~12-16 KB)
 **Disable trainer/RX protocols and diagnostic tools:**
 - `SCANNER_CC2500_INO` (~2-3 KB) - Diagnostic, not flight
 - `DSM_RX_CYRF6936_INO` (~3-4 KB) - Trainer mode
@@ -191,7 +191,7 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 - `AFHDS2A_RX_A7105_INO` (~1.5-2 KB) - Trainer mode
 - `BAYANG_RX_NRF24L01_INO` (~1.5-2 KB) - Trainer mode
 
-### Tier 3 - Moderate Impact, Low Risk (~5-10 KB)
+### Tier 3 - Moderate Impact, Low Risk (~10-17 KB)
 **Disable more niche protocols:**
 - `Q303_CCNRF_INO` (~2-3 KB)
 - `Q90C_CCNRF_INO` (~1-2 KB)
