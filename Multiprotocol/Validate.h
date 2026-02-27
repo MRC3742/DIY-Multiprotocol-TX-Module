@@ -99,6 +99,11 @@
 		#error "The HITEC forced frequency tuning value is outside of the range -127..127."
 	#endif
 #endif
+#ifdef FORCE_ARES_TUNING
+	#if ( FORCE_ARES_TUNING < -127 ) || ( FORCE_ARES_TUNING > 127 )
+		#error "The ARES forced frequency tuning value is outside of the range -127..127."
+	#endif
+#endif
 #ifdef FORCE_HOTT_TUNING
 	#if ( FORCE_HOTT_TUNING < -127 ) || ( FORCE_HOTT_TUNING > 127 )
 		#error "The HOTT forced frequency tuning value is outside of the range -127..127."
@@ -298,6 +303,7 @@
 	#endif
 	#undef	FUTABA_CC2500_INO
 	#undef	SKYARTEC_CC2500_INO
+	#undef	ARES_CC2500_INO
 #endif
 
 #if not defined(NRF24L01_INSTALLED) || defined MULTI_EU
@@ -368,6 +374,7 @@
 	#undef	BUMBLEB_CCNRF_INO
 	#undef	Q303_CCNRF_INO
 	#undef	Q90C_CCNRF_INO
+	#undef	RLINK_CC2500_INO
 #endif
 #if not defined(DSM_CYRF6936_INO)
 	#undef	LOSI_CYRF6936_INO
@@ -402,6 +409,7 @@
 	#undef	WL91X_CCNRF_INO
 	#undef	WPL_NRF24L01_INO
 	//Save flash space...
+	#undef	RLINK_CC2500_INO
 	#undef	CABELL_NRF24L01_INO
 	#undef	REDPINE_CC2500_INO
 #endif
@@ -415,6 +423,7 @@
 	#undef	E129_CYRF6936_INO
 	#undef	J6PRO_CYRF6936_INO
 	#undef	SCORPIO_CYRF6936_INO
+	#undef	ARES_CC2500_INO
 	#undef	E016HV2_CC2500_INO
 	#undef	ESKY150V2_CC2500_INO
 	#undef	IKEAANSLUTA_CC2500_INO  // This is mostly a "for-fun" kind of a thing, not needed for most users

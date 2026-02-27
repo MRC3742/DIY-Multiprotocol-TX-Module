@@ -630,6 +630,11 @@ void setup()
 				option			=	FORCE_HOTT_TUNING;			// Use config-defined tuning value for HOTT
 			else
 		#endif
+		#if defined(FORCE_ARES_TUNING) && defined(ARES_CC2500_INO)
+			if (protocol==PROTO_ARES)
+				option			=	FORCE_ARES_TUNING;			// Use config-defined tuning value for ARES
+			else
+		#endif
 				option			=	(uint8_t)PPM_prot_line->option;	// Use radio-defined option value
 
 		if(PPM_prot_line->power)		POWER_FLAG_on;
@@ -1370,6 +1375,11 @@ void update_serial_data()
 	#if defined(FORCE_HOTT_TUNING) && defined(HOTT_CC2500_INO)
 		if (protocol==PROTO_HOTT)
 			option=FORCE_HOTT_TUNING;			// Use config-defined tuning value for HOTT
+		else
+	#endif
+	#if defined(FORCE_ARES_TUNING) && defined(ARES_CC2500_INO)
+		if (protocol==PROTO_ARES)
+			option=FORCE_ARES_TUNING;			// Use config-defined tuning value for ARES
 		else
 	#endif
 			option=rx_ok_buff[3];				// Use radio-defined option value
