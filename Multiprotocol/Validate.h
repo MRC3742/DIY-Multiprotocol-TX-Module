@@ -421,6 +421,7 @@
 	#undef	E129_CYRF6936_INO
 	#undef	J6PRO_CYRF6936_INO
 	#undef	SCORPIO_CYRF6936_INO
+	#undef	ARES_CC2500_INO
 	#undef	E016HV2_CC2500_INO
 	#undef	ESKY150V2_CC2500_INO
 	#undef	IKEAANSLUTA_CC2500_INO  // This is mostly a "for-fun" kind of a thing, not needed for most users
