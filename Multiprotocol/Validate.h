@@ -374,6 +374,7 @@
 	#undef	BUMBLEB_CCNRF_INO
 	#undef	Q303_CCNRF_INO
 	#undef	Q90C_CCNRF_INO
+	#undef	RLINK_CC2500_INO
 #endif
 #if not defined(DSM_CYRF6936_INO)
 	#undef	LOSI_CYRF6936_INO
