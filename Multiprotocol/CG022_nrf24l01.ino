@@ -78,6 +78,8 @@ static void __attribute__((unused)) CG022_send_packet()
 			packet[7] = 0xFC;
 			packet[8] = 0xAD;
 		#else
+			// Bytes 7-8 are additional TX ID bytes; exact derivation from
+			// original TX is unknown, so generate unique values from addr
 			packet[7] = ~rx_tx_addr[1];
 			packet[8] = ~rx_tx_addr[2];
 		#endif
