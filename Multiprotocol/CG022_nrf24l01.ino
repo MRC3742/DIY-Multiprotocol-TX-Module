@@ -24,6 +24,8 @@
 	#define LT8900_CRC_ON 6
 #endif
 
+//#define FORCE_CG022_ORIGINAL_ID
+
 // Protocol constants derived from SPI capture analysis
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
 #define CG022_PACKET_SIZE		10		// 10-byte payload (5 x 16-bit FIFO words)
@@ -40,6 +42,20 @@ static const uint8_t PROGMEM CG022_Channels[] = { 0, 40, 10, 50, 20, 60, 30, 70 
 // Flag definitions for packet byte 7
 #define CG022_FLAG_FLIP			0x40	// Bit 6: Flip mode (0x60 = 0x20 | 0x40)
 #define CG022_FLAG_HEADLESS		0xC0	// Bits 7+6: Headless mode (0xE0 = 0x20 | 0xC0)
+
+static void __attribute__((unused)) CG022_initialize_txid()
+{
+	// rx_tx_addr[0..3] are set from MProtocol_id by the framework
+	// RX_num provides model match capability
+	rx_tx_addr[3] = (rx_tx_addr[3] & 0xF0) | (RX_num & 0x0F);
+	#ifdef FORCE_CG022_ORIGINAL_ID
+		// TX ID from capture: bind packet 0A 00 11 22 33 06 AB FC AD 00
+		rx_tx_addr[0] = 0x11;
+		rx_tx_addr[1] = 0x22;
+		rx_tx_addr[2] = 0x33;
+		rx_tx_addr[3] = 0x06;
+	#endif
+}
 
 static void __attribute__((unused)) CG022_send_packet()
 {
@@ -148,6 +164,7 @@ uint16_t CG022_callback()
 void CG022_init()
 {
 	BIND_IN_PROGRESS;	// autobind protocol
+	CG022_initialize_txid();
 	CG022_RF_init();
 	hopping_frequency_no = 0;
 	bind_counter = CG022_BIND_COUNT;

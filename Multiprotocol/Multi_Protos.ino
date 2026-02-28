@@ -143,6 +143,7 @@ const char STR_SUBTYPE_KN[] =         "\x06""WLtoys""FeiLun";
 const char STR_SUBTYPE_SYMAX[] =      "\x03""Std""X5C";
 const char STR_SUBTYPE_SLT[] =        "\x07""V1_6ch\0""V2_8ch\0""Q100\0  ""Q200\0  ""MR100\0 ""V1_4ch\0""RF_SIM\0""SLT6_Tx";
 const char STR_SUBTYPE_CX10[] =       "\x07""Green\0 ""Blue\0  ""DM007\0 ""-\0     ""JC3015a""JC3015b""MK33041";
+const char STR_SUBTYPE_CG022[] =      "\x03""Std";
 const char STR_SUBTYPE_CG023[] =      "\x05""Std\0 ""YD829";
 const char STR_SUBTYPE_BAYANG[] =     "\x07""Std\0   ""H8S3D\0 ""X16 AH\0""IRDrone""DHD D4\0""QX100\0 ";
 const char STR_SUBTYPE_MT99[] =       "\x06""MT99\0 ""H7\0   ""YZ\0   ""LS\0   ""FY805\0""A180\0 ""Dragon""F949G\0";
@@ -263,7 +264,7 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_CFLIE,      STR_CFLIE,     NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    CFLIE_init,      CFLIE_callback      }, // review protocol
 	#endif
 	#if defined(CG022_NRF24L01_INO)
-		{PROTO_CG022,      STR_CG022,     NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    CG022_init,      CG022_callback      },
+		{PROTO_CG022,      STR_CG022,     STR_SUBTYPE_CG022,     1, OPTION_NONE,    0, 0, SW_NRF,    CG022_init,      CG022_callback      },
 	#endif
 	#if defined(CG023_NRF24L01_INO)
 		{PROTO_CG023,      STR_CG023,     STR_SUBTYPE_CG023,     2, OPTION_NONE,    0, 0, SW_NRF,    CG023_init,      CG023_callback      },

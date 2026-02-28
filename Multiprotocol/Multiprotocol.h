@@ -357,6 +357,10 @@ enum ARES
 {
 	ARES_6HPA	= 0,
 };
+enum CG022
+{
+	CG022_STD	= 0,
+};
 enum E01X
 {
 	E012	= 0,

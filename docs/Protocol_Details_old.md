@@ -193,6 +193,19 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10
 ---|---|---|---|---|---|---|---|---|----
 A|E|T|R|FLIP|RTH|PICTURE|VIDEO|HEADLESS|INVERTED
 
+## CG022 - *109*
+Models: CG022 quadcopter with AO-SEN-MA transmitter
+
+Autobind protocol
+
+CH1|CH2|CH3|CH4|CH5|CH6|CH7
+---|---|---|---|---|---|---
+A|E|T|R|FLIP|LIGHT|HEADLESS
+
+Note: CH5 (Flip) and CH7 (Headless) are mutually exclusive. CH7 Headless takes priority when active.
+
+RX_num is used for model match.
+
 ## CG023
 Models: EAchine CG023/CG031/3D X4
 
