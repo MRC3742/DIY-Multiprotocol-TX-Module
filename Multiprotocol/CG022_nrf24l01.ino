@@ -135,11 +135,15 @@ static void __attribute__((unused)) CG022_RF_init()
 {
 	NRF24L01_Initialize();
 
+	// CRC-16 polynomial from register 0x17 = 0x8005
+	crc16_polynomial = 0x8005;
+
 	// Configure LT8900 emulation layer from register 0x20 = 0x4800:
-	// Preamble: 2 bytes (bits 15:14 = 01), Trailer: 8 bits (bits 12:8 = 01000)
+	// Preamble: 3 bytes (bits 15:13 = 010, value+1), Trailer: 8 bits (bits 12:8 = 01000)
 	// SyncWord: 2 bytes (bits 7:6 = 00), PACKET_LENGTH_EN: OFF (bit 5 = 0)
-	// CRC enabled, CRC init = 0x00, NRZ encoding
-	LT8900_Config(2, 8, _BV(LT8900_CRC_ON), 0x00);
+	// CRC enabled, NRZ encoding
+	// CRC init from register 0x28 = 0x4402
+	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
 
 	// Set 2-byte sync word from register 0x24 = 0x2211
 	// Register 0x25 (0x068C) is NOT used with 2-byte sync word

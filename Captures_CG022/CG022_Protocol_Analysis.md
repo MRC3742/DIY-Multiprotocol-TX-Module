@@ -49,7 +49,7 @@ and the 1 Mbps rate is already handled by NRF24L01.
 | 0x1A     | 0x19E0 | AGC |
 | 0x1B     | 0x1300 | AGC |
 | 0x1C     | 0x1800 | AGC |
-| 0x20     | 0x4800 | Preamble=2 bytes, Trailer=8 bits, SyncWord=2 bytes |
+| 0x20     | 0x4800 | Preamble=3 bytes (bits 15:13=010, val+1), Trailer=8 bits, SyncWord=2 bytes |
 | 0x21     | 0x3FC7 | Preamble pattern / demod threshold |
 | 0x22     | 0x2000 | FIFO control |
 | 0x23     | 0x0300 | Communication control |
@@ -57,7 +57,7 @@ and the 1 Mbps rate is already handled by NRF24L01.
 | 0x25     | 0x068C | Sync Word bytes 2-3 (not used with 2-byte sync) |
 | 0x26     | 0x5A5A | Sync Word bytes 4-5 (not used with 2-byte sync) |
 | 0x27     | 0x0033 | Sync Word bytes 6-7 (not used with 2-byte sync) |
-| 0x28     | 0x4402 | CRC configuration |
+| 0x28     | 0x4402 | CRC initial data (16-bit CRC seed) |
 | 0x29     | 0xB000 | TX power / packet config (CRC enabled) |
 | 0x2A     | 0xFDB0 | Calibration |
 | 0x2B     | 0x000F | Calibration |
@@ -75,7 +75,7 @@ and the 1 Mbps rate is already handled by NRF24L01.
 
 ### Over-the-air Frame Structure
 ```
-[Preamble 2 bytes] [Sync Word 2 bytes] [Trailer 8 bits] [Payload 10 bytes] [CRC-16 2 bytes]
+[Preamble 3 bytes] [Sync Word 2 bytes] [Trailer 8 bits] [Payload 10 bytes] [CRC-16 2 bytes]
 ```
 
 ### Sync Word
