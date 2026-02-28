@@ -231,6 +231,7 @@
 #define	BUGSMINI_NRF24L01_INO
 #define	CABELL_NRF24L01_INO
 #define	CFLIE_NRF24L01_INO
+#define	CG022_NRF24L01_INO
 #define	CG023_NRF24L01_INO
 #define	CX10_NRF24L01_INO		//Include Q2X2 protocol
 #define	DM002_NRF24L01_INO
@@ -537,6 +538,7 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 /*	12	*/	{PROTO_FQ777,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },
 /*	13	*/	{PROTO_YD717,	YD717		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },
 /*	14	*/	{PROTO_MT99XX,	MT99		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },
+/*	15	*/	{PROTO_CG022,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },
 #endif
 };
 // RX_Num is used for TX & RX match. Using different RX_Num values for each receiver will prevent starting a model with the false config loaded...
@@ -597,6 +599,8 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 		CABELL_SET_FAIL_SAFE
 		CABELL_UNBIND
 	PROTO_CFLIE
+		NONE
+	PROTO_CG022
 		NONE
 	PROTO_CG023
 		CG023

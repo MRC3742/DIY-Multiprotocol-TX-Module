@@ -26,6 +26,7 @@ const char STR_KN[]			="KN";
 const char STR_SYMAX[]		="SymaX";
 const char STR_SLT[]		="SLT";
 const char STR_CX10[]		="CX10";
+const char STR_CG022[]		="CG022";
 const char STR_CG023[]		="CG023";
 const char STR_BAYANG[]		="Bayang";
 const char STR_FRSKYL[]		="FrSky L";
@@ -260,6 +261,9 @@ const mm_protocol_definition multi_protocols[] = {
 	#endif
 	#if defined(CFLIE_NRF24L01_INO)
 		{PROTO_CFLIE,      STR_CFLIE,     NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    CFLIE_init,      CFLIE_callback      }, // review protocol
+	#endif
+	#if defined(CG022_NRF24L01_INO)
+		{PROTO_CG022,      STR_CG022,     NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    CG022_init,      CG022_callback      },
 	#endif
 	#if defined(CG023_NRF24L01_INO)
 		{PROTO_CG023,      STR_CG023,     STR_SUBTYPE_CG023,     2, OPTION_NONE,    0, 0, SW_NRF,    CG023_init,      CG023_callback      },

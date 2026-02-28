@@ -1,0 +1,151 @@
+/*
+ This project is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ Multiprotocol is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Multiprotocol.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Compatible with CG022 quadcopter using AO-SEN-MA transmitter protocol
+// LT89xx (LT8910) chip emulated via NRF24L01 at 1 Mbps
+
+#if defined(CG022_NRF24L01_INO)
+
+#include "iface_nrf24l01.h"
+
+// Protocol constants derived from SPI capture analysis
+#define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
+#define CG022_PACKET_SIZE		10		// 10-byte payload (5 x 16-bit FIFO words)
+#define CG022_NUM_CHANNELS		8		// 8 RF channels
+#define CG022_BIND_COUNT		700		// ~13 seconds of bind packets (700 * 8ch * 2.31ms)
+#define CG022_INITIAL_WAIT		500
+
+// Channel hopping pattern from capture analysis: 0, 40, 10, 50, 20, 60, 30, 70
+static const uint8_t PROGMEM CG022_Channels[] = { 0, 40, 10, 50, 20, 60, 30, 70 };
+
+// Flag definitions for packet byte 6
+#define CG022_FLAG_LED_OFF		0x80	// Bit 7: LEDs off (0xA0 = 0x20 | 0x80)
+
+// Flag definitions for packet byte 7
+#define CG022_FLAG_FLIP			0x40	// Bit 6: Flip mode (0x60 = 0x20 | 0x40)
+#define CG022_FLAG_HEADLESS		0xC0	// Bits 7+6: Headless mode (0xE0 = 0x20 | 0xC0)
+
+static void __attribute__((unused)) CG022_send_packet()
+{
+	// Byte 0: Packet marker (always 0x0A)
+	packet[0] = 0x0A;
+
+	if(IS_BIND_IN_PROGRESS)
+	{
+		// Bind packet: byte 1 = 0x00, bytes 2-8 = TX ID
+		packet[1] = 0x00;
+		packet[2] = rx_tx_addr[0];
+		packet[3] = rx_tx_addr[1];
+		packet[4] = rx_tx_addr[2];
+		packet[5] = rx_tx_addr[3];
+		packet[6] = rx_tx_addr[0] ^ rx_tx_addr[2];
+		packet[7] = rx_tx_addr[1] ^ rx_tx_addr[3];
+		packet[8] = rx_tx_addr[2] ^ rx_tx_addr[3];
+		// Byte 9: Bind packets use 0x00
+		packet[9] = 0x00;
+	}
+	else
+	{
+		// Data packet
+		// Byte 1: TX address byte (for receiver identification)
+		packet[1] = rx_tx_addr[1];
+
+		// Byte 2: Throttle (0x00 = low, 0x3F = max)
+		packet[2] = convert_channel_16b_limit(THROTTLE, 0x00, 0x3F);
+
+		// Byte 3: Elevator (0x00 = back, 0x20 = center, 0x3F = forward)
+		packet[3] = convert_channel_16b_limit(ELEVATOR, 0x00, 0x3F);
+
+		// Byte 4: Rudder (0x00 = left, 0x20 = center, 0x3F = right)
+		packet[4] = convert_channel_16b_limit(RUDDER, 0x00, 0x3F);
+
+		// Byte 5: Aileron (0x00 = left, 0x20 = center, 0x3F = right)
+		packet[5] = convert_channel_16b_limit(AILERON, 0x00, 0x3F);
+
+		// Byte 6: Flags (0x20 default)
+		packet[6] = 0x20;
+		if(CH6_SW)
+			packet[6] |= CG022_FLAG_LED_OFF;		// LEDs off
+
+		// Byte 7: Flags (0x20 default)
+		packet[7] = 0x20;
+		if(CH7_SW)
+			packet[7] |= CG022_FLAG_HEADLESS;		// Headless mode
+		else if(CH5_SW)
+			packet[7] |= CG022_FLAG_FLIP;			// Flip mode
+
+		// Byte 8: Constant 0x20
+		packet[8] = 0x20;
+
+		// Byte 9: Checksum = sum of bytes 2-8
+		packet[9] = 0;
+		for(uint8_t i = 2; i <= 8; i++)
+			packet[9] += packet[i];
+	}
+
+	// Set channel frequency from hopping pattern
+	LT8900_SetChannel(pgm_read_byte_near(&CG022_Channels[hopping_frequency_no]));
+
+	// Send packet and wait for TX complete
+	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
+	while(NRF24L01_packet_ack() != PKT_ACKED);
+
+	// Advance to next hop channel
+	hopping_frequency_no++;
+	if(hopping_frequency_no >= CG022_NUM_CHANNELS)
+		hopping_frequency_no = 0;
+
+	// Set power
+	NRF24L01_SetPower();
+}
+
+static void __attribute__((unused)) CG022_RF_init()
+{
+	NRF24L01_Initialize();
+
+	// Configure LT8900 emulation layer:
+	// Preamble: 4 bytes, Trailer: 8 bits
+	// CRC enabled, CRC init = 0x00, no packet length, NRZ encoding
+	LT8900_Config(4, 8, _BV(LT8900_CRC_ON), 0x00);
+
+	// Set sync word from capture registers 0x24-0x25: 0x2211, 0x068C
+	// LT8900_SetAddress reverses byte order internally
+	LT8900_SetAddress((uint8_t *)"\x8C\x06\x11\x22", 4);
+
+	// Set to TX mode
+	LT8900_SetTxRxMode(TX_EN);
+}
+
+uint16_t CG022_callback()
+{
+	if(IS_BIND_IN_PROGRESS)
+	{
+		if(bind_counter == 0)
+			BIND_DONE;
+		else
+			bind_counter--;
+	}
+	CG022_send_packet();
+	return CG022_PACKET_PERIOD;
+}
+
+void CG022_init()
+{
+	BIND_IN_PROGRESS;	// autobind protocol
+	CG022_RF_init();
+	hopping_frequency_no = 0;
+	bind_counter = CG022_BIND_COUNT;
+}
+
+#endif
