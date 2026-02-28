@@ -65,9 +65,9 @@ and the 1 Mbps rate is already handled by NRF24L01.
 
 ## RF Channel Configuration
 
-- **Channels**: 8 fixed channels: 0, 10, 20, 30, 40, 50, 60, 70
+- **Channels used**: 0, 10, 20, 30, 40, 50, 60, 70 (8 unique channels)
   - In frequency: 2402, 2412, 2422, 2432, 2442, 2452, 2462, 2472 MHz
-- **Hopping pattern**: 0, 40, 10, 50, 20, 60, 30, 70 (interleaved)
+- **Hopping order**: 0, 40, 10, 50, 20, 60, 30, 70 (interleaved pattern)
 - **TX interval**: ~2.31 ms per hop
 - **Full cycle**: ~18.5 ms through all 8 channels (~54 Hz frame rate)
 

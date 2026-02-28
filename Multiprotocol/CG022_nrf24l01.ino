@@ -23,7 +23,7 @@
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
 #define CG022_PACKET_SIZE		10		// 10-byte payload (5 x 16-bit FIFO words)
 #define CG022_NUM_CHANNELS		8		// 8 RF channels
-#define CG022_BIND_COUNT		700		// ~13 seconds of bind packets (700 * 8ch * 2.31ms)
+#define CG022_BIND_COUNT		1500	// ~3.5 seconds of bind packets (1500 * 2.31ms)
 #define CG022_INITIAL_WAIT		500
 
 // Channel hopping pattern from capture analysis: 0, 40, 10, 50, 20, 60, 30, 70
