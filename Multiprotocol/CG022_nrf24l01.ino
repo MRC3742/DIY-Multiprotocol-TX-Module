@@ -48,12 +48,15 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	// rx_tx_addr[0..3] are set from MProtocol_id by the framework
 	// RX_num provides model match capability
 	rx_tx_addr[3] = (rx_tx_addr[3] & 0xF0) | (RX_num & 0x0F);
+	// Bind packet uses 7 TX ID bytes (rx_tx_addr[0..3] + rx_tx_addr[4] extended)
+	// rx_tx_addr[4] is already set by the framework
 	#ifdef FORCE_CG022_ORIGINAL_ID
-		// TX ID from capture: bind packet 0A 00 11 22 33 06 AB FC AD 00
+		// Full 7-byte TX ID from capture: bind packet 0A 00 11 22 33 06 AB FC AD 00
 		rx_tx_addr[0] = 0x11;
 		rx_tx_addr[1] = 0x22;
 		rx_tx_addr[2] = 0x33;
 		rx_tx_addr[3] = 0x06;
+		rx_tx_addr[4] = 0xAB;
 	#endif
 }
 
@@ -64,15 +67,20 @@ static void __attribute__((unused)) CG022_send_packet()
 
 	if(IS_BIND_IN_PROGRESS)
 	{
-		// Bind packet: byte 1 = 0x00, bytes 2-8 = TX ID
+		// Bind packet: byte 1 = 0x00, bytes 2-8 = 7-byte TX ID
 		packet[1] = 0x00;
 		packet[2] = rx_tx_addr[0];
 		packet[3] = rx_tx_addr[1];
 		packet[4] = rx_tx_addr[2];
 		packet[5] = rx_tx_addr[3];
-		packet[6] = rx_tx_addr[0] ^ rx_tx_addr[2];
-		packet[7] = rx_tx_addr[1] ^ rx_tx_addr[3];
-		packet[8] = rx_tx_addr[2] ^ rx_tx_addr[3];
+		packet[6] = rx_tx_addr[4];
+		#ifdef FORCE_CG022_ORIGINAL_ID
+			packet[7] = 0xFC;
+			packet[8] = 0xAD;
+		#else
+			packet[7] = ~rx_tx_addr[1];
+			packet[8] = ~rx_tx_addr[2];
+		#endif
 		// Byte 9: Bind packets use 0x00
 		packet[9] = 0x00;
 	}
