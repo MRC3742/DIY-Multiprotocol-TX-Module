@@ -19,6 +19,11 @@
 
 #include "iface_nrf24l01.h"
 
+// LT8900 emulation flag - defined here because NRF24l01_SPI.ino is compiled after this file
+#ifndef LT8900_CRC_ON
+	#define LT8900_CRC_ON 6
+#endif
+
 // Protocol constants derived from SPI capture analysis
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
 #define CG022_PACKET_SIZE		10		// 10-byte payload (5 x 16-bit FIFO words)
