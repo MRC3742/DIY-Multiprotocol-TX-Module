@@ -132,7 +132,9 @@ static void __attribute__((unused)) CG022_send_packet()
 	NRF24L01_FlushTx();
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
 
-	// Send packet once per channel (matches original TX behavior)
+	// Send packet once per channel (matches original TX behavior).
+	// No ack wait needed: the ~152µs on-air time completes well within
+	// the 2310µs packet period before the next channel hop.
 	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
 
 	// Advance to next hop channel
