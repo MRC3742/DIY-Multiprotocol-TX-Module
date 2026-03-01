@@ -131,9 +131,11 @@ static void __attribute__((unused)) CG022_send_packet()
 	// Clear status flags from previous TX before sending new packet
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
 
-	// Send packet and wait for TX complete
+	// Send packet + 1 retransmit (needed for LT8900 emulation via NRF24L01,
+	// same pattern used by SHENQI protocol which also emulates LT8900)
 	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
 	while(NRF24L01_packet_ack() != PKT_ACKED);
+	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
 
 	// Advance to next hop channel
 	hopping_frequency_no++;
