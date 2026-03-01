@@ -3,6 +3,14 @@
 Analysis of the AO-SEN-MA transmitter protocol used with the CG022 quadcopter,
 decoded from Saleae logic capture CSV files in `Captures_CG022/`.
 
+## SPI Capture CPHA Validation
+
+The raw captures ("a" files) store logic-level pin transitions. Re-decoding
+with both CPHA=0 and CPHA=1 produces **identical** register values because
+MOSI is stable at both clock edges. The LT89xx uses CPHA=1 (SPI Mode 1),
+but CPHA=0 exports are valid for MOSI data analysis since the MCU sets up
+data well before the first clock edge.
+
 ## RF Chip Identification
 
 - **Chip**: LT89xx series (likely LT8910 in SSOP16 package)
