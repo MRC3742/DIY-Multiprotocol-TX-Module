@@ -30,7 +30,7 @@
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
 #define CG022_PACKET_SIZE		10		// 10-byte payload (5 x 16-bit FIFO words)
 #define CG022_NUM_CHANNELS		8		// 8 RF channels
-#define CG022_BIND_COUNT		200		// ~0.46 seconds of bind packets (original TX sends ~166)
+#define CG022_BIND_COUNT		166		// ~0.38 seconds of bind packets (matches original TX)
 #define CG022_INITIAL_WAIT		500
 
 // Channel hopping pattern from capture analysis: 0, 40, 10, 50, 20, 60, 30, 70
@@ -128,13 +128,11 @@ static void __attribute__((unused)) CG022_send_packet()
 	// Set channel frequency from hopping pattern
 	LT8900_SetChannel(pgm_read_byte_near(&CG022_Channels[hopping_frequency_no]));
 
-	// Clear status flags from previous TX before sending new packet
+	// Flush TX FIFO and clear status flags before sending
+	NRF24L01_FlushTx();
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
 
-	// Send packet + 1 retransmit (needed for LT8900 emulation via NRF24L01,
-	// same pattern used by SHENQI protocol which also emulates LT8900)
-	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
-	while(NRF24L01_packet_ack() != PKT_ACKED);
+	// Send packet once per channel (matches original TX behavior)
 	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
 
 	// Advance to next hop channel

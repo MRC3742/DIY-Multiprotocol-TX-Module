@@ -147,8 +147,8 @@ LEDs off:      0A 00 00 20 20 20 A0 60 20 → sum(00+20+20+20+A0+60+20) = 0x80 �
 
 | File | Description | Key Observations |
 |------|-------------|------------------|
-| 01a/b | TX power-on, no RX | Bind packets → data packets (sticks centered) |
-| 02a/b | TX power-on, with RX bind | Same init sequence, bind → data transition |
+| 01a/b | TX power-on, no RX | 166 bind packets → data packets (sticks centered) |
+| 02a/b | TX power-on, with RX bind | Same init sequence, 166 bind → data transition |
 | 03a/b | Aileron full range | Byte 5 varies 0x00-0x3F |
 | 04a/b | Elevator full range | Byte 3 varies 0x00-0x3F |
 | 05a/b | Throttle low-high-low | Byte 2 varies 0x00-0x3F |
@@ -157,3 +157,23 @@ LEDs off:      0A 00 00 20 20 20 A0 60 20 → sum(00+20+20+20+A0+60+20) = 0x80 �
 | 08a/b | Flip switch (6 presses) | Byte 7: 0x60 ↔ 0x20 |
 | 09a/b | LEDs out switch | Byte 6: 0x20 ↔ 0xA0 |
 | 11a/b | Gyro calibration | Byte 4 sweeps 0x00-0x20 |
+
+## Bind Timing Analysis
+
+From capture 01b (power-on without RX):
+- Original TX sends exactly **166 bind packets** before transitioning to data
+- Each packet is sent **once per channel** (no retransmit)
+- Bind duration: ~383ms (166 × 2.31ms)
+- Bind covers ~20.75 full channel cycles
+
+## Debugging Recommendations
+
+The SPI captures show what the MCU writes to the LT89xx FIFO, but they do NOT
+include the CRC bytes, preamble, sync word, or trailer that the LT89xx appends
+on the air. To verify the NRF24L01 emulation matches the original TX's OTA
+output, an OTA (over-the-air) capture is needed.
+
+**Recommended approach:** Use a second MPM module with debug/scanner firmware to
+capture the raw RF packets from both the original TX and the MPM running the
+CG022 protocol. Compare the full on-air frames (including CRC bytes) to
+identify any discrepancies in preamble, sync word, trailer, data, or CRC.
