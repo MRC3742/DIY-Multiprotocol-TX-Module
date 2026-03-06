@@ -944,20 +944,18 @@ static uint16_t XN297Dump_callback()
 		else if(sub_protocol == XN297DUMP_LT8900)
 		{
 			// LT8900 protocol dump mode for CG022 and similar LT89xx protocols
-			// The LT8900 on-air frame is:
-			//   [Preamble 55...] [SyncWord bit-reversed] [Trailer] [Payload bit-reversed] [CRC bit-reversed]
-			// NRF24L01 address is set to match the sync word + trailer bytes
-			// CG022 parameters: sync=0x2211 -> on-air 0x44 0x88, trailer=0xAA, CRC poly=0x8005 init=0x4402
+			// Uses the LT8900 emulation layer to build the proper NRF24L01 address
+			// (5-byte: preamble + sync word bit-reversed + trailer) matching the CG022 TX.
+			// CG022 parameters: sync=0x2211, preamble=3bytes, trailer=8bits,
+			//                   CRC poly=0x8005, CRC init=0x4402
 			if(phase==0)
 			{
 				NRF24L01_Initialize();
-				NRF24L01_SetBitrate(NRF24L01_BR_1M);
 
-				// 3-byte NRF address matching CG022 LT8900 sync word + trailer on-air:
-				// Sync: bit_reverse(0x22)=0x44, bit_reverse(0x11)=0x88, Trailer: 0xAA
-				// NRF register format (MSByte first via SPI): 0xAA 0x88 0x44
-				NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, 0x01);			// 3-byte address
-				NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, (uint8_t*)"\xAA\x88\x44", 3);
+				// Configure LT8900 emulation with CG022 parameters (same as CG022_RF_init)
+				crc16_polynomial = 0x8005;
+				LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
+				LT8900_SetAddress((uint8_t *)"\x11\x22", 2);
 
 				// Receive 10 payload + 2 CRC + extra = 16 bytes for flexibility
 				packet_length=16;
@@ -1005,7 +1003,7 @@ static uint16_t XN297Dump_callback()
 				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
 				{ // RX fifo data ready
 					if(NRF24L01_ReadReg(NRF24L01_09_CD))
-					{ // Always require carrier detect: 3-byte address with 0xAA is very prone to noise false matches
+					{ // Require carrier detect to filter noise
 						XN297Dump_overflow();
 						uint16_t timeL=TCNT1;
 						if(TIMER2_BASE->SR & TIMER_SR_UIF)
