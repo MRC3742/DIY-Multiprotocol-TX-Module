@@ -982,8 +982,8 @@ static uint16_t XN297Dump_callback()
 			{
 				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
 				{ // RX fifo data ready
-					if(NRF24L01_ReadReg(NRF24L01_09_CD) || option != 0xFF)
-					{
+					if(NRF24L01_ReadReg(NRF24L01_09_CD))
+					{ // Require carrier detect to filter noise (3-byte address with 0xAA is prone to false matches)
 						XN297Dump_overflow();
 						uint16_t timeL=TCNT1;
 						if(TIMER2_BASE->SR & TIMER_SR_UIF)
