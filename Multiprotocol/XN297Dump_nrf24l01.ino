@@ -1008,8 +1008,8 @@ static uint16_t XN297Dump_callback()
 
 				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
 				{ // RX fifo data ready
-					if(NRF24L01_ReadReg(NRF24L01_09_CD))
-					{ // Require carrier detect to filter noise
+					if(NRF24L01_ReadReg(NRF24L01_09_CD) || option != 0xFF)
+					{ // Carrier detect required during scan, bypassed on fixed channel
 						XN297Dump_overflow();
 						uint16_t timeL=TCNT1;
 						if(TIMER2_BASE->SR & TIMER_SR_UIF)
@@ -1027,21 +1027,17 @@ static uint16_t XN297Dump_callback()
 
 						NRF24L01_ReadPayload(packet, packet_length);
 
-						// Decode: bit-reverse each byte (LT8900 sends data LSBit-first,
-						// NRF24L01 receives MSBit-first, so bit_reverse recovers original data)
-						uint8_t decoded[16];
-						for(uint8_t i=0; i<packet_length; i++)
-							decoded[i] = bit_reverse(packet[i]);
-
-						// CRC-16 check: poly=0x8005, init=0x4402, computed on 10 decoded payload bytes
+						// CRC-16 check on raw NRF buffer (= bit-reversed on-air data).
+						// This matches the original LT8900 emulation CRC approach used by
+						// LT8900_WritePayload/ReadPayload and verified with SHENQI protocol.
 						uint16_t crc_save = crc16_polynomial;
 						crc16_polynomial = 0x8005;
 						crc = 0x4402;
 						for(uint8_t i=0; i<10; i++)
-							crc16_update(decoded[i], 8);
+							crc16_update(packet[i], 8);
 						crc16_polynomial = crc_save;
 
-						uint16_t crc_rx = (decoded[10] << 8) | decoded[11];
+						uint16_t crc_rx = (packet[10] << 8) | packet[11];
 
 						debug("RX: %5luus C=%d,0x%02X ", time>>1, hopping_frequency_no, hopping_frequency_no);
 						time=(timeH<<16)+timeL;
@@ -1050,14 +1046,14 @@ static uint16_t XN297Dump_callback()
 						{
 							debug("OK P=");
 							for(uint8_t i=0; i<10; i++)
-								debug(" %02X",decoded[i]);
+								debug(" %02X",bit_reverse(packet[i]));
 							debugln(" CRC=%04X",crc_rx);
 						}
 						else
 						{
 							debug("Bad CRC P=");
 							for(uint8_t i=0; i<12; i++)
-								debug(" %02X",decoded[i]);
+								debug(" %02X",bit_reverse(packet[i]));
 							debugln(" calc=%04X rx=%04X",crc,crc_rx);
 						}
 					}
