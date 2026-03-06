@@ -166,14 +166,53 @@ From capture 01b (power-on without RX):
 - Bind duration: ~383ms (166 × 2.31ms)
 - Bind covers ~20.75 full channel cycles
 
-## Debugging Recommendations
+## Debugging with XN297Dump LT8900 Mode
 
 The SPI captures show what the MCU writes to the LT89xx FIFO, but they do NOT
 include the CRC bytes, preamble, sync word, or trailer that the LT89xx appends
 on the air. To verify the NRF24L01 emulation matches the original TX's OTA
 output, an OTA (over-the-air) capture is needed.
 
-**Recommended approach:** Use a second MPM module with debug/scanner firmware to
-capture the raw RF packets from both the original TX and the MPM running the
-CG022 protocol. Compare the full on-air frames (including CRC bytes) to
-identify any discrepancies in preamble, sync word, trailer, data, or CRC.
+### Why Standard XN297Dump Modes Don't Work
+
+The existing XN297Dump sub-protocols (250K, 1M, 2M, Auto) are designed for
+XN297 protocol packets. They set the NRF24L01 RX address to `0x55 0x0F 0x71`
+(the XN297 preamble pattern) and use XN297-specific CRC computation. The CG022
+uses LT8900 framing which has a different preamble, sync word, and CRC, so
+the XN297 modes will never decode CG022 packets.
+
+### Using the LT8900 Sub-Protocol
+
+Select the **LT8900** sub-protocol in XN297Dump. This mode:
+- Sets the NRF24L01 RX address to match CG022's LT8900 sync word (`0x2211`
+  → on-air `0x44 0x88`) plus trailer (`0xAA`)
+- Receives at 1 Mbps with NRF24L01 CRC disabled
+- Bit-reverses received bytes (LT8900 sends LSBit-first, NRF receives MSBit-first)
+- Validates CRC-16 with polynomial `0x8005` and initial value `0x4402`
+
+### Channel Configuration
+
+Set the **option** parameter to select the NRF24L01 RF channel.
+CG022 uses LT8900 channels 0, 10, 20, 30, 40, 50, 60, 70 which map to
+NRF channels (LT8900 channel + 2):
+
+| LT8900 Channel | NRF Channel (option) | Frequency |
+|-----------------|----------------------|-----------|
+| 0               | 2                    | 2402 MHz  |
+| 10              | 12                   | 2412 MHz  |
+| 20              | 22                   | 2422 MHz  |
+| 30              | 32                   | 2432 MHz  |
+| 40              | 42                   | 2442 MHz  |
+| 50              | 52                   | 2452 MHz  |
+| 60              | 62                   | 2462 MHz  |
+| 70              | 72                   | 2472 MHz  |
+
+### Debugging Procedure
+
+1. Set XN297Dump protocol, LT8900 sub-protocol, option = 2 (NRF channel 2)
+2. Power on original CG022 TX near the MPM debug module
+3. Look for `RX: ... OK P= 0A 00 ...` messages (bind packets with valid CRC)
+4. If `OK` packets appear, the LT8900 framing parameters are confirmed correct
+5. Change option to other CG022 NRF channels (12, 22, 32, etc.) to verify hopping
+6. Then sniff the MPM running CG022 protocol on the same channels
+7. Compare the decoded payloads and CRC values between original TX and MPM output

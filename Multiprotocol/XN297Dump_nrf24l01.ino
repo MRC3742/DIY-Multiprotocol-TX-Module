@@ -941,6 +941,116 @@ static uint16_t XN297Dump_callback()
 				}
 			}
 		}
+		else if(sub_protocol == XN297DUMP_LT8900)
+		{
+			// LT8900 protocol dump mode for CG022 and similar LT89xx protocols
+			// The LT8900 on-air frame is:
+			//   [Preamble 55...] [SyncWord bit-reversed] [Trailer] [Payload bit-reversed] [CRC bit-reversed]
+			// NRF24L01 address is set to match the sync word + trailer bytes
+			// CG022 parameters: sync=0x2211 -> on-air 0x44 0x88, trailer=0xAA, CRC poly=0x8005 init=0x4402
+			if(phase==0)
+			{
+				NRF24L01_Initialize();
+				NRF24L01_SetBitrate(NRF24L01_BR_1M);
+
+				// 3-byte NRF address matching CG022 LT8900 sync word + trailer on-air:
+				// Sync: bit_reverse(0x22)=0x44, bit_reverse(0x11)=0x88, Trailer: 0xAA
+				// NRF register format (MSByte first via SPI): 0xAA 0x88 0x44
+				NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, 0x01);			// 3-byte address
+				NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, (uint8_t*)"\xAA\x88\x44", 3);
+
+				// Receive 10 payload + 2 CRC + extra = 16 bytes for flexibility
+				packet_length=16;
+				NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, packet_length);
+
+				// Set channel (option = NRF channel directly, CG022 uses NRF ch 2,12,22,32,42,52,62,72)
+				NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);
+				old_option = option;
+
+				// RX mode, no CRC
+				NRF24L01_SetTxRxMode(TXRX_OFF);
+				NRF24L01_SetTxRxMode(RX_EN);
+				NRF24L01_FlushRx();
+				NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+
+				debugln("LT8900 dump (CG022), NRF_ch=%d, sync=4488, trail=AA",option);
+				debugln("CG022 channels: 2,12,22,32,42,52,62,72");
+				phase = 1;
+				time = 0;
+			}
+			else
+			{
+				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
+				{ // RX fifo data ready
+					if(NRF24L01_ReadReg(NRF24L01_09_CD) || option != 0xFF)
+					{
+						XN297Dump_overflow();
+						uint16_t timeL=TCNT1;
+						if(TIMER2_BASE->SR & TIMER_SR_UIF)
+						{
+							XN297Dump_overflow();
+							timeL=0;
+						}
+						if((phase&0x01)==0)
+						{
+							phase=1;
+							time=0;
+						}
+						else
+							time=(timeH<<16)+timeL-time;
+
+						NRF24L01_ReadPayload(packet, packet_length);
+
+						// Decode: bit-reverse each byte (LT8900 sends data LSBit-first,
+						// NRF24L01 receives MSBit-first, so bit_reverse recovers original data)
+						uint8_t decoded[16];
+						for(uint8_t i=0; i<packet_length; i++)
+							decoded[i] = bit_reverse(packet[i]);
+
+						// CRC-16 check: poly=0x8005, init=0x4402, computed on 10 decoded payload bytes
+						uint16_t crc_save = crc16_polynomial;
+						crc16_polynomial = 0x8005;
+						crc = 0x4402;
+						for(uint8_t i=0; i<10; i++)
+							crc16_update(decoded[i], 8);
+						crc16_polynomial = crc_save;
+
+						uint16_t crc_rx = (decoded[10] << 8) | decoded[11];
+
+						debug("RX: %5luus C=%d ", time>>1, option);
+						time=(timeH<<16)+timeL;
+
+						if(crc == crc_rx)
+						{
+							debug("OK P=");
+							for(uint8_t i=0; i<10; i++)
+								debug(" %02X",decoded[i]);
+							debugln(" CRC=%04X",crc_rx);
+						}
+						else
+						{
+							debug("Bad CRC P=");
+							for(uint8_t i=0; i<12; i++)
+								debug(" %02X",decoded[i]);
+							debugln(" calc=%04X rx=%04X",crc,crc_rx);
+						}
+					}
+					// Restart RX
+					NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
+					NRF24L01_SetTxRxMode(TXRX_OFF);
+					NRF24L01_SetTxRxMode(RX_EN);
+					NRF24L01_FlushRx();
+					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+				}
+				XN297Dump_overflow();
+				if(old_option != option)
+				{
+					debugln("Channel=%d",option);
+					NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);
+					old_option = option;
+				}
+			}
+		}
 		bind_counter++;
 		if(IS_RX_FLAG_on)					// Let the radio update the protocol
 		{
