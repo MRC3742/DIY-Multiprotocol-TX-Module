@@ -963,27 +963,49 @@ static uint16_t XN297Dump_callback()
 				packet_length=16;
 				NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, packet_length);
 
-				// Set channel (option = NRF channel directly, CG022 uses NRF ch 2,12,22,32,42,52,62,72)
-				NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);
-				old_option = option;
-
-				// RX mode, no CRC
-				NRF24L01_SetTxRxMode(TXRX_OFF);
-				NRF24L01_SetTxRxMode(RX_EN);
-				NRF24L01_FlushRx();
-				NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
-
-				debugln("LT8900 dump (CG022), NRF_ch=%d, sync=4488, trail=AA",option);
+				debugln("LT8900 dump (CG022), sync=4488, trail=AA");
 				debugln("CG022 channels: 2,12,22,32,42,52,62,72");
+
+				hopping_frequency_no = option;
+				rf_ch_num = 0xFF;			// force channel update on first loop
 				phase = 1;
 				time = 0;
 			}
 			else
 			{
+				// Channel scanning (option=0xFF: scan all channels)
+				if(option==0xFF && bind_counter>XN297DUMP_PERIOD_SCAN)
+				{
+					hopping_frequency_no++;
+					bind_counter=0;
+				}
+				// Handle option change from GUI
+				if(prev_option!=option)
+				{
+					hopping_frequency_no=option;
+					prev_option=option;
+				}
+				if(hopping_frequency_no!=rf_ch_num)
+				{	// Channel has changed
+					if(hopping_frequency_no>XN297DUMP_MAX_RF_CHANNEL)
+						hopping_frequency_no=0;
+					rf_ch_num=hopping_frequency_no;
+					debugln("Channel=%d,0x%02X",hopping_frequency_no,hopping_frequency_no);
+					NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency_no);
+					// switch to RX mode
+					NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
+					NRF24L01_SetTxRxMode(TXRX_OFF);
+					NRF24L01_SetTxRxMode(RX_EN);
+					NRF24L01_FlushRx();
+					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+					phase=2;				// reset timer (even = timer reset)
+				}
+				XN297Dump_overflow();
+
 				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
 				{ // RX fifo data ready
-					if(NRF24L01_ReadReg(NRF24L01_09_CD))
-					{ // Require carrier detect to filter noise (3-byte address with 0xAA is prone to false matches)
+					if(NRF24L01_ReadReg(NRF24L01_09_CD) || option != 0xFF)
+					{
 						XN297Dump_overflow();
 						uint16_t timeL=TCNT1;
 						if(TIMER2_BASE->SR & TIMER_SR_UIF)
@@ -1017,7 +1039,7 @@ static uint16_t XN297Dump_callback()
 
 						uint16_t crc_rx = (decoded[10] << 8) | decoded[11];
 
-						debug("RX: %5luus C=%d ", time>>1, option);
+						debug("RX: %5luus C=%d,0x%02X ", time>>1, hopping_frequency_no, hopping_frequency_no);
 						time=(timeH<<16)+timeL;
 
 						if(crc == crc_rx)
@@ -1041,14 +1063,9 @@ static uint16_t XN297Dump_callback()
 					NRF24L01_SetTxRxMode(RX_EN);
 					NRF24L01_FlushRx();
 					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+					XN297Dump_overflow();
 				}
 				XN297Dump_overflow();
-				if(old_option != option)
-				{
-					debugln("Channel=%d",option);
-					NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);
-					old_option = option;
-				}
 			}
 		}
 		bind_counter++;
