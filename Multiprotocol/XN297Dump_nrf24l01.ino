@@ -960,6 +960,7 @@ static uint16_t XN297Dump_callback()
 				// 3-byte NRF address matching CG022 LT8900 sync word + trailer on-air:
 				// Sync: bit_reverse(0x22)=0x44, bit_reverse(0x11)=0x88, Trailer: 0xAA
 				// NRF register format (LSByte first): 0xAA 0x88 0x44
+				NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x01);		// Enable data pipe 0 only
 				NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, 0x01);			// 3-byte address
 				NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, (uint8_t*)"\xAA\x88\x44", 3);
 
@@ -970,7 +971,9 @@ static uint16_t XN297Dump_callback()
 				debugln("LT8900 dump (CG022), sync=4488, trail=AA");
 				debugln("CG022 channels: 2,12,22,32,42,52,62,72");
 
-				hopping_frequency_no = option;
+				// Start at channel 0 for scan mode, or specific channel for manual mode
+				hopping_frequency_no = (option == 0xFF) ? 0 : option;
+				prev_option = option;
 				rf_ch_num = 0xFF;			// force channel update on first loop
 				phase = 1;
 				time = 0;
