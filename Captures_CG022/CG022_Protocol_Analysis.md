@@ -61,7 +61,7 @@ and the 1 Mbps rate is already handled by NRF24L01.
 | 0x21     | 0x3FC7 | Preamble pattern / demod threshold |
 | 0x22     | 0x2000 | FIFO control |
 | 0x23     | 0x0300 | Communication control |
-| 0x24     | 0x2211 | Sync Word bytes 0-1 (bind phase) |
+| 0x24     | 0x2211 | Sync Word bytes 0-1 (bind phase; changes to TX-ID after bind, see below) |
 | 0x25     | 0x068C | Sync Word bytes 2-3 (not used with 2-byte sync) |
 | 0x26     | 0x5A5A | Sync Word bytes 4-5 (not used with 2-byte sync) |
 | 0x27     | 0x0033 | Sync Word bytes 6-7 (not used with 2-byte sync) |
