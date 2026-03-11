@@ -14,6 +14,14 @@
  */
 // Compatible with CG022 quadcopter using AO-SEN-MA transmitter protocol
 // LT89xx (LT8910) chip emulated via NRF24L01 at 1 Mbps
+//
+// Protocol decoded from SPI captures of original AO-SEN-MA TX hardware.
+// Key findings from capture analysis:
+//   - Bind phase uses fixed sync word 0x2211 (LT8900 register 0x24)
+//   - After 166 bind packets, TX switches to TX-ID-derived sync word
+//     New reg 0x24 = (bind_pkt[6] << 8) | bind_pkt[5]  (i.e. rx_tx_addr[4], rx_tx_addr[3])
+//   - Data packets use this new sync word so receiver only hears its paired TX
+//   - CRC-16 poly=0x8005, init=0x4402, 3-byte preamble, 8-bit trailer
 
 #if defined(CG022_NRF24L01_INO)
 
@@ -58,6 +66,24 @@ static void __attribute__((unused)) CG022_initialize_txid()
 		rx_tx_addr[3] = 0x06;
 		rx_tx_addr[4] = 0xAB;
 	#endif
+}
+
+static void __attribute__((unused)) CG022_set_data_sync()
+{
+	// After bind, the original TX changes the LT8900 sync word from the fixed
+	// bind sync 0x2211 to a TX-ID-derived sync word so the receiver only
+	// responds to its paired transmitter.
+	//
+	// From SPI capture analysis (01b, 02b):
+	//   Bind packet bytes: 0A 00 [0] [1] [2] [3] [4] [5] [6] 00
+	//   reg 0x24 changes to: ([4] << 8) | [3] = (rx_tx_addr[4] << 8) | rx_tx_addr[3]
+	//   Example: TX_ID=11 22 33 06 AB FC AD → reg 0x24 = 0xAB06
+	//
+	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
+	uint8_t sync[2];
+	sync[0] = rx_tx_addr[3];	// low byte of new sync word
+	sync[1] = rx_tx_addr[4];	// high byte of new sync word
+	LT8900_SetAddress(sync, 2);
 }
 
 static void __attribute__((unused)) CG022_send_packet()
@@ -160,9 +186,8 @@ static void __attribute__((unused)) CG022_RF_init()
 	// CRC init from register 0x28 = 0x4402
 	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
 
-	// Set 2-byte sync word from register 0x24 = 0x2211
-	// Register 0x25 (0x068C) is NOT used with 2-byte sync word
-	// LT8900_SetAddress reverses byte order internally
+	// Set 2-byte bind sync word from register 0x24 = 0x2211
+	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
 	LT8900_SetAddress((uint8_t *)"\x11\x22", 2);
 
 	// Set to TX mode
@@ -174,7 +199,13 @@ uint16_t CG022_callback()
 	if(IS_BIND_IN_PROGRESS)
 	{
 		if(bind_counter == 0)
+		{
 			BIND_DONE;
+			// Switch to TX-ID-derived sync word for data phase.
+			// The original TX changes LT8900 reg 0x24 after exactly 166 bind packets.
+			// The receiver expects data packets on this new sync word.
+			CG022_set_data_sync();
+		}
 		else
 			bind_counter--;
 	}

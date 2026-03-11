@@ -61,7 +61,7 @@ and the 1 Mbps rate is already handled by NRF24L01.
 | 0x21     | 0x3FC7 | Preamble pattern / demod threshold |
 | 0x22     | 0x2000 | FIFO control |
 | 0x23     | 0x0300 | Communication control |
-| 0x24     | 0x2211 | Sync Word bytes 0-1 (used with 2-byte sync) |
+| 0x24     | 0x2211 | Sync Word bytes 0-1 (bind phase) |
 | 0x25     | 0x068C | Sync Word bytes 2-3 (not used with 2-byte sync) |
 | 0x26     | 0x5A5A | Sync Word bytes 4-5 (not used with 2-byte sync) |
 | 0x27     | 0x0033 | Sync Word bytes 6-7 (not used with 2-byte sync) |
@@ -86,11 +86,27 @@ and the 1 Mbps rate is already handled by NRF24L01.
 [Preamble 3 bytes] [Sync Word 2 bytes] [Trailer 8 bits] [Payload 10 bytes] [CRC-16 2 bytes]
 ```
 
-### Sync Word
-From register 0x24 only (2-byte sync per register 0x20 bits 7:6 = 00): `0x22 0x11`
+### Sync Word (CRITICAL: Changes After Bind)
+
+**Bind phase**: Sync word from register 0x24 = `0x2211` (fixed for all TXes)
+
+**Data phase**: After exactly 166 bind packets, the TX rewrites register 0x24
+with a TX-ID-derived sync word so the receiver only hears its paired TX:
+
+```
+New reg 0x24 = (bind_pkt[6] << 8) | bind_pkt[5]
+             = (rx_tx_addr[4] << 8) | rx_tx_addr[3]
+```
+
+Example from capture: TX_ID = `11 22 33 06 AB FC AD`
+- Bind sync: reg 0x24 = `0x2211`
+- Data sync: reg 0x24 = `0xAB06` (from TX_ID bytes [4]=0xAB, [3]=0x06)
+
+This sync word change is verified in both capture 01b (no RX) and 02b (with RX).
 
 ### Bind Packet (10 bytes)
-Sent repeatedly on all 8 channels for ~13 seconds after power-on.
+Sent repeatedly on all 8 channels for exactly 166 packets (~383ms) after power-on.
+Uses fixed sync word `0x2211`.
 ```
 Byte 0: 0x0A    - Packet marker (constant)
 Byte 1: 0x00    - Bind indicator
@@ -101,13 +117,14 @@ Byte 5: TX_ID[3]
 Byte 6: TX_ID[4]
 Byte 7: TX_ID[5]
 Byte 8: TX_ID[6]
-Byte 9: 0x00    - Bind checksum
+Byte 9: 0x00    - Bind packets always use 0x00
 ```
 
 Example from capture: `0A 00 11 22 33 06 AB FC AD 00`
 
 ### Data Packet (10 bytes)
 Sent after bind period on all 8 channels continuously.
+Uses TX-ID-derived sync word (see above).
 ```
 Byte 0: 0x0A    - Packet marker (constant)
 Byte 1: TX_ID   - TX address byte for receiver identification
@@ -147,72 +164,36 @@ LEDs off:      0A 00 00 20 20 20 A0 60 20 → sum(00+20+20+20+A0+60+20) = 0x80 �
 
 | File | Description | Key Observations |
 |------|-------------|------------------|
-| 01a/b | TX power-on, no RX | 166 bind packets → data packets (sticks centered) |
-| 02a/b | TX power-on, with RX bind | Same init sequence, 166 bind → data transition |
-| 03a/b | Aileron full range | Byte 5 varies 0x00-0x3F |
-| 04a/b | Elevator full range | Byte 3 varies 0x00-0x3F |
-| 05a/b | Throttle low-high-low | Byte 2 varies 0x00-0x3F |
-| 06a/b | Rudder full range | Byte 4 varies 0x00-0x3F |
-| 07a/b | Headless mode switch | Byte 7: 0x60 ↔ 0xE0 |
-| 08a/b | Flip switch (6 presses) | Byte 7: 0x60 ↔ 0x20 |
-| 09a/b | LEDs out switch | Byte 6: 0x20 ↔ 0xA0 |
-| 11a/b | Gyro calibration | Byte 4 sweeps 0x00-0x20 |
+| 01a/b | TX power-on, no RX | 166 bind packets → sync word change → data packets |
+| 02a/b | TX power-on, with RX bind | Same: 166 bind → sync change → data |
+| 03a/b | Aileron full range | Mid-session, byte 5 varies 0x00-0x3F |
+| 04a/b | Elevator full range | Mid-session, byte 3 varies 0x00-0x3F |
+| 05a/b | Throttle low-high-low | Mid-session, byte 2 varies 0x00-0x3F |
+| 06a/b | Rudder full range | Mid-session, byte 4 varies 0x00-0x3F |
+| 07a/b | Headless mode switch | Mid-session, byte 7: 0x60 ↔ 0xE0 |
+| 08a/b | Flip switch (6 presses) | Mid-session, byte 7: 0x60 ↔ 0x20 |
+| 09a/b | LEDs out switch | Mid-session, byte 6: 0x20 ↔ 0xA0 |
+| 11a/b | Gyro calibration | Mid-session, byte 4 sweeps 0x00-0x20 |
 
 ## Bind Timing Analysis
 
-From capture 01b (power-on without RX):
+From captures 01b and 02b (power-on):
 - Original TX sends exactly **166 bind packets** before transitioning to data
 - Each packet is sent **once per channel** (no retransmit)
 - Bind duration: ~383ms (166 × 2.31ms)
 - Bind covers ~20.75 full channel cycles
+- Sync word change occurs at SPI packet 1527 (immediately after 166th TX)
 
-## Debugging with XN297Dump LT8900 Mode
+## TX Cycle Per Packet (from SPI captures)
 
-The SPI captures show what the MCU writes to the LT89xx FIFO, but they do NOT
-include the CRC bytes, preamble, sync word, or trailer that the LT89xx appends
-on the air. To verify the NRF24L01 emulation matches the original TX's OTA
-output, an OTA (over-the-air) capture is needed.
+Each packet transmission follows this exact sequence:
+```
+1. Write FIFO reg 0x32 = 0x0000       (clear/reset FIFO)
+2. Write reg 0x34 = 0x8080            (FIFO control / TX power)
+3. Write FIFO reg 0x32 × 5 words      (5 × 16-bit = 10 bytes payload)
+4. Write reg 0x07 = 0x01xx            (TX enable + channel)
+5. Write reg 0x07 = 0x00yy            (set next channel, TX disabled)
+```
 
-### Why Standard XN297Dump Modes Don't Work
-
-The existing XN297Dump sub-protocols (250K, 1M, 2M, Auto) are designed for
-XN297 protocol packets. They set the NRF24L01 RX address to `0x55 0x0F 0x71`
-(the XN297 preamble pattern) and use XN297-specific CRC computation. The CG022
-uses LT8900 framing which has a different preamble, sync word, and CRC, so
-the XN297 modes will never decode CG022 packets.
-
-### Using the LT8900 Sub-Protocol
-
-Select the **LT8900** sub-protocol in XN297Dump. This mode:
-- Sets the NRF24L01 RX address to match CG022's LT8900 sync word (`0x2211`
-  → on-air `0x44 0x88`) plus trailer (`0xAA`)
-- Receives at 1 Mbps with NRF24L01 CRC disabled
-- Bit-reverses received bytes (LT8900 sends LSBit-first, NRF receives MSBit-first)
-- Validates CRC-16 with polynomial `0x8005` and initial value `0x4402`
-
-### Channel Configuration
-
-Set the **option** parameter to select the NRF24L01 RF channel.
-CG022 uses LT8900 channels 0, 10, 20, 30, 40, 50, 60, 70 which map to
-NRF channels (LT8900 channel + 2):
-
-| LT8900 Channel | NRF Channel (option) | Frequency |
-|-----------------|----------------------|-----------|
-| 0               | 2                    | 2402 MHz  |
-| 10              | 12                   | 2412 MHz  |
-| 20              | 22                   | 2422 MHz  |
-| 30              | 32                   | 2432 MHz  |
-| 40              | 42                   | 2442 MHz  |
-| 50              | 52                   | 2452 MHz  |
-| 60              | 62                   | 2462 MHz  |
-| 70              | 72                   | 2472 MHz  |
-
-### Debugging Procedure
-
-1. Set XN297Dump protocol, LT8900 sub-protocol, option = 2 (NRF channel 2)
-2. Power on original CG022 TX near the MPM debug module
-3. Look for `RX: ... OK P= 0A 00 ...` messages (bind packets with valid CRC)
-4. If `OK` packets appear, the LT8900 framing parameters are confirmed correct
-5. Change option to other CG022 NRF channels (12, 22, 32, etc.) to verify hopping
-6. Then sniff the MPM running CG022 protocol on the same channels
-7. Compare the decoded payloads and CRC values between original TX and MPM output
+The LT8900 hardware automatically appends preamble, sync word, trailer, and CRC
+to the FIFO data when transmitting.

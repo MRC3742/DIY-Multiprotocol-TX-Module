@@ -167,7 +167,7 @@ const char STR_SUBTYPE_REDPINE[] =    "\x04""Fast""Slow";
 const char STR_SUBTYPE_POTENSIC[] =   "\x03""A20";
 const char STR_SUBTYPE_ZSX[] =        "\x07""280JJRC";
 const char STR_SUBTYPE_HEIGHT[] =     "\x03""5ch""8ch";
-const char STR_SUBTYPE_XN297DUMP[] =  "\x07""250Kbps""1Mbps\0 ""2Mbps\0 ""Auto\0  ""NRF\0   ""CC2500\0""XN297\0 ""LT8900\0";
+const char STR_SUBTYPE_XN297DUMP[] =  "\x07""250Kbps""1Mbps\0 ""2Mbps\0 ""Auto\0  ""NRF\0   ""CC2500\0""XN297\0 ";
 const char STR_SUBTYPE_ESKY150[] =    "\x03""4ch""7ch";
 const char STR_SUBTYPE_ESKY150V2[] =  "\x05""150V2";
 const char STR_SUBTYPE_V911S[] =      "\x05""V911S""E119\0";
@@ -542,7 +542,7 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_XK2,        STR_XK2,       STR_SUBTYPE_XK2,       2, OPTION_RFTUNE,  0, 0, SW_NRF,    XK2_init,        XK2_callback        },	
 	#endif
 	#if defined(XN297DUMP_NRF24L01_INO)
-		{PROTO_XN297DUMP,  STR_XN297DUMP, STR_SUBTYPE_XN297DUMP, 8, OPTION_RFCHAN,  0, 0, SW_NRF,    XN297Dump_init,  XN297Dump_callback  },
+		{PROTO_XN297DUMP,  STR_XN297DUMP, STR_SUBTYPE_XN297DUMP, 7, OPTION_RFCHAN,  0, 0, SW_NRF,    XN297Dump_init,  XN297Dump_callback  },
 	#endif
 	#if defined(YD717_NRF24L01_INO)
 		{PROTO_YD717,      STR_YD717,     STR_SUBTYPE_YD717,     5, OPTION_NONE,    0, 0, SW_NRF,    YD717_init,      YD717_callback      },
