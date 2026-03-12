@@ -136,3 +136,25 @@ For this CG022/AO-SEN-MA work, the most promising next step is:
 1. keep the implementation on the **NRF24L01**
 2. extend the existing LT89xx emulation logic as needed for the LT8910-style framing/control flow used here
 3. model the new protocol from these verified packet contents, hop sequence, and bind-to-data transition behavior
+
+## What additional evidence would help beyond TX-side SPI captures
+
+The SPI captures are still valuable because they show the FIFO bytes, hop timing, and sync-word transition. But they do **not** directly show the final over-the-air bitstream after LT89xx framing, nor do they prove whether the receiver answers during bind. If the protocol still will not bind or fly, the most useful next evidence is:
+
+1. **Over-the-air RF waveform capture during bind and the first data packets**
+   - Use a spectrum analyzer, SDR, or oscilloscope setup that can show the actual 2.4 GHz burst timing and frequency placement.
+   - This would confirm whether the LT89xx-on-NRF24L01 emulation is really producing the expected preamble/sync/trailer shape, symbol rate, and hop channels instead of only the expected FIFO writes.
+
+2. **Receiver-side observation during a stock-TX bind**
+   - If possible, capture the receiver board's SPI/UART/GPIO activity or even just its LED/state transition while binding to the original transmitter.
+   - That would show whether the receiver sends any bind response, how long it waits before accepting a transmitter, and whether there is a post-bind acknowledgment or mode change that is invisible from the TX SPI log alone.
+
+3. **A synchronized capture of the bind-to-data transition**
+   - Record the last few bind packets and first few data packets both on SPI and OTA.
+   - This is the cleanest way to verify that the sync-word change, hop continuation, and timing transition all happen at the right instant from the receiver's point of view.
+
+4. **Register/state verification from the emulated transmitter**
+   - Debug output or read-back of the programmed NRF24L01 state after `LT8900_SetAddress()`, `LT8900_SetChannel()`, and the bind-to-data transition would help confirm that the emulation is really in the state we think it is.
+   - This is especially useful because TX-side SPI write logs alone do not prove that the effective on-air address/channel state matches the original LT8910-class transmitter at each step.
+
+In short: if FIFO bytes, hop order, sync change, and packet timing all look right but the model still will not bind, the remaining unknowns are most likely in the **actual OTA waveform** or the **receiver-side bind behavior**, not in the SPI payload bytes themselves.
