@@ -260,7 +260,7 @@ If `SPI_SS` is too hard to reach physically, keep the same order but move:
 - **D6** -> exposed `CLK` / `ICE_CLK`
 - **D7** -> leave unused or put on any other suspected LT8910 control/status trace
 
-If you do not have `SPI_SS`, the next-best trigger is usually **`D0` / `SPI_CLK`** on activity, but that is less clean because it does not uniquely mark the start of a complete SPI frame the way chip-select does.
+If you do not have `SPI_SS`, the next-best trigger is usually **`D0` / `SPI_CLK`** on a **rising edge**, but that is less clean because it does not uniquely mark the start of a complete SPI frame the way chip-select does.
 
 Important practical notes:
 
