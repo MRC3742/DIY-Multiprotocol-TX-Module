@@ -23,7 +23,7 @@
 #define AOSENMA_CHECKSUM_START	1
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
-#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8900_CRC_ON | LT8900_PACKET_LENGTH_EN
+#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8910-compatible config flag bits: CRC enable + packet-length byte
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
@@ -86,7 +86,7 @@ static void __attribute__((unused)) AOSENMA_send_data_packet()
 	packet[7] = 0x20;
 	packet[8] = 0x00;
 	for(uint8_t i = AOSENMA_CHECKSUM_START; i < AOSENMA_CHECKSUM_END; i++)
-		packet[8] += packet[i];
+		packet[8] = (uint8_t)(packet[8] + packet[i]);
 }
 
 static void __attribute__((unused)) AOSENMA_send_packet()
