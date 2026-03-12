@@ -7,7 +7,7 @@ This note records the conclusions from the Saleae CSV captures in this directory
 - The unknown 16-pin RF IC used by the CG022 transmitter behaves like an **LT8910 or a very close LT8910-compatible variant**, not a plain LT8900.
 - The captures do **not** show any data-rate override write, so the radio stays at the LT8910 default **1 Mbps** on-air rate.
 - Because this protocol is running at **1 Mbps GFSK** and the project already has an **LT89xx-on-NRF24L01 emulation layer** used by `SHENQI_nrf24l01.ino`, the best emulation target in this repository is still the **NRF24L01**, not the CC2500.
-- The **CC2500** only becomes attractive if a future LT8910-based protocol actually uses the LT8910 low-rate modes (`250Kbps`, `125Kbps`, or `62.5Kbps`). These captures do not.
+- The **CC2500** only becomes attractive if a future LT8910-based protocol actually uses the LT8910 low-rate modes (`250 Kbps`, `125 Kbps`, or `62.5 Kbps`). These captures do not.
 
 ## Why the chip looks like LT8910
 
