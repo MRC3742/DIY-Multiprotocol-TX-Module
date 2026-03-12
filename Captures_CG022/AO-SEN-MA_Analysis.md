@@ -245,6 +245,13 @@ If you use the Saleae SPI analyzer, set it up as:
 - **MOSI** = `D1` (`SPI_MOSI`)
 - **MISO** = `D2` (`SPI_MISO`)
 
+For the actual Saleae capture trigger, use:
+
+- **Trigger channel** = `D3` (`SPI_SS`)
+- **Trigger condition** = **falling edge**
+
+In other words, start the capture when **`SPI_SS` goes from high to low**, because that is the normal start of an SPI transaction and gives the cleanest frame boundary for the LT8910 register/FIFO traffic.
+
 If `SPI_SS` is too hard to reach physically, keep the same order but move:
 
 - **D3** -> LT8910 `PKT_flag`
@@ -252,6 +259,8 @@ If `SPI_SS` is too hard to reach physically, keep the same order but move:
 - **D5** -> exposed `DATA` / `ICE_DAT`
 - **D6** -> exposed `CLK` / `ICE_CLK`
 - **D7** -> leave unused or put on any other suspected LT8910 control/status trace
+
+If you do not have `SPI_SS`, the next-best trigger is usually **`D0` / `SPI_CLK`** on activity, but that is less clean because it does not uniquely mark the start of a complete SPI frame the way chip-select does.
 
 Important practical notes:
 
