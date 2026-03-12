@@ -1,6 +1,6 @@
 # AO-SEN-MA / CG022 capture analysis
 
-This note records the conclusions from the Saleae CSV captures in this directory so the future protocol implementation can be based on verified observations instead of redoing the same reverse-engineering work.
+This note records the conclusions from the Saleae CSV captures in this directory so the protocol implementation can be based on verified observations instead of redoing the same reverse-engineering work.
 
 ## Summary
 
