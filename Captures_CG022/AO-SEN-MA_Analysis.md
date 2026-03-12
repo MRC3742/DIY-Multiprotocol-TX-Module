@@ -161,45 +161,80 @@ In short: if FIFO bytes, hop order, sync change, and packet timing all look righ
 
 ## Receiver-board Saleae hookup guidance from the photographed CG022 board
 
-From the provided receiver-board photo, the most useful exposed test points appear to be:
+With the sharper receiver-board photo and follow-up continuity tracing, the 32-pin MCU can now be read as **`MINI54ZAN`**, matching the Nuvoton Mini54 family.
 
-- a labeled 4-pad row: **`DATA` / `CLK` / `VDD` / `GND`**
-- a labeled 2-pad row below it: **`TX` / `RX`**
-- a nearby vertical row of **four unlabeled test pads/vias**
+The exposed receiver-board test pads are now understood to be:
 
-For a first receiver-side capture, hook the Saleae up in this order:
+- `DATA` -> **Mini54 pin 20 / `P4.7` / `ICE_DAT`**
+- `CLK` -> **Mini54 pin 19 / `P4.6` / `ICE_CLK`**
+- `VDD` -> board power
+- `GND` -> ground
 
-1. **Saleae ground to `GND`**
-   - This is the required reference for every other logic channel.
-2. **One logic channel to `CLK`**
-   - This is the best candidate for a synchronous serial clock.
-3. **One logic channel to `DATA`**
-   - If `CLK` is active during bind, `DATA` is the first line to pair with it.
-4. **Additional logic channels to `TX` and `RX`**
-   - These may carry UART/debug/programming traffic even if `DATA`/`CLK` are the real receiver-side serial bus.
-5. **Use the remaining Saleae channels on the four unlabeled pads**
-   - Those are good candidates for a missing SPI signal such as chip-select, another data direction, or an MCU status/control line.
+The nearby four vias also do **not** appear to be useful LT8910 bus probes:
+
+- top via -> tied to a motor `+` trace / supply rail
+- second via -> ground
+- lower two vias -> tied to **Mini54 pins 10 and 11**, which are the external crystal pins (`XTAL1`, `XTAL2`)
+
+That means the earlier "start on the exposed `DATA`/`CLK` pads and four vias" guidance is no longer the best answer for this board. Those points are useful for confirming the MCU family and board power, but they are **not** the direct LT8910 control interface.
+
+For receiver-side logic capture, the Saleae should instead be placed on the **LT8910-side digital bus**.
+
+### Best LT8910 pins to capture first
+
+From the current board tracing, the most useful LT8910 pins are:
+
+1. **LT8910 pin 16 = `SPI_CLK`**
+   - This is the most important reference for decoding the synchronous bus.
+2. **LT8910 pin 1 = `SPI_MOSI`**
+   - Captures MCU-to-radio register writes and FIFO payloads.
+3. **LT8910 pin 2 = `SPI_MISO`**
+   - Captures any radio-to-MCU readback/status traffic.
+4. **LT8910 pin 14 = `SPI_SS` / chip-select** if available
+   - Strongly recommended because it gives clean frame boundaries for the Saleae SPI decoder.
+
+Those four signals are the best "minimum useful" capture set.
+
+### Secondary LT8910 candidates if you have spare channels
+
+- **LT8910 pin 13 = `PKT_flag`**
+  - Very useful as a timing marker because it should show when the radio reports packet/buffer state changes.
+- **LT8910 pin 4 = `RESET_n`**
+  - Usually much less active, but it can confirm radio reset timing during power-up.
+
+### Recommended hookup order
+
+For a first meaningful LT8910 capture, hook the Saleae up in this order:
+
+1. **board `GND`**
+2. **LT8910 `SPI_CLK` (pin 16)**
+3. **LT8910 `SPI_MOSI` (pin 1)**
+4. **LT8910 `SPI_MISO` (pin 2)**
+5. **LT8910 `SPI_SS` (pin 14)** if reachable
+6. **LT8910 `PKT_flag` (pin 13)** if you still have channels
+7. **LT8910 `RESET_n` (pin 4)** only after the above are covered
 
 Recommended first capture set on an 8-channel Saleae:
 
 - `GND` -> Saleae ground clip
-- `CLK` -> digital channel
-- `DATA` -> digital channel
-- `TX` -> digital channel
-- `RX` -> digital channel
-- the **four unlabeled pads** -> remaining digital channels
+- LT8910 `SPI_CLK` -> digital channel
+- LT8910 `SPI_MOSI` -> digital channel
+- LT8910 `SPI_MISO` -> digital channel
+- LT8910 `SPI_SS` -> digital channel
+- LT8910 `PKT_flag` -> digital channel
+- LT8910 `RESET_n` -> digital channel
 
 Important practical notes:
 
-- **Do not use `VDD` as a logic-data input.** It is mainly useful to confirm the board voltage with a meter first. The photographed board is likely a low-voltage MCU/radio design, so assume **3.3V logic** unless measured otherwise.
-- If the Saleae capture shows **regular bursts on `CLK` with matching transitions on `DATA`**, that is the strongest sign that you have found the receiver's synchronous control bus.
-- If `CLK` stays quiet but `TX` or `RX` show byte-like activity during power-up/bind, then the useful trace may be UART rather than SPI.
-- If `CLK` and `DATA` are active but Saleae's SPI decoder does not lock cleanly, the missing signal is probably on one of the **four unlabeled pads**. In that case, add those channels to the decoder one at a time as possible chip-select or second-data candidates.
+- **Do not spend Saleae data channels on the exposed `DATA` / `CLK` pads first.** On this board they are Mini54 ICE/programming pins, not the LT8910 SPI bus.
+- **Do not spend channels on the two crystal vias** unless you specifically want to examine the oscillator; they are not useful for register/FIFO decode.
+- **Do not use `VDD` as a logic-data input.** It is only useful as a voltage reference check.
+- If you only have room for three LT8910 signals besides ground, use **`SPI_CLK` + `SPI_MOSI` + `SPI_SS`** first. Add `SPI_MISO` next if you can.
 
 For this specific board, the best "what should I hook up first?" answer is therefore:
 
-- **must-have:** `GND`, `CLK`, `DATA`
-- **strongly recommended at the same time:** `TX`, `RX`
-- **if you have enough channels:** all **four unlabeled pads** as well
+- **must-have:** `GND`, LT8910 `SPI_CLK`, LT8910 `SPI_MOSI`
+- **strongly recommended at the same time:** LT8910 `SPI_MISO`, LT8910 `SPI_SS`
+- **good extra timing channels:** LT8910 `PKT_flag`, then `RESET_n`
 
-That setup gives the best chance of seeing whether the board is exposing a real SPI-style transaction on `DATA`/`CLK`, whether `TX`/`RX` are only a factory UART, and which unlabeled test point behaves like the missing chip-select/status line during a stock-transmitter bind.
+That setup gives the best chance of decoding the actual Mini54-to-LT8910 command traffic during bind and verifying exactly which register writes, FIFO loads, and timing events the stock receiver board uses.
