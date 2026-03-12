@@ -23,6 +23,7 @@
 #define AOSENMA_CHECKSUM_START	1
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
+#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8900_CRC_ON | LT8900_PACKET_LENGTH_EN
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
@@ -43,7 +44,7 @@ static void __attribute__((unused)) AOSENMA_set_data_sync()
 static void __attribute__((unused)) AOSENMA_RF_init()
 {
 	NRF24L01_Initialize();
-	LT8900_Config(4, 8, _BV(LT8900_CRC_ON) | _BV(LT8900_PACKET_LENGTH_EN), 0xAA);
+	LT8900_Config(4, 8, AOSENMA_LT8900_FLAGS, 0xAA);
 	AOSENMA_set_bind_sync();
 	LT8900_SetChannel(pgm_read_byte_near(&AOSENMA_hopping[0]));
 	LT8900_SetTxRxMode(TX_EN);
