@@ -19,12 +19,13 @@
 
 #define AOSENMA_PACKET_PERIOD	2100
 #define AOSENMA_BIND_COUNT		166
-#define AOSENMA_PACKET_SIZE		9
-#define AOSENMA_CHECKSUM_START	1
-#define AOSENMA_CHECKSUM_END	8
+#define AOSENMA_PACKET_SIZE		10
+#define AOSENMA_LENGTH_BYTE		0x0A
+#define AOSENMA_CHECKSUM_START	2
+#define AOSENMA_CHECKSUM_END	9
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
-#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8910-compatible config flag bits: CRC enable + packet-length byte
+#define AOSENMA_LT8900_FLAGS	_BV(6)			// LT8910-compatible config flag bit: CRC enable
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
@@ -64,30 +65,32 @@ static void __attribute__((unused)) AOSENMA_initialize_txid()
 
 static void __attribute__((unused)) AOSENMA_send_bind_packet()
 {
-	packet[0] = 0x00;
-	packet[1] = rx_tx_addr[0];
-	packet[2] = rx_tx_addr[1];
-	packet[3] = rx_tx_addr[2];
-	packet[4] = rx_tx_addr[3];
-	packet[5] = rx_tx_addr[4];
-	packet[6] = AOSENMA_DATA_SYNC_BYTE;
-	packet[7] = 0xAD;
-	packet[8] = 0x00;
+	packet[0] = AOSENMA_LENGTH_BYTE;
+	packet[1] = 0x00;
+	packet[2] = rx_tx_addr[0];
+	packet[3] = rx_tx_addr[1];
+	packet[4] = rx_tx_addr[2];
+	packet[5] = rx_tx_addr[3];
+	packet[6] = rx_tx_addr[4];
+	packet[7] = AOSENMA_DATA_SYNC_BYTE;
+	packet[8] = 0xAD;
+	packet[9] = 0x00;
 }
 
 static void __attribute__((unused)) AOSENMA_send_data_packet()
 {
-	packet[0] = convert_channel_16b_limit(THROTTLE, 0x00, 0x3F);
-	packet[1] = 0x00;
-	packet[2] = convert_channel_16b_limit(ELEVATOR, 0x00, 0x3F);
-	packet[3] = 0x20;
-	packet[4] = convert_channel_16b_limit(RUDDER, 0x00, 0x3F);
-	packet[5] = convert_channel_16b_limit(AILERON, 0x00, 0x3F);
-	packet[6] = 0x20;
+	packet[0] = AOSENMA_LENGTH_BYTE;
+	packet[1] = convert_channel_16b_limit(THROTTLE, 0x00, 0x3F);
+	packet[2] = 0x00;
+	packet[3] = convert_channel_16b_limit(ELEVATOR, 0x00, 0x3F);
+	packet[4] = 0x20;
+	packet[5] = convert_channel_16b_limit(RUDDER, 0x00, 0x3F);
+	packet[6] = convert_channel_16b_limit(AILERON, 0x00, 0x3F);
 	packet[7] = 0x20;
-	packet[8] = 0x00;
+	packet[8] = 0x20;
+	packet[9] = 0x00;
 	for(uint8_t i = AOSENMA_CHECKSUM_START; i < AOSENMA_CHECKSUM_END; i++)
-		packet[8] = (uint8_t)(packet[8] + packet[i]);
+		packet[9] = (uint8_t)(packet[9] + packet[i]);
 }
 
 static void __attribute__((unused)) AOSENMA_send_packet()
