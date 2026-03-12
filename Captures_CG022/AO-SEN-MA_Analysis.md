@@ -158,3 +158,48 @@ The SPI captures are still valuable because they show the FIFO bytes, hop timing
    - This is especially useful because TX-side SPI write logs alone do not prove that the effective on-air address/channel state matches the original LT8910-class transmitter at each step.
 
 In short: if FIFO bytes, hop order, sync change, and packet timing all look right but the model still will not bind, the remaining unknowns are most likely in the **actual OTA waveform** or the **receiver-side bind behavior**, not in the SPI payload bytes themselves.
+
+## Receiver-board Saleae hookup guidance from the photographed CG022 board
+
+From the provided receiver-board photo, the most useful exposed test points appear to be:
+
+- a labeled 4-pad row: **`DATA` / `CLK` / `VDD` / `GND`**
+- a labeled 2-pad row below it: **`TX` / `RX`**
+- a nearby vertical row of **four unlabeled test pads/vias**
+
+For a first receiver-side capture, hook the Saleae up in this order:
+
+1. **Saleae ground to `GND`**
+   - This is the required reference for every other logic channel.
+2. **One logic channel to `CLK`**
+   - This is the best candidate for a synchronous serial clock.
+3. **One logic channel to `DATA`**
+   - If `CLK` is active during bind, `DATA` is the first line to pair with it.
+4. **Additional logic channels to `TX` and `RX`**
+   - These may carry UART/debug/programming traffic even if `DATA`/`CLK` are the real receiver-side serial bus.
+5. **Use the remaining Saleae channels on the four unlabeled pads**
+   - Those are good candidates for a missing SPI signal such as chip-select, another data direction, or an MCU status/control line.
+
+Recommended first capture set on an 8-channel Saleae:
+
+- `GND` -> Saleae ground clip
+- `CLK` -> digital channel
+- `DATA` -> digital channel
+- `TX` -> digital channel
+- `RX` -> digital channel
+- the **four unlabeled pads** -> remaining digital channels
+
+Important practical notes:
+
+- **Do not use `VDD` as a logic-data input.** It is mainly useful to confirm the board voltage with a meter first. The photographed board is likely a low-voltage MCU/radio design, so assume **3.3V logic** unless measured otherwise.
+- If the Saleae capture shows **regular bursts on `CLK` with matching transitions on `DATA`**, that is the strongest sign that you have found the receiver's synchronous control bus.
+- If `CLK` stays quiet but `TX` or `RX` show byte-like activity during power-up/bind, then the useful trace may be UART rather than SPI.
+- If `CLK` and `DATA` are active but Saleae's SPI decoder does not lock cleanly, the missing signal is probably on one of the **four unlabeled pads**. In that case, add those channels to the decoder one at a time as possible chip-select or second-data candidates.
+
+For this specific board, the best "what should I hook up first?" answer is therefore:
+
+- **must-have:** `GND`, `CLK`, `DATA`
+- **strongly recommended at the same time:** `TX`, `RX`
+- **if you have enough channels:** all **four unlabeled pads** as well
+
+That setup gives the best chance of seeing whether the board is exposing a real SPI-style transaction on `DATA`/`CLK`, whether `TX`/`RX` are only a factory UART, and which unlabeled test point behaves like the missing chip-select/status line during a stock-transmitter bind.
