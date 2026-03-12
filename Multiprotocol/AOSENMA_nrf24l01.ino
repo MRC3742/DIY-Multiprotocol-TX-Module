@@ -17,7 +17,7 @@
 
 #include "iface_nrf24l01.h"
 
-#define AOSENMA_PACKET_PERIOD	2100
+#define AOSENMA_PACKET_PERIOD	2310
 #define AOSENMA_BIND_COUNT		166
 #define AOSENMA_PACKET_SIZE		10
 #define AOSENMA_LENGTH_BYTE		0x0A
@@ -29,7 +29,7 @@
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
-const uint8_t PROGMEM AOSENMA_hopping[] = { 0, 40, 10, 50, 20, 60, 30, 70 };	// Raw power-on bind capture shows packet 1 on channel 0, then 40/10/50/20/60/30/70 without resetting at bind completion
+const uint8_t PROGMEM AOSENMA_hopping[] = { 0, 40, 10, 50, 20, 60, 30, 70 };	// Same 8-channel cycle as 10/50/20/60/30/70/0/40, reordered so the array starts at the power-on bind entry point (0)
 
 static void __attribute__((unused)) AOSENMA_set_bind_sync()
 {

@@ -36,7 +36,7 @@ Across the CG022 captures, the transmitter writes:
 - FIFO data via `0x32`
 - FIFO pointer control via `0x34`
 
-No write to `0x2C` appears in the captured startup/configuration traffic, so the device never leaves the LT8910 default data rate of **1 Mbps**.
+No write to `0x2C` appears in the captured startup/configuration traffic, so the device never leaves the LT8910 default data-rate of **1 Mbps**.
 
 ### 2) The observed packet timing is too short for the LT8910 low-rate modes
 
@@ -84,13 +84,15 @@ Other captures show that, after the leading `0x0A` length byte:
 
 ### Channel hopping sequence
 
-The capture repeatedly uses this 8-channel hop table, although the power-on bind trace enters it at the `00` slot before continuing through the same cycle:
+The steady-state capture repeatedly uses this 8-channel hop table:
 
 `0A, 32, 14, 3C, 1E, 46, 00, 28`
 
 In decimal:
 
 `10, 50, 20, 60, 30, 70, 0, 40`
+
+In the power-on bind trace, transmission begins at the `00` slot and then continues through that same cycle without resetting, which is why the observed startup order is `00, 28, 0A, 32, 14, 3C, 1E, 46`.
 
 That is an LT89xx-style 1 MHz-spaced hop sequence and matches the existing LT89xx-over-NRF channel mapping approach used elsewhere in the project.
 
