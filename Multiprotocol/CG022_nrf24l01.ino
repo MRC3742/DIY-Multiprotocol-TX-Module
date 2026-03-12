@@ -115,8 +115,8 @@ static void __attribute__((unused)) CG022_send_packet()
 	else
 	{
 		// Data packet
-		// Byte 1: TX address byte (for receiver identification)
-		packet[1] = rx_tx_addr[1];
+		// Byte 1: 0x00 (verified from SPI captures 01b, 02b - original TX sends 0x00)
+		packet[1] = 0x00;
 
 		// Byte 2: Throttle (0x00 = low, 0x3F = max)
 		packet[2] = convert_channel_16b_limit(THROTTLE, 0x00, 0x3F);

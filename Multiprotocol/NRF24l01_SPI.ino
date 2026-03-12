@@ -387,12 +387,11 @@ uint8_t LT8900_ReadPayload(uint8_t* msg, uint8_t len)
 		crc16_update(buffer[pos],8);
 		msg[i]=bit_reverse(buffer[pos++]);
 	}
-	//Check CRC - LT8900 sends CRC MSByte-first on the bitstream, which maps
-	//to swapped byte order in our emulation since we computed CRC on bit-reversed data
+	//Check CRC
 	if(LT8900_Flags&_BV(LT8900_CRC_ON))
 	{
-		if(buffer[pos++]!=(crc&0xFF)) return 0;			// wrong CRC...
-		if(buffer[pos]!=((crc>>8)&0xFF)) return 0;		// wrong CRC...
+		if(buffer[pos++]!=((crc>>8)&0xFF)) return 0;	// wrong CRC...
+		if(buffer[pos]!=(crc&0xFF)) return 0;			// wrong CRC...
 	}
 	//Everything ok
 	return 1;
@@ -417,12 +416,11 @@ void LT8900_WritePayload(uint8_t* msg, uint8_t len)
 		buffer[pos++]=tmp;
 		crc16_update(tmp,8);
 	}
-	//Add CRC - LT8900 sends CRC MSByte-first on the bitstream, which maps
-	//to swapped byte order in our emulation since we computed CRC on bit-reversed data
+	//Add CRC
 	if(LT8900_Flags&_BV(LT8900_CRC_ON))
 	{
-		buffer[pos++]=crc;
 		buffer[pos++]=crc>>8;
+		buffer[pos++]=crc;
 	}
 	//Shift everything to fit behind the trailer (4 to 18 bits)
 	shift=LT8900_buffer_overhead_bits&0x7;

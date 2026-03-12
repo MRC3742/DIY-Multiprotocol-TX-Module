@@ -127,7 +127,7 @@ Sent after bind period on all 8 channels continuously.
 Uses TX-ID-derived sync word (see above).
 ```
 Byte 0: 0x0A    - Packet marker (constant)
-Byte 1: TX_ID   - TX address byte for receiver identification
+Byte 1: 0x00    - Always zero (verified from captures 01b, 02b, 05b, 07b)
 Byte 2: Throttle - 0x00 (low) to 0x3F (max)
 Byte 3: Elevator - 0x00 (back) to 0x20 (center) to 0x3F (forward)
 Byte 4: Rudder   - 0x00 (left) to 0x20 (center) to 0x3F (right)
