@@ -224,6 +224,35 @@ Recommended first capture set on an 8-channel Saleae:
 - LT8910 `PKT_flag` -> digital channel
 - LT8910 `RESET_n` -> digital channel
 
+An exact 8-channel assignment that should work well is:
+
+- **ground clip** -> board `GND`
+- **D0** -> LT8910 **`SPI_CLK`** (pin 16)
+- **D1** -> LT8910 **`SPI_MOSI`** (pin 1)
+- **D2** -> LT8910 **`SPI_MISO`** (pin 2)
+- **D3** -> LT8910 **`SPI_SS`** (pin 14)
+- **D4** -> LT8910 **`PKT_flag`** (pin 13)
+- **D5** -> LT8910 **`RESET_n`** (pin 4)
+- **D6** -> exposed pad **`DATA` / Mini54 `ICE_DAT`** only as a low-priority reference channel
+- **D7** -> exposed pad **`CLK` / Mini54 `ICE_CLK`** only as a low-priority reference channel
+
+That gives one clean SPI decoder group plus two spare "sanity-check" channels on the exposed Mini54 pads without sacrificing any of the important LT8910 lines.
+
+If you use the Saleae SPI analyzer, set it up as:
+
+- **Enable** = `D3` (`SPI_SS`)
+- **Clock** = `D0` (`SPI_CLK`)
+- **MOSI** = `D1` (`SPI_MOSI`)
+- **MISO** = `D2` (`SPI_MISO`)
+
+If `SPI_SS` is too hard to reach physically, keep the same order but move:
+
+- **D3** -> LT8910 `PKT_flag`
+- **D4** -> LT8910 `RESET_n`
+- **D5** -> exposed `DATA` / `ICE_DAT`
+- **D6** -> exposed `CLK` / `ICE_CLK`
+- **D7** -> leave unused or put on any other suspected LT8910 control/status trace
+
 Important practical notes:
 
 - **Do not spend Saleae data channels on the exposed `DATA` / `CLK` pads first.** On this board they are Mini54 ICE/programming pins, not the LT8910 SPI bus.
