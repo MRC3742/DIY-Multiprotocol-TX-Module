@@ -109,6 +109,24 @@ The **NRF24L01** is the best fit here because:
 
 The **CC2500** would only be a better fit if the captured LT8910 protocol was actually using one of the low-rate LT8910 modes that the NRF24L01 cannot emulate directly. Since these captures stay at **1 Mbps**, CC2500 adds complexity without solving a real problem for AO-SEN-MA.
 
+## Protocol registration recommendation
+
+This should be added as a **new protocol**, not as a **SHENQI subprotocol**.
+
+Why:
+
+1. `Multiprotocol/SHENQI_nrf24l01.ino` is a very small **3-byte** LT8900-style protocol, while AO-SEN-MA / CG022 uses **10-byte** LT8910-class packets with different control-byte placement.
+2. SHENQI binds through a short RX/TX handshake and then sends a repeating 7-packet cycle, while CG022 uses a **166-packet bind phase** followed by a sync-word change and a different data phase.
+3. SHENQI uses its own 60-entry hop table with TXID-based offsetting, while CG022 uses the fixed 8-channel sequence `10, 50, 20, 60, 30, 70, 0, 40`.
+4. In the current repository structure, `SHENQI` has **no existing subtypes** in `Multiprotocol/Multi_Protos.ino`, and adding AO-SEN-MA as a subtype would force most of `SHENQI_send_packet()` and `SHENQI_callback()` to become special-case branches.
+5. The two protocols mainly share the **LT89xx-over-NRF24L01 transport layer**, which is already factored into `Multiprotocol/NRF24l01_SPI.ino`; that shared transport is not, by itself, a strong reason to merge them into one protocol entry.
+
+So the clean repository-style approach is:
+
+- keep using the existing **NRF24L01 LT89xx emulation layer**
+- implement AO-SEN-MA / CG022 in its **own protocol file**
+- register it as its **own protocol entry**, rather than expanding `SHENQI` into a loosely related subtype family
+
 ## Practical implementation direction
 
 For this CG022/AO-SEN-MA work, the most promising next step is:
