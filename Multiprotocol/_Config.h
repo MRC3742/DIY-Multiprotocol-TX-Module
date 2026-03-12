@@ -225,6 +225,7 @@
 #define	ARES_CC2500_INO
 
 //The protocols below need a NRF24L01 to be installed
+#define	AOSENMA_NRF24L01_INO
 #define	ASSAN_NRF24L01_INO
 #define	BAYANG_NRF24L01_INO
 #define	BAYANG_RX_NRF24L01_INO

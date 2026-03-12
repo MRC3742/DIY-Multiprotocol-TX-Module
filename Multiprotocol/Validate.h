@@ -307,6 +307,7 @@
 #endif
 
 #if not defined(NRF24L01_INSTALLED) || defined MULTI_EU
+	#undef	AOSENMA_NRF24L01_INO
 	#undef	ASSAN_NRF24L01_INO
 	#undef	BAYANG_NRF24L01_INO
 	#if not defined(NRF24L01_INSTALLED)
@@ -424,6 +425,7 @@
 	#undef	J6PRO_CYRF6936_INO
 	#undef	SCORPIO_CYRF6936_INO
 	#undef	ARES_CC2500_INO
+	#undef	AOSENMA_NRF24L01_INO
 	#undef	E016HV2_CC2500_INO
 	#undef	ESKY150V2_CC2500_INO
 	#undef	IKEAANSLUTA_CC2500_INO  // This is mostly a "for-fun" kind of a thing, not needed for most users
