@@ -84,7 +84,7 @@ Other captures show that, after the leading `0x0A` length byte:
 
 ### Channel hopping sequence
 
-The capture repeatedly uses this 8-channel hop table:
+The capture repeatedly uses this 8-channel hop table, although the power-on bind trace enters it at the `00` slot before continuing through the same cycle:
 
 `0A, 32, 14, 3C, 1E, 46, 00, 28`
 
@@ -115,7 +115,7 @@ This should be added as a **new protocol**, not as a **SHENQI subprotocol**.
 
 Why:
 
-1. `Multiprotocol/SHENQI_nrf24l01.ino` is a very small **3-byte** LT8900-style protocol, while AO-SEN-MA / CG022 uses **10-byte** LT8910-class packets with different control-byte placement.
+1. `Multiprotocol/SHENQI_nrf24l01.ino` is a very small **3-byte** LT8900-style protocol, while AO-SEN-MA / CG022 uses **9-byte LT8910-class payloads plus a leading LT89xx length byte** with different control-byte placement.
 2. SHENQI binds through a short RX/TX handshake and then sends a repeating 7-packet cycle, while CG022 uses a **166-packet bind phase** followed by a sync-word change and a different data phase.
 3. SHENQI uses its own 60-entry hop table with TXID-based offsetting, while CG022 uses the fixed 8-channel sequence `10, 50, 20, 60, 30, 70, 0, 40`.
 4. In the current repository structure, `SHENQI` has **no existing subtypes** in `Multiprotocol/Multi_Protos.ino`, and adding AO-SEN-MA as a subtype would force most of `SHENQI_send_packet()` and `SHENQI_callback()` to become special-case branches.

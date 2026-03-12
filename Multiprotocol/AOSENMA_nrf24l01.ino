@@ -23,6 +23,7 @@
 #define AOSENMA_CHECKSUM_START	1
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
+#define AOSENMA_DATA_SYNC_BYTE	0xFC
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8910-compatible config flag bits: CRC enable + packet-length byte
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
@@ -31,14 +32,14 @@ const uint8_t PROGMEM AOSENMA_hopping[] = { 0, 40, 10, 50, 20, 60, 30, 70 };	// 
 
 static void __attribute__((unused)) AOSENMA_set_bind_sync()
 {
-	uint8_t bind_sync[] = { 0x11, 0x22 };
-	LT8900_SetAddress(bind_sync, 2);
+	uint8_t bind_sync[] = { rx_tx_addr[0], rx_tx_addr[1], rx_tx_addr[2] };
+	LT8900_SetAddress(bind_sync, 3);
 }
 
 static void __attribute__((unused)) AOSENMA_set_data_sync()
 {
-	uint8_t data_sync[] = { rx_tx_addr[3], rx_tx_addr[4] };
-	LT8900_SetAddress(data_sync, 2);
+	uint8_t data_sync[] = { rx_tx_addr[3], rx_tx_addr[4], AOSENMA_DATA_SYNC_BYTE };
+	LT8900_SetAddress(data_sync, 3);
 }
 
 static void __attribute__((unused)) AOSENMA_RF_init()
@@ -69,7 +70,7 @@ static void __attribute__((unused)) AOSENMA_send_bind_packet()
 	packet[3] = rx_tx_addr[2];
 	packet[4] = rx_tx_addr[3];
 	packet[5] = rx_tx_addr[4];
-	packet[6] = 0xFC;
+	packet[6] = AOSENMA_DATA_SYNC_BYTE;
 	packet[7] = 0xAD;
 	packet[8] = 0x00;
 }
