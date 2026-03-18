@@ -24,7 +24,7 @@
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
-#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte
+#define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
