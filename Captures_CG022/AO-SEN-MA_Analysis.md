@@ -124,6 +124,37 @@ In other words:
 
 That bind-tail discrepancy is therefore the most likely reason the earlier MPM branch still would not bind/fly even though its later data packets were much closer to what the receiver accepts.
 
+### Receiver-side bind-to-data sync transition findings from `52b`
+
+The next question after fixing the bind payload tail is whether the **bind-to-data sync transition** itself is wrong. Comparing the TX and RX traces gives a more limited answer than the bind-tail comparison:
+
+- On the **transmitter** side, `02b-CG022_TX-PowerOn-withRX-Bind.csv` still shows the clean expected transition:
+  - bind lasts for **166 transmitted packets**
+  - then the sync-related register write changes from `0x2211` to `0xAB06`
+  - the first data packet follows immediately on the next packet slot
+- On the **receiver** side, `52b-CG022_RX-PowerOn-withTX-Bind.csv` shows:
+  - one clean accepted bind packet: `0A 00 11 22 33 07 00 FB 02 00`
+  - then, about **0.378 s** later, clean accepted data packets beginning with `0A 00 00 20 20 20 20 20 20 C0`
+
+What the receiver trace does **not** show is just as important:
+
+- there is **no visible receiver-side SPI write** matching a bind-to-data sync reprogram such as `0xAB06` / `0x06AB`
+- around the first accepted data packets, the receiver only shows FIFO/status housekeeping (`0x34`, `0x07`, and related polling/clear operations), not an obvious sync-register rewrite
+
+So the receiver captures do **not** support the idea that the missing piece is a second, receiver-visible SPI-level sync transition or post-bind handshake. The current code's TX-side behavior:
+
+- send **166** bind packets
+- then call `AOSENMA_set_data_sync()`
+- then start sending normal data packets
+
+is still the closest match to the stock transmitter trace.
+
+In short:
+
+- the receiver captures **do not contradict** the current TX-side bind-to-data handoff
+- they also do **not** provide a new receiver-side SPI clue for a different sync-switch moment
+- the remaining uncertainty after the bind-tail fix is therefore more likely in the **OTA transition behavior** than in a missing MCU-visible sync-register change on the receiver
+
 ## Best emulation choice in this repository
 
 ### Recommended: NRF24L01
