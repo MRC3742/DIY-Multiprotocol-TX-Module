@@ -454,7 +454,7 @@ That setup gives the best chance of decoding the actual Mini54-to-LT8910 command
 If you just want the short version to follow at the bench, use this exact procedure:
 
 1. Connect the Saleae ground clip to board **`GND`**.
-2. Connect **D0=`SPI_MOSI`**, **D1=`SPI_MISO`**, **D2=`SPI_CLK`**, **D3=`SPI_SS`**, **D4=`PKT_flag`**, and **D5=`RESET_n`**.
+2. Connect **D0=`SPI_MOSI`**, **D1=`SPI_MISO`**, **D2=`SPI_CLK`**, **D3=`SPI_SS`**, **D4=`PKT_flag`**, and **D5=`RESET_n`**. Leave **D6/D7** unused unless you also want the optional **`ICE_DAT` / `ICE_CLK`** reference channels.
 3. In the Saleae SPI analyzer, set **Enable=D3**, **Clock=D2**, **MOSI=D0**, **MISO=D1**.
 4. Set the trigger to **D3 / `SPI_SS` falling edge**. If `SPI_SS` is unreachable, fall back to **D2 / `SPI_CLK` rising edge**.
 5. Set the digital sample rate to **24 MS/s or higher** and the capture length to **6.5 s** so the trace includes both the early bind/data window and the later stock-only active-state window.
