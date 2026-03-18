@@ -131,7 +131,7 @@ Until that bind-tail discrepancy is resolved, the most likely reason the MPM bra
 The **NRF24L01** is the best fit here because:
 
 1. The captured protocol is using **1 Mbps**, which the NRF24L01 can already do.
-2. The project already has an **LT8900 emulation layer** in `Multiprotocol/NRF24l01_SPI.ino`.
+2. The project already has an **LT8900 emulation layer** in `Multiprotocol/NRF24L01_SPI.ino`.
 3. `Multiprotocol/SHENQI_nrf24l01.ino` already proves the repository can emulate an LT89xx-family protocol over NRF24L01.
 4. Reusing and extending that path is much less invasive than starting a new LT8910 emulation path on a different RF chip.
 
@@ -149,7 +149,7 @@ Why:
 2. SHENQI binds through a short RX/TX handshake and then sends a repeating 7-packet cycle, while CG022 uses a **166-packet bind phase** followed by a sync-word change and a different data phase.
 3. SHENQI uses its own 60-entry hop table with TXID-based offsetting, while CG022 uses the fixed 8-channel sequence `10, 50, 20, 60, 30, 70, 0, 40`.
 4. In the current repository structure, `SHENQI` has **no existing subtypes** in `Multiprotocol/Multi_Protos.ino`, and adding AO-SEN-MA as a subtype would force most of `SHENQI_send_packet()` and `SHENQI_callback()` to become special-case branches.
-5. The two protocols mainly share the **LT89xx-over-NRF24L01 transport layer**, which is already factored into `Multiprotocol/NRF24l01_SPI.ino`; that shared transport is not, by itself, a strong reason to merge them into one protocol entry.
+5. The two protocols mainly share the **LT89xx-over-NRF24L01 transport layer**, which is already factored into `Multiprotocol/NRF24L01_SPI.ino`; that shared transport is not, by itself, a strong reason to merge them into one protocol entry.
 
 So the clean repository-style approach is:
 
