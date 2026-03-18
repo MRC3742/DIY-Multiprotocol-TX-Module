@@ -96,6 +96,34 @@ In the power-on bind trace, transmission begins at the `00` slot and then contin
 
 That is an LT89xx-style 1 MHz-spaced hop sequence and matches the existing LT89xx-over-NRF channel mapping approach used elsewhere in the project.
 
+### Receiver-side bind findings from `51b` / `52b`
+
+The new receiver-side SPI captures narrow the remaining bind problem much more than the TX-only traces did:
+
+- `51b-CG022_RX-PowerOn-NoTX.csv` shows the receiver mostly staying in an RX/polling loop when no transmitter is present.
+- `52b-CG022_RX-PowerOn-withTX-Bind.csv` shows the receiver **draining accepted packets from the radio FIFO**; there is no clear evidence of a required receiver-to-transmitter bind reply on the LT8910 SPI bus.
+- A cleanly reconstructed **accepted data packet** from the receiver side is:
+  - `0A 00 00 20 20 20 20 20 20 C0`
+  - which matches the current low-throttle / centered-stick data-packet layout already implemented in `Multiprotocol/AOSENMA_nrf24l01.ino`.
+
+The important mismatch is in the **bind packet**. One cleanly reconstructed **accepted bind packet** from the receiver side is:
+
+`0A 00 11 22 33 07 00 FB 02 00`
+
+That does **not** match the bind payload currently sent by `AOSENMA_send_bind_packet()`:
+
+`0A 00 11 22 33 06 AB FC AD 00`
+
+So the current branch's most likely bind failure is **not** the normal data-packet format, but the fact that the bind packet tail is still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last four bytes**.
+
+In other words:
+
+- the current **data packet** model appears broadly correct
+- the current **bind packet** model is still missing something important from the receiver's point of view
+- the receiver traces do **not** support the earlier idea that a missing bidirectional bind handshake is the main problem
+
+Until that bind-tail discrepancy is resolved, the most likely reason the MPM branch still will not bind/fly is that `AOSENMA_send_bind_packet()` is sending the wrong bind-phase payload even though its later data packets are much closer to what the receiver accepts.
+
 ## Best emulation choice in this repository
 
 ### Recommended: NRF24L01
