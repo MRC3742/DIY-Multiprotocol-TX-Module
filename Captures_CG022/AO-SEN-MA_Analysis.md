@@ -166,11 +166,11 @@ That comparison rules out several earlier suspects and narrows the remaining pro
 #### What still looks similar between stock `52*` and MPM `53*`
 
 - The captures are almost the same length:
-  - `52b`: about **6.259 s**
-  - `53b`: about **6.250 s**
+  - `52b-CG022_RX-PowerOn-withTX-Bind.csv`: about **6.259 s**
+  - `53b-CG022_RX-PowerOn-withMPM-ForceID-Bind.csv`: about **6.250 s**
 - The receiver keeps running the same **basic polling loop** in both traces:
-  - `52b` has **2357** first-byte `0xB0` transactions
-  - `53b` has **2351** first-byte `0xB0` transactions
+  - `52b-CG022_RX-PowerOn-withTX-Bind.csv` has **2357** first-byte `0xB0` transactions
+  - `53b-CG022_RX-PowerOn-withMPM-ForceID-Bind.csv` has **2351** first-byte `0xB0` transactions
 - The early `PKT_flag` cadence also starts out the same in both digital traces:
   - repeated low pulses of about **30.77 ms**
   - first rising edges near **0.0588 s**, **0.0906 s**, **0.1224 s**, ...
