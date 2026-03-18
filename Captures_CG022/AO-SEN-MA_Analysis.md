@@ -227,9 +227,9 @@ Recommended first capture set on an 8-channel Saleae:
 An exact 8-channel assignment that should work well is:
 
 - **ground clip** -> board `GND`
-- **D0** -> LT8910 **`SPI_CLK`** (pin 16)
-- **D1** -> LT8910 **`SPI_MOSI`** (pin 1)
-- **D2** -> LT8910 **`SPI_MISO`** (pin 2)
+- **D0** -> LT8910 **`SPI_MOSI`** (pin 1)
+- **D1** -> LT8910 **`SPI_MISO`** (pin 2)
+- **D2** -> LT8910 **`SPI_CLK`** (pin 16)
 - **D3** -> LT8910 **`SPI_SS`** (pin 14)
 - **D4** -> LT8910 **`PKT_flag`** (pin 13)
 - **D5** -> LT8910 **`RESET_n`** (pin 4)
@@ -241,9 +241,9 @@ That gives one clean SPI decoder group plus two spare "sanity-check" channels on
 If you use the Saleae SPI analyzer, set it up as:
 
 - **Enable** = `D3` (`SPI_SS`)
-- **Clock** = `D0` (`SPI_CLK`)
-- **MOSI** = `D1` (`SPI_MOSI`)
-- **MISO** = `D2` (`SPI_MISO`)
+- **Clock** = `D2` (`SPI_CLK`)
+- **MOSI** = `D0` (`SPI_MOSI`)
+- **MISO** = `D1` (`SPI_MISO`)
 
 For the actual Saleae capture trigger, use:
 
@@ -260,7 +260,7 @@ If `SPI_SS` is too hard to reach physically, keep the same order but move:
 - **D6** -> exposed `CLK` / `ICE_CLK`
 - **D7** -> leave unused or put on any other suspected LT8910 control/status trace
 
-If you do not have `SPI_SS`, the next-best trigger is usually **`D0` / `SPI_CLK`** on a **rising edge**, but that is less clean because it does not uniquely mark the start of a complete SPI frame the way chip-select does.
+If you do not have `SPI_SS`, the next-best trigger is usually **`D2` / `SPI_CLK`** on a **rising edge**, but that is less clean because it does not uniquely mark the start of a complete SPI frame the way chip-select does.
 
 Important practical notes:
 
