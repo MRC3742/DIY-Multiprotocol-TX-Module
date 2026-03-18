@@ -155,6 +155,117 @@ In short:
 - they also do **not** provide a new receiver-side SPI clue for a different sync-switch moment
 - the remaining uncertainty after the bind-tail fix is therefore more likely in the **OTA transition behavior** than in a missing MCU-visible sync-register change on the receiver
 
+### Receiver-side MPM forced-ID comparison from `53a` / `53b`
+
+The next test was the most useful one still available without OTA capture: power up the **receiver** against the **MPM AO-SEN-MA implementation** while forcing the original captured TX ID (`11 22 33 06 AB`), then compare that receiver-side trace directly against the stock `52a` / `52b` bind trace.
+
+That comparison rules out several earlier suspects and narrows the remaining problem further.
+
+#### What still looks similar between stock `52*` and MPM `53*`
+
+- The captures are almost the same length:
+  - `52b`: about **6.259 s**
+  - `53b`: about **6.250 s**
+- The receiver keeps running the same **basic polling loop** in both traces:
+  - `52b` has **2357** first-byte `0xB0` transactions
+  - `53b` has **2351** first-byte `0xB0` transactions
+- The early `PKT_flag` cadence also starts out the same in both digital traces:
+  - repeated low pulses of about **30.77 ms**
+  - first rising edges near **0.0588 s**, **0.0906 s**, **0.1224 s**, ...
+
+So the forced-ID MPM signal is not completely invisible to the receiver. The receiver is still running through roughly the same polling cadence and timing windows as it does with the stock TX.
+
+#### What is missing in `53b`
+
+The important difference is that `53b` never shows the same **accepted-packet / later bound-state SPI activity** that appears in the stock trace.
+
+Across the full 6.25 s capture:
+
+- `52b` contains:
+  - **1690** first-byte `0xB2` transactions
+  - **264** first-byte `0xB3` transactions
+  - **261** first-byte `0xBA` transactions
+  - **217** first-byte `0xF2` transactions
+- `53b` contains:
+  - **0** first-byte `0xB2` transactions
+  - **0** first-byte `0xB3` transactions
+  - **0** first-byte `0xBA` transactions
+  - **0** first-byte `0xF2` transactions
+
+Those stock-only transaction families do not appear immediately at power-up. In `52b` they begin around **2.934 s** and then dominate the later part of the trace:
+
+- `0xB2` first appears at about **2.934349 s**
+- `0xF2` first appears at about **2.934464 s**
+- `0xB3` first appears at about **3.325888 s**
+- `0xBA` first appears at about **3.328927 s**
+
+From about **3.5 s onward**, the stock trace stays in that much heavier activity pattern, while `53b` never leaves the simpler polling-only regime.
+
+The digital trace shows the same split:
+
+- `52a` eventually develops **581 short `PKT_flag` low pulses** below **10 ms**
+  - first short pulse starts at about **3.185052 s**
+  - typical short widths are about **1.5 ms** to **3.8 ms**
+- `53a` develops **no short `PKT_flag` pulses at all**
+  - it stays in the original roughly **30.78 ms** low-pulse pattern for the whole capture
+
+So the receiver does **not** reach the same later bound/active receive state with MPM, even when the forced ID matches the stock transmitter.
+
+#### Earliest divergence near the stock bind-to-data acceptance window
+
+The earlier `52b` analysis already showed the first clean accepted data window beginning around **0.378 s** after the clean accepted bind packet. In that same time region, stock and MPM no longer behave quite the same even though both are still polling:
+
+- Stock `52b` at about **0.377704 s**:
+  - `C7 FF FF | 01 80 32`
+- MPM `53b` at about **0.377852 s**:
+  - `83 FF FF | 01 00 32`
+
+Later in the same repeating window:
+
+- Stock `52b` at about **0.441292 s**:
+  - `C7 FF FF | 01 80 1C`
+- MPM `53b` at about **0.441473 s**:
+  - `87 FF FF | 01 00 3C`
+
+And near **0.472 s**:
+
+- Stock `52b`:
+  - `87 FF FF | 12 00 BC`
+  - `87 00 1E | 12 12 12`
+- MPM `53b`:
+  - `87 FF FF | 12 00 BC`
+  - then only `34 80 80 | 01 01 01`
+  - followed by `87 FF FF | 01 00 1E`
+
+So the MPM trace gets into some of the **same timing slots** and even some of the **same returned status values**, but it does **not** trigger the same follow-on receiver behavior that the stock TX does.
+
+#### What `53a` / `53b` rule out
+
+This new capture is useful because it eliminates several remaining "easy" explanations:
+
+- It is **not** just the random TX ID, because `53*` used the **original forced ID**
+- It is **not** just the gross packet cadence, because the receiver still follows the same overall polling rhythm
+- It is **not** just the broad bind-to-data schedule, because the receiver still reaches the same approximate timing windows where stock traffic is handled differently
+
+#### Most likely remaining cause
+
+The receiver is clearly **seeing something close enough to stock to keep polling on the same schedule**, but it is **not accepting those MPM packets into the same receive path** and never reaches the later bound/active state.
+
+That means the remaining bind failure is now much more likely to be in the **actual OTA packet acceptance details**, not in the visible TX ID bytes or the already-corrected bind-tail payload model.
+
+The most likely remaining categories are:
+
+1. **LT89xx on-air framing details** that do not show up in the SPI payload bytes alone
+2. **sync/correlation acceptance behavior** that is still not bit-exact enough
+3. **CRC / whitening / trailer / packet-format behavior** inside the LT8910-compatible receive path
+4. some other **NRF24L01 LT89xx-emulation mismatch** that allows rough activity detection but prevents the receiver from treating the packet as valid and entering the normal accepted-packet / bound-state flow
+
+In short:
+
+- `53a` / `53b` show that **forcing the original ID is not enough**
+- the receiver still does **not** behave like it does with the stock TX
+- the failure is now much more likely to be a **bitstream-level LT89xx emulation problem** than a remaining bind-payload-content problem
+
 ## Best emulation choice in this repository
 
 ### Recommended: NRF24L01
