@@ -110,19 +110,19 @@ The important mismatch is in the **bind packet**. One cleanly reconstructed **ac
 
 `0A 00 11 22 33 07 00 FB 02 00`
 
-That does **not** match the bind payload currently sent by `AOSENMA_send_bind_packet()`:
+That does **not** match the earlier TX-side-only bind model:
 
 `0A 00 11 22 33 06 AB FC AD 00`
 
-So the current branch's most likely bind failure is **not** the normal data-packet format, but the fact that the bind packet tail is still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last four bytes**.
+So the earlier branch's most likely bind failure was **not** the normal data-packet format, but the fact that the bind packet tail was still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last four bytes**.
 
 In other words:
 
 - the current **data packet** model appears broadly correct
-- the current **bind packet** model is still missing something important from the receiver's point of view
+- the previous **bind packet** model was missing something important from the receiver's point of view
 - the receiver traces do **not** support the earlier idea that a missing bidirectional bind handshake is the main problem
 
-Until that bind-tail discrepancy is resolved, the most likely reason the MPM branch still will not bind/fly is that `AOSENMA_send_bind_packet()` is sending the wrong bind-phase payload even though its later data packets are much closer to what the receiver accepts.
+That bind-tail discrepancy is therefore the most likely reason the earlier MPM branch still would not bind/fly even though its later data packets were much closer to what the receiver accepts.
 
 ## Best emulation choice in this repository
 

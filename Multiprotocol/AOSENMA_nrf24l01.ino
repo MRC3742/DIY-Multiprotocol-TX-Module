@@ -30,6 +30,7 @@
 // #define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
 
 const uint8_t PROGMEM AOSENMA_hopping[] = { 0, 40, 10, 50, 20, 60, 30, 70 };	// Same 8-channel cycle as 10/50/20/60/30/70/0/40, reordered so the array starts at the power-on bind entry point (0)
+const uint8_t PROGMEM AOSENMA_bind_tail[] = { 0x07, 0x00, 0xFB, 0x02, 0x00 };
 
 static void __attribute__((unused)) AOSENMA_set_bind_sync()
 {
@@ -70,11 +71,8 @@ static void __attribute__((unused)) AOSENMA_send_bind_packet()
 	packet[2] = rx_tx_addr[0];
 	packet[3] = rx_tx_addr[1];
 	packet[4] = rx_tx_addr[2];
-	packet[5] = rx_tx_addr[3];
-	packet[6] = rx_tx_addr[4];
-	packet[7] = AOSENMA_DATA_SYNC_BYTE;
-	packet[8] = 0xAD;
-	packet[9] = 0x00;
+	for(uint8_t i = 0; i < sizeof(AOSENMA_bind_tail); i++)
+		packet[5 + i] = pgm_read_byte_near(&AOSENMA_bind_tail[i]);
 }
 
 static void __attribute__((unused)) AOSENMA_send_data_packet()
