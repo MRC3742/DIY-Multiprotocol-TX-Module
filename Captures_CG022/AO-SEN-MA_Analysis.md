@@ -448,3 +448,18 @@ For this specific board, the best "what should I hook up first?" answer is there
 - **good extra timing channels:** LT8910 `PKT_flag`, then `RESET_n`
 
 That setup gives the best chance of decoding the actual Mini54-to-LT8910 command traffic during bind and verifying exactly which register writes, FIFO loads, and timing events the stock receiver board uses.
+
+### Bench-side 10-step Saleae receiver capture procedure
+
+If you just want the short version to follow at the bench, use this exact procedure:
+
+1. Connect the Saleae ground clip to board **`GND`**.
+2. Connect **D0=`SPI_MOSI`**, **D1=`SPI_MISO`**, **D2=`SPI_CLK`**, **D3=`SPI_SS`**, **D4=`PKT_flag`**, and **D5=`RESET_n`**.
+3. In the Saleae SPI analyzer, set **Enable=D3**, **Clock=D2**, **MOSI=D0**, **MISO=D1**.
+4. Set the trigger to **D3 / `SPI_SS` falling edge**. If `SPI_SS` is unreachable, fall back to **D2 / `SPI_CLK` rising edge**.
+5. Set the digital sample rate to **24 MS/s or higher** and the capture length to **6.5 s** so the trace includes both the early bind/data window and the later stock-only active-state window.
+6. Turn the receiver **off** before arming the Saleae capture.
+7. Prepare the transmitter for the specific run: first take a **stock-TX bind** capture, then repeat with the **latest MPM bind** capture. Keep transmitter distance, orientation, and bind procedure the same between runs.
+8. Click **Arm** in Saleae, then power **on** the receiver and let the full **6.5 s** capture complete without moving sticks or pressing extra buttons beyond the normal bind action.
+9. Save the full **`.sal`** capture, then export both the **digital CSV** and the **SPI CSV**. Keep the existing naming pattern such as `54a-...` for digital and `54b-...` for SPI.
+10. Before sending the files, do a quick sanity check that **D2 shows clock activity**, **D3 toggles for SPI frames**, **D0/D1 are not flat**, and **D4 `PKT_flag` is alive**. If any of those are missing, fix the hookup and repeat the capture.
