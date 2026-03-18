@@ -106,15 +106,17 @@ The new receiver-side SPI captures narrow the remaining bind problem much more t
   - `0A 00 00 20 20 20 20 20 20 C0`
   - which matches the current low-throttle / centered-stick data-packet layout already implemented in `Multiprotocol/AOSENMA_nrf24l01.ino`.
 
-The important mismatch is in the **bind packet**. One cleanly reconstructed **accepted bind packet** from the receiver side is:
+The important mismatch was in the **bind packet**. One cleanly reconstructed **accepted bind packet** from the receiver side is:
 
 `0A 00 11 22 33 07 00 FB 02 00`
 
-That does **not** match the earlier TX-side-only bind model:
+That did **not** match the **earlier pre-fix TX-side-only bind model**:
 
 `0A 00 11 22 33 06 AB FC AD 00`
 
 So the earlier branch's most likely bind failure was **not** the normal data-packet format, but the fact that the bind packet tail was still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last five bytes**.
+
+The current repository code has already been updated to use that **receiver-accepted bind tail** (`07 00 FB 02 00`). The mismatch above refers specifically to the **older pre-fix model** that still used the TX-side-only tail (`06 AB FC AD 00`).
 
 In other words:
 
@@ -122,7 +124,7 @@ In other words:
 - the previous **bind packet** model was missing something important from the receiver's point of view
 - the receiver traces do **not** support the earlier idea that a missing bidirectional bind handshake is the main problem
 
-That bind-tail discrepancy is therefore the most likely reason the earlier MPM branch still would not bind/fly even though its later data packets were much closer to what the receiver accepts.
+That bind-tail discrepancy was therefore the most likely reason the earlier MPM branch still would not bind/fly even though its later data packets were much closer to what the receiver accepts.
 
 ### Receiver-side bind-to-data sync transition findings from `52b`
 
