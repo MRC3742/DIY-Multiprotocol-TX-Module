@@ -114,7 +114,7 @@ That does **not** match the earlier TX-side-only bind model:
 
 `0A 00 11 22 33 06 AB FC AD 00`
 
-So the earlier branch's most likely bind failure was **not** the normal data-packet format, but the fact that the bind packet tail was still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last four bytes**.
+So the earlier branch's most likely bind failure was **not** the normal data-packet format, but the fact that the bind packet tail was still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last five bytes**.
 
 In other words:
 
