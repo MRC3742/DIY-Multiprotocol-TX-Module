@@ -116,7 +116,7 @@ That did **not** match the **earlier pre-fix TX-side-only bind model**:
 
 So the earlier branch's most likely bind failure was **not** the normal data-packet format, but the fact that the bind packet tail was still modeled from TX-side FIFO writes only. The receiver-side evidence says the stock receiver is accepting a bind-phase payload with the same `0A 00 11 22 33` prefix but a **different last five bytes**.
 
-The current repository code has already been updated to use **exactly that receiver-accepted bind tail** (`07 00 FB 02 00`). The mismatch above refers specifically to the **older pre-fix model** that still used the TX-side-only tail (`06 AB FC AD 00`).
+The current repository code has already been updated to use **exactly that receiver-accepted bind tail** (`07 00 FB 02 00`). The mismatch above refers specifically to the **earlier TX-side-only implementation** that still used the tail (`06 AB FC AD 00`).
 
 In other words:
 
