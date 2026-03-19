@@ -22,6 +22,11 @@
 //     New reg 0x24 = (bind_pkt[6] << 8) | bind_pkt[5]  (i.e. rx_tx_addr[4], rx_tx_addr[3])
 //   - Data packets use this new sync word so receiver only hears its paired TX
 //   - CRC-16 poly=0x8005, init=0x4402, 3-byte preamble, 8-bit trailer
+//
+// Receiver-side captures (51-53) confirmed:
+//   - CRC bytes on-air are LSBit-first (bit-reversed) like data bytes
+//   - Stock TX→RX (52b) produces 1690 FIFO reads; MPM→RX (53b) produces 0
+//   - CRC byte bit-reversal fix applied in LT8900 emulation layer
 
 #if defined(CG022_NRF24L01_INO)
 
@@ -158,9 +163,14 @@ static void __attribute__((unused)) CG022_send_packet()
 	NRF24L01_FlushTx();
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
 
-	// Send packet once per channel (matches original TX behavior).
-	// No ack wait needed: the ~152µs on-air time completes well within
-	// the 2310µs packet period before the next channel hop.
+	// Send packet and wait for TX completion, then retransmit once.
+	// The SHENQI LT8900 emulation also requires a retransmit to work
+	// reliably with NRF24L01 chips; the first transmission may have
+	// preamble ramp-up issues that cause the LT8910 correlator to miss
+	// the sync word.  Two transmissions per channel (~304µs total) still
+	// fit well within the 2310µs packet period.
+	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
+	while(NRF24L01_packet_ack() == PKT_PENDING);
 	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
 
 	// Advance to next hop channel
