@@ -390,8 +390,10 @@ uint8_t LT8900_ReadPayload(uint8_t* msg, uint8_t len)
 	//Check CRC
 	if(LT8900_Flags&_BV(LT8900_CRC_ON))
 	{
-		if(buffer[pos++]!=((crc>>8)&0xFF)) return 0;	// wrong CRC...
-		if(buffer[pos]!=(crc&0xFF)) return 0;			// wrong CRC...
+		// CRC bytes on air are LSBit-first (like data), so the NRF24L01
+		// receives them bit-reversed.  Reverse them back before comparing.
+		if(bit_reverse(buffer[pos++])!=((crc>>8)&0xFF)) return 0;	// wrong CRC...
+		if(bit_reverse(buffer[pos])!=(crc&0xFF)) return 0;			// wrong CRC...
 	}
 	//Everything ok
 	return 1;
@@ -419,8 +421,11 @@ void LT8900_WritePayload(uint8_t* msg, uint8_t len)
 	//Add CRC
 	if(LT8900_Flags&_BV(LT8900_CRC_ON))
 	{
-		buffer[pos++]=crc>>8;
-		buffer[pos++]=crc;
+		// CRC bytes must be bit-reversed like data bytes because the
+		// LT8900/LT8910 sends all bytes LSBit-first on the air, while
+		// the NRF24L01 sends MSBit-first.
+		buffer[pos++]=bit_reverse(crc>>8);
+		buffer[pos++]=bit_reverse(crc);
 	}
 	//Shift everything to fit behind the trailer (4 to 18 bits)
 	shift=LT8900_buffer_overhead_bits&0x7;
