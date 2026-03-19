@@ -100,3 +100,61 @@ The highest-value next investigation is:
 - compare the AO-SEN-MA LT89xx emulation behavior against what the receiver accepts on-air
 - focus on the shared LT89xx-over-NRF24L01 emulation layer rather than only changing payload bytes in `AOSENMA_nrf24l01.ino`
 
+## Can the existing captures still debug the LT89xx emulation layer?
+
+**Yes, partially.**
+
+The captures already taken are still useful for debugging several parts of the LT89xx emulation path, even without OTA equipment.
+
+### What can still be debugged from the existing captures
+
+Using the TX-side FIFO captures plus the receiver-side stock-vs-MPM comparisons, it is still possible to check whether the emulation layer is doing the **right logical transformations** before transmission:
+
+1. **sync/address handling**
+   - confirm the bind sync uses `txid[0..2]`
+   - confirm the data sync uses `{ txid[3], txid[4], 0xFC }`
+   - verify the byte-reversal and address-order behavior in `LT8900_SetAddress()`
+
+2. **packet-length handling**
+   - confirm AO-SEN-MA passes **9 payload bytes**
+   - confirm `LT8900_WritePayload()` is adding the LT89xx length byte on-air when packet-length mode is enabled
+
+3. **CRC and payload bit reversal**
+   - verify the exact bytes being fed into the CRC
+   - verify where payload bytes are bit-reversed and where they are not
+
+4. **preamble / trailer construction**
+   - verify the preamble pattern selected from the sync LSB
+   - verify the configured trailer length and the trailer-bit shift logic
+
+5. **channel and bind/data sequencing**
+   - verify channel order and no-reset hop continuation across bind completion
+   - verify the exact moment `AOSENMA_set_data_sync()` is called relative to bind count completion
+
+6. **whether a candidate emulation change moves MPM behavior closer to stock**
+   - the receiver-side captures are still good enough to tell whether a change starts producing the later receiver active/bound-state behavior
+   - even without OTA, that is still a meaningful pass/fail signal
+
+### What the existing captures cannot prove
+
+The current captures do **not** directly show the final over-the-air waveform emitted by the NRF24L01. So they cannot conclusively prove:
+
+1. the exact **radiated preamble/sync/trailer bitstream**
+2. whether the receiver is rejecting packets because of some subtle **Manchester / symbol timing** mismatch
+3. whether the effective on-air result of the NRF24L01 path is bit-exact to the original LT8910-compatible transmitter
+4. any mismatch caused by RF behavior that is **after** buffer construction and register programming
+
+### Practical implication
+
+So the answer is:
+
+- **yes**, the existing captures are still enough to debug a large part of the LT89xx emulation layer
+- **no**, they are not enough to fully prove final OTA correctness
+
+Without OTA gear, the best remaining workflow is:
+
+1. audit `LT8900_SetAddress()`, `LT8900_BuildOverhead()`, and `LT8900_WritePayload()`
+2. make one small emulation-layer change at a time
+3. use the same receiver-side capture method to see whether MPM starts entering the stock late active/bound state
+
+That will not prove the exact waveform, but it can still narrow the fault further and may still expose the specific emulation-layer mistake.
