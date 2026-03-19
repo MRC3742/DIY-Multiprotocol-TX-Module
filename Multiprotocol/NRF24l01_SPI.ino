@@ -263,6 +263,59 @@ uint8_t LT8900_Flags;
 #define LT8900_FEC_TYPE_1 1
 #define LT8900_FEC_TYPE_0 0
 
+static uint8_t __attribute__((unused)) LT8900_UsesManchester()
+{
+	return (LT8900_Flags & (_BV(LT8900_DATA_PACKET_TYPE_1) | _BV(LT8900_DATA_PACKET_TYPE_0))) == _BV(LT8900_DATA_PACKET_TYPE_0);
+}
+
+static uint8_t __attribute__((unused)) LT8900_EncodeManchester(const uint8_t *src, uint8_t src_len, uint8_t *dst)
+{
+	uint8_t out = 0;
+
+	for(uint8_t i = 0; i < src_len; i++)
+	{
+		uint16_t encoded = 0;
+		for(uint8_t bit = 0; bit < 8; bit++)
+		{
+			encoded <<= 2;
+			encoded |= (src[i] & _BV(7 - bit)) ? 0x02 : 0x01;
+		}
+		dst[out++] = encoded >> 8;
+		dst[out++] = encoded;
+	}
+	return out;
+}
+
+static uint8_t __attribute__((unused)) LT8900_DecodeManchester(const uint8_t *src, uint8_t src_len, uint8_t *dst)
+{
+	// Returns the decoded byte count, or 0 if the input is not valid Manchester data.
+	if(src_len & 0x01)
+		return 0;
+
+	uint8_t out = 0;
+	for(uint8_t i = 0; i < src_len; i += 2)
+	{
+		uint16_t encoded = ((uint16_t)src[i] << 8) | src[i + 1];
+		uint8_t decoded = 0;
+
+		for(uint8_t bit = 0; bit < 8; bit++)
+		{
+			uint8_t pair = (encoded >> (14 - 2 * bit)) & 0x03;
+			decoded <<= 1;
+			if(pair == 0x01)
+				continue;
+			if(pair == 0x02)
+			{
+				decoded |= 0x01;
+				continue;
+			}
+			return 0;
+		}
+		dst[out++] = decoded;
+	}
+	return out;
+}
+
 void LT8900_Config(uint8_t preamble_len, uint8_t trailer_len, uint8_t flags, uint8_t crc_init)
 {
 	//Preamble 1 to 8 bytes
@@ -355,11 +408,12 @@ void LT8900_SetAddress(uint8_t *address,uint8_t addr_size)
 
 uint8_t LT8900_ReadPayload(uint8_t* msg, uint8_t len)
 {
-	uint8_t i,pos=0,shift,end,buffer[32];
+	uint8_t i,pos=0,shift,end,raw_len,buffer[32],decoded[16];
 	unsigned int a;
 	crc=LT8900_CRC_Initial_Data;
 	pos=LT8900_buffer_overhead_bits/8-LT8900_buffer_start;
-	end=pos+len+(LT8900_Flags&_BV(LT8900_PACKET_LENGTH_EN)?1:0)+(LT8900_Flags&_BV(LT8900_CRC_ON)?2:0);
+	raw_len=len+(LT8900_Flags&_BV(LT8900_PACKET_LENGTH_EN)?1:0)+(LT8900_Flags&_BV(LT8900_CRC_ON)?2:0);
+	end=pos+raw_len*(LT8900_UsesManchester()?2:1);
 	//Read payload
 	NRF24L01_ReadPayload(buffer,end+1);
 	//Check address + trail
@@ -373,6 +427,13 @@ uint8_t LT8900_ReadPayload(uint8_t* msg, uint8_t len)
 		a=(buffer[i]<<8)+buffer[i+1];
 		a<<=shift;
 		buffer[i]=(a>>8)&0xFF;
+	}
+	if(LT8900_UsesManchester())
+	{
+		if(LT8900_DecodeManchester(buffer + pos, end - pos, decoded) != raw_len)
+			return 0;
+		memcpy(buffer + pos, decoded, raw_len);
+		end = pos + raw_len;
 	}
 	//Check len
 	if(LT8900_Flags&_BV(LT8900_PACKET_LENGTH_EN))
@@ -400,7 +461,7 @@ uint8_t LT8900_ReadPayload(uint8_t* msg, uint8_t len)
 void LT8900_WritePayload(uint8_t* msg, uint8_t len)
 {
 	unsigned int a,mask;
-	uint8_t i, pos=0,tmp, buffer[64], pos_final,shift;
+	uint8_t i, pos=0,tmp, buffer[64], encoded[64], pos_final,shift;
 	crc=LT8900_CRC_Initial_Data;
 	//Add packet len
 	if(LT8900_Flags&_BV(LT8900_PACKET_LENGTH_EN))
@@ -422,6 +483,10 @@ void LT8900_WritePayload(uint8_t* msg, uint8_t len)
 		buffer[pos++]=crc>>8;
 		buffer[pos++]=crc;
 	}
+	if(LT8900_UsesManchester())
+		pos = LT8900_EncodeManchester(buffer, pos, encoded);
+	else
+		memcpy(encoded, buffer, pos);
 	//Shift everything to fit behind the trailer (4 to 18 bits)
 	shift=LT8900_buffer_overhead_bits&0x7;
 	pos_final=LT8900_buffer_overhead_bits/8;
@@ -429,7 +494,7 @@ void LT8900_WritePayload(uint8_t* msg, uint8_t len)
 	LT8900_buffer[pos_final+pos]=0xFF;
 	for(i=pos-1;i!=0xFF;i--)
 	{
-		a=buffer[i]<<(8-shift);
+		a=encoded[i]<<(8-shift);
 		LT8900_buffer[pos_final+i]=(LT8900_buffer[pos_final+i]&mask>>8)|a>>8;
 		LT8900_buffer[pos_final+i+1]=(LT8900_buffer[pos_final+i+1]&mask)|a;
 	}

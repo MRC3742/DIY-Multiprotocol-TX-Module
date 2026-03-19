@@ -158,3 +158,43 @@ Without OTA gear, the best remaining workflow is:
 3. use the same receiver-side capture method to see whether MPM starts entering the stock late active/bound state
 
 That will not prove the exact waveform, but it can still narrow the fault further and may still expose the specific emulation-layer mistake.
+
+## First emulation-layer change to try from the current evidence
+
+The most suspicious single bug in the current repository code is that AO-SEN-MA requests an LT89xx **Manchester** packet type, but the shared LT89xx-over-NRF24L01 path originally did not apply any Manchester transform to the payload stream at all.
+
+So the first committed emulation-layer fix should be:
+
+- make `LT8900_WritePayload()` actually honor the Manchester packet-type flag
+- make `LT8900_ReadPayload()` decode the same Manchester format symmetrically
+
+That is a better first fix than blind payload edits because it directly targets a real transport-layer mismatch between the intended LT89xx configuration and the bytes actually sent by the NRF24L01 emulation path.
+
+## How many practical emulation-layer variations are worth testing?
+
+There are **30** practical first-pass variations in the most relevant framing matrix.
+
+If testing is limited to the framing knobs most strongly implicated by the captures, the practical first-pass space is:
+
+1. **packet type**
+   - **NRZ**
+   - **Manchester**
+
+2. **trailer length**
+   - any LT89xx-legal value from **4** to **18** bits
+   - that is **15** possible trailer-length settings
+
+So the practical first-pass matrix is:
+
+- **2 packet-type choices × 15 trailer-length choices = 30 variations**
+
+That is the useful number to keep in mind if testing is done systematically while holding the already-matched items fixed:
+
+- payload bytes
+- TX ID
+- bind count
+- sync-width choice
+- hop sequence
+- packet period
+
+If even that 30-case matrix fails, the next remaining variables are no longer the obvious configuration knobs but deeper waveform details such as exact Manchester polarity/timing, preamble shape, or other NRF24L01-vs-LT89xx RF behavior.
