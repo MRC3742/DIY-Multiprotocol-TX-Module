@@ -142,7 +142,7 @@ Full NRF:  50 00 88 44 CC 60 D5 3F B5 00 62 C6  (12 bytes)
 ```
 Original:  0A 00 00 20 20 20 20 20 20 C0
 Reversed:  50 00 00 04 04 04 04 04 04 03
-CRC:       A0 3D (bit-reversed from raw CRC 0xA03D)
+CRC raw:   0xA03D → bit-reversed bytes: 05 BC
 Full NRF:  50 00 00 04 04 04 04 04 04 03 05 BC  (12 bytes)
 ```
 
