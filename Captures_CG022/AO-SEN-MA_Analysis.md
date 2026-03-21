@@ -408,6 +408,18 @@ That matters because it means the failed bind in `70*` is **not** caused by the 
 
 The receiver-side comparison is the most important result from this test.
 
+Using **stock `52*`** as the behavior to replicate, the receiver-side SPI results for files `51*`, `52*`, and `70*` compare as follows:
+
+| Receiver-side check | `51*` RX-PowerOn-NoTX | `52*` RX-PowerOn-withTX-Bind (**target**) | `70*` RX-PowerOn_MPM_ForceID-Bind | Relative to `52*` |
+| --- | --- | --- | --- | --- |
+| Basic polling/search loop appears after startup | **Yes** — steady search loop only | **Yes** — same early polling before bind is accepted | **Yes** — same basic early polling loop is still present | `51*` = baseline only; `70*` = **partly correct** because the receiver is at least being perturbed on the right general schedule |
+| Short `PKT_flag` pulses below 10 ms | **0** | **581** short pulses, first at about **3.185052 s** | **0** | `51*` = **incorrect** for bind; `70*` = **incorrect**, because it never develops the stock accepted-packet pulse pattern |
+| Accepted FIFO-drain sequence (`0xB2` / `0xF2`) | **Absent** | **Present** first at about **2.934349 s** / **2.934464 s** | **Absent** (`0xB2` count = **0**) | `51*` = **incorrect**; `70*` = **incorrect** and still missing the key stock acceptance path |
+| Later active/bound-state families (`0xB3` / `0xBA`) | **Absent** | **Present** at about **3.325888 s** / **3.328927 s** | **Absent** (`0xBA` count = **0**) | `51*` = **incorrect**; `70*` = **incorrect**, because it never reaches the late bound-state behavior seen in stock |
+| Around the stock first-accept time near **2.934 s** | Still only search/polling traffic | Immediately starts draining accepted bytes: `0xB2 -> 0x0A 0x00`, `0xB2 -> 0x11 0x22`, `0xF2 -> 0x33 0x07`, `0xB2 -> 0x00 0xFB` | Still only status/polling traffic such as `0x90`, `0x98` | `70*` is **wrong at exactly the moment that matters most for bind** |
+| Around the stock late bound-state window near **3.312 s** to **3.329 s** | No transition at all | Already in accepted-data / `0xB3` / `0xBA` behavior | Still only housekeeping traffic such as `0xB0`, `0xF0`, `0x98`, `0x87`, `0x07` | `70*` remains **wrong late**, not just early |
+| Overall receiver verdict relative to stock bind | Receiver never sees valid bind traffic | **Correct target behavior**: bind is accepted and the receiver transitions into the later active/bound path | Receiver sees **enough** to alter polling/status mix, but never enough to accept a packet into FIFO | `70*` is **closer than `51*`**, but still **fundamentally incorrect** at the accepted-packet stage |
+
 With the **stock TX**, `52a` / `52b` show the receiver eventually entering the accepted-packet path:
 
 - `52b` first shows FIFO-drain reads `0xB2` / `0xF2` at about **2.934349 s** / **2.934464 s**
