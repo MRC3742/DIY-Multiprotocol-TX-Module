@@ -74,9 +74,9 @@
 //4-in-1 modules have the A7105, CYRF6936, CC2500 and NRF24L01 RF chips installed
 //5-in-1 modules have all RF chips installed
 //!!!If a RF chip is present it MUST be marked as installed!!! or weird things will happen you have been warned.
-#define A7105_INSTALLED
-#define CYRF6936_INSTALLED
-#define CC2500_INSTALLED
+//#define A7105_INSTALLED
+//#define CYRF6936_INSTALLED
+//#define CC2500_INSTALLED
 #define NRF24L01_INSTALLED
 //#define SX1276_INSTALLED		// only supported on STM32 modules
 
@@ -179,114 +179,114 @@
 
 //The protocols below need an A7105 to be installed
 #define	AFHDS2A_A7105_INO
-#define	AFHDS2A_RX_A7105_INO
-#define	BUGS_A7105_INO
-#define	FLYSKY_A7105_INO
-#define	HEIGHT_A7105_INO
-#define	HUBSAN_A7105_INO
-#define	JOYSWAY_A7105_INO
-#define	KYOSHO_A7105_INO
-#define	PELIKAN_A7105_INO
-#define	WFLY2_A7105_INO
+//#define	AFHDS2A_RX_A7105_INO
+//#define	BUGS_A7105_INO
+//#define	FLYSKY_A7105_INO
+//#define	HEIGHT_A7105_INO
+//#define	HUBSAN_A7105_INO
+//#define	JOYSWAY_A7105_INO
+//#define	KYOSHO_A7105_INO
+//#define	PELIKAN_A7105_INO
+//#define	WFLY2_A7105_INO
 
 //The protocols below need a CYRF6936 to be installed
-#define	DEVO_CYRF6936_INO
+//#define	DEVO_CYRF6936_INO
 #define	DSM_CYRF6936_INO
-#define	DSM_RX_CYRF6936_INO
-#define	E010R5_CYRF6936_INO
-#define	E01X_CYRF6936_INO
-#define	E129_CYRF6936_INO
-#define	J6PRO_CYRF6936_INO
-#define	KYOSHO3_CYRF6936_INO
-#define	LOSI_CYRF6936_INO		//Need DSM to be enabled
-#define	MLINK_CYRF6936_INO
-#define	SCORPIO_CYRF6936_INO
-#define	TRAXXAS_CYRF6936_INO
-#define	WFLY_CYRF6936_INO
-#define	WK2x01_CYRF6936_INO
+//#define	DSM_RX_CYRF6936_INO
+//#define	E010R5_CYRF6936_INO
+//#define	E01X_CYRF6936_INO
+//#define	E129_CYRF6936_INO
+//#define	J6PRO_CYRF6936_INO
+//#define	KYOSHO3_CYRF6936_INO
+//#define	LOSI_CYRF6936_INO		//Need DSM to be enabled
+//#define	MLINK_CYRF6936_INO
+//#define	SCORPIO_CYRF6936_INO
+//#define	TRAXXAS_CYRF6936_INO
+//#define	WFLY_CYRF6936_INO
+//#define	WK2x01_CYRF6936_INO
 
 //The protocols below need a CC2500 to be installed
-#define	CORONA_CC2500_INO
-#define	E016HV2_CC2500_INO
-#define	ESKY150V2_CC2500_INO
-#define	FRSKYL_CC2500_INO
-#define	FRSKYD_CC2500_INO
-#define	FRSKYV_CC2500_INO
+//#define	CORONA_CC2500_INO
+//#define	E016HV2_CC2500_INO
+//#define	ESKY150V2_CC2500_INO
+//#define	FRSKYL_CC2500_INO
+//#define	FRSKYD_CC2500_INO
+//#define	FRSKYV_CC2500_INO
 #define	FRSKYX_CC2500_INO		//Include FRSKYX2 protocol
-#define	FRSKY_RX_CC2500_INO
-#define	HITEC_CC2500_INO
-#define	HOTT_CC2500_INO
+//#define	FRSKY_RX_CC2500_INO
+//#define	HITEC_CC2500_INO
+//#define	HOTT_CC2500_INO
 //#define	IKEAANSLUTA_CC2500_INO  // This is mostly a "for-fun" kind of a thing, not needed for most users
-#define	SCANNER_CC2500_INO
-#define	FUTABA_CC2500_INO
-#define	SKYARTEC_CC2500_INO
-#define	REDPINE_CC2500_INO
-#define	RLINK_CC2500_INO
-#define	ARES_CC2500_INO
+//#define	SCANNER_CC2500_INO
+//#define	FUTABA_CC2500_INO
+//#define	SKYARTEC_CC2500_INO
+//#define	REDPINE_CC2500_INO
+//#define	RLINK_CC2500_INO
+//#define	ARES_CC2500_INO
 
 //The protocols below need a NRF24L01 to be installed
-#define	ASSAN_NRF24L01_INO
-#define	BAYANG_NRF24L01_INO
-#define	BAYANG_RX_NRF24L01_INO
-#define	BUGSMINI_NRF24L01_INO
-#define	CABELL_NRF24L01_INO
-#define	CFLIE_NRF24L01_INO
-#define	CG022_NRF24L01_INO
-#define	CG023_NRF24L01_INO
-#define	CX10_NRF24L01_INO		//Include Q2X2 protocol
-#define	DM002_NRF24L01_INO
-#define	E016H_NRF24L01_INO
-#define	EAZYRC_NRF24L01_INO
-#define	ESKY_NRF24L01_INO
-#define	ESKY150_NRF24L01_INO
-#define	FQ777_NRF24L01_INO
-#define	FX_NRF24L01_INO
-#define	FY326_NRF24L01_INO
-#define	GW008_NRF24L01_INO
-#define	H36_NRF24L01_INO
-#define	H8_3D_NRF24L01_INO
-#define	HISKY_NRF24L01_INO
-#define	HONTAI_NRF24L01_INO
-#define JIABAILE_NRF24L01_INO
-#define	JJRC345_NRF24L01_INO
-#define	KAMTOM_NRF24L01_INO
-#define	KN_NRF24L01_INO
-#define	KYOSHO2_NRF24L01_INO
-#define	LOLI_NRF24L01_INO
-#define	MOULDKG_NRF24L01_INO
-#define	NCC1701_NRF24L01_INO
-#define	POTENSIC_NRF24L01_INO
-#define	PROPEL_NRF24L01_INO
-#define	REALACC_NRF24L01_INO
-#define	SGF22_NRF24L01_INO
-#define	SHENQI_NRF24L01_INO
-#define	SHENQI2_NRF24L01_INO
-#define	SYMAX_NRF24L01_INO
-#define	V2X2_NRF24L01_INO
-#define	V761_NRF24L01_INO
-#define	WPL_NRF24L01_INO
-#define	XERALL_NRF24L01_INO
-#define	YD717_NRF24L01_INO
-#define	YUXIANG_NRF24L01_INO
-#define	ZSX_NRF24L01_INO
+//#define	ASSAN_NRF24L01_INO
+//#define	BAYANG_NRF24L01_INO
+//#define	BAYANG_RX_NRF24L01_INO
+//#define	BUGSMINI_NRF24L01_INO
+//#define	CABELL_NRF24L01_INO
+//#define	CFLIE_NRF24L01_INO
+//#define	CG022_NRF24L01_INO
+//#define	CG023_NRF24L01_INO
+//#define	CX10_NRF24L01_INO		//Include Q2X2 protocol
+//#define	DM002_NRF24L01_INO
+//#define	E016H_NRF24L01_INO
+//#define	EAZYRC_NRF24L01_INO
+//#define	ESKY_NRF24L01_INO
+//#define	ESKY150_NRF24L01_INO
+//#define	FQ777_NRF24L01_INO
+//#define	FX_NRF24L01_INO
+//#define	FY326_NRF24L01_INO
+//#define	GW008_NRF24L01_INO
+//#define	H36_NRF24L01_INO
+//#define	H8_3D_NRF24L01_INO
+//#define	HISKY_NRF24L01_INO
+//#define	HONTAI_NRF24L01_INO
+//#define JIABAILE_NRF24L01_INO
+//#define	JJRC345_NRF24L01_INO
+//#define	KAMTOM_NRF24L01_INO
+//#define	KN_NRF24L01_INO
+//#define	KYOSHO2_NRF24L01_INO
+//#define	LOLI_NRF24L01_INO
+//#define	MOULDKG_NRF24L01_INO
+//#define	NCC1701_NRF24L01_INO
+//#define	POTENSIC_NRF24L01_INO
+//#define	PROPEL_NRF24L01_INO
+//#define	REALACC_NRF24L01_INO
+//#define	SGF22_NRF24L01_INO
+//#define	SHENQI_NRF24L01_INO
+//#define	SHENQI2_NRF24L01_INO
+//#define	SYMAX_NRF24L01_INO
+//#define	V2X2_NRF24L01_INO
+//#define	V761_NRF24L01_INO
+//#define	WPL_NRF24L01_INO
+//#define	XERALL_NRF24L01_INO
+//#define	YD717_NRF24L01_INO
+//#define	YUXIANG_NRF24L01_INO
+//#define	ZSX_NRF24L01_INO
 
 //The protocols below need either a CC2500 or NRF24L01 to be installed
-#define	GD00X_CCNRF_INO
-#define	KF606_CCNRF_INO
-#define	MJXQ_CCNRF_INO
-#define	MT99XX_CCNRF_INO		//Include MT99XX2 protocol
-#define	OMP_CCNRF_INO
-#define	Q303_CCNRF_INO
-#define	Q90C_CCNRF_INO
-#define	SLT_CCNRF_INO
-#define	UDIRC_CCNRF_INO
-#define	V911S_CCNRF_INO
-#define	WL91X_CCNRF_INO
-#define	XK_CCNRF_INO
-#define	XK2_CCNRF_INO
+//#define	GD00X_CCNRF_INO
+//#define	KF606_CCNRF_INO
+//#define	MJXQ_CCNRF_INO
+//#define	MT99XX_CCNRF_INO		//Include MT99XX2 protocol
+//#define	OMP_CCNRF_INO
+//#define	Q303_CCNRF_INO
+//#define	Q90C_CCNRF_INO
+//#define	SLT_CCNRF_INO
+//#define	UDIRC_CCNRF_INO
+//#define	V911S_CCNRF_INO
+//#define	WL91X_CCNRF_INO
+//#define	XK_CCNRF_INO
+//#define	XK2_CCNRF_INO
 
 //The protocols below need a SX1276 to be installed
-#define	FRSKYR9_SX1276_INO
+//#define	FRSKYR9_SX1276_INO
 
 /***************************/
 /*** PROTOCOLS SETTINGS  ***/
@@ -457,7 +457,7 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 /*	3	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	1	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 1
 /*	4	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	2	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 2
 /*	5	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	3	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 3
-/*	6	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	2	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 4
+/*	6	*/	{PROTO_CG022,	CG022_STD	,	0	,	P_HIGH	,	AUTOBIND	,	0	,	0x00000000 },	// CG022/AO-SEN-MA quad
 /*	7	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	3	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 5
 /*	8	*/	{PROTO_FUTABA,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// option=fine freq tuning
 /*	9	*/	{PROTO_FRSKYV,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	40	,	0x00000000 },	// option=fine freq tuning
