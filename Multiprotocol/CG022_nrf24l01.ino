@@ -212,7 +212,7 @@ uint16_t CG022_callback()
 	if(bind_counter)
 	{
 		bind_counter--;
-		if (bind_counter == 0)
+		if(bind_counter == 0)
 		{
 			BIND_DONE;
 			// Switch to TX-ID-derived sync word for data phase.
