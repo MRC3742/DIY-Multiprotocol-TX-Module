@@ -477,6 +477,33 @@ These two new capture sets narrow the problem further:
 
 So after `70*` / `71*`, the most likely remaining blocker is still:
 
+in ranked order, the LT89xx emulation fields most likely still wrong for the specific failure mode
+
+- **receiver polling is perturbed**
+- but the receiver **never** promotes the packet into FIFO / accepted-packet handling
+
+are:
+
+1. **sync-word / preamble / correlator alignment on the air**
+   - This is the best fit for "the RX clearly notices something changed" while still never producing any `0xB2` FIFO-drain sequence.
+   - If the RF burst lands on the right channel with roughly the right timing, the receiver's polling / status cadence can still be perturbed.
+   - But if the LT89xx sync pattern, its bit order, or its exact correlation alignment is still wrong, the packet can be rejected before the receiver ever treats it as a valid FIFO candidate.
+2. **trailer / final-bit alignment / packet framing after the LT89xx length byte**
+   - This is the next most likely class because it can preserve a mostly correct packet body while still making the full OTA frame invalid.
+   - The captures already show that stock `52b` reaches accepted-packet reads while MPM `70b` never does, so a framing error late enough to keep the packet from closing cleanly is still a strong candidate.
+   - In practical terms this means the remaining bug could still be in the LT89xx-over-NRF24L01 framing details such as the inserted length byte, trailer-bit count, or the final bit shift into the NRF payload.
+3. **CRC acceptance as seen by the LT89xx receiver, not just the nominal CRC math**
+   - The polynomial and nominal bytes are already verified, so this ranks below sync/framing.
+   - But a CRC can still fail on the real OTA bitstream if the CRC input bits, byte order on the air, or the post-data trailer alignment differ from what the LT89xx receiver expects.
+   - This would also fit the observed failure mode: packets that are "close enough" to disturb receiver behavior, but never valid enough to enter the accepted FIFO path.
+4. **address / sync-field bit reversal or byte packing at the LT89xx boundary**
+   - This overlaps somewhat with item 1, but it is worth calling out separately because the repository already had one LT89xx byte-order bug in the CRC path.
+   - If payload bytes are now correct but the sync/address field is still packed or reversed incorrectly for OTA transmission, the receiver can remain stuck in pure polling / housekeeping traffic forever.
+5. **packet-type sequencing details that affect RF validity but not the logical bind payload**
+   - This includes lower-level transport details such as the exact duplicate-send pattern, TX completion timing, and possibly other LT89xx framing-state assumptions around repeated packets.
+   - These rank below the items above because `71b` shows the long-bind firmware is sending the intended burst pattern and `70b` still never reaches even the first accepted FIFO read.
+   - So these details still matter, but they are less likely than a fundamental correlator / framing / CRC-validity mismatch.
+
 - **bit-exact LT89xx emulation / OTA validity**
 - not TX ID selection
 - not bind duration
