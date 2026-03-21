@@ -338,6 +338,150 @@ In short:
 - the receiver still does **not** behave like it does with the stock TX
 - the failure is now much more likely to be a **bitstream-level LT89xx emulation problem** than a remaining bind-payload-content problem
 
+### Long-bind debug capture comparison from `70*` / `71*`
+
+The next test was to keep the MPM in forced-ID bind mode for about **3 seconds** and then compare:
+
+- **MPM TX SPI** from `71b-CG022_MPM_TX-ForceID-Bind.csv`
+- against **stock TX SPI** from `02b-CG022_TX-PowerOn-withRX-Bind.csv`
+
+and also:
+
+- **receiver-side SPI with long-bind MPM** from `70b-CG022_RX-PowerOn_MPM_ForceID-Bind.csv`
+- against **receiver-side SPI with stock TX** from `52b-CG022_RX-PowerOn-withTX-Bind.csv`
+
+That longer-bind debug build answers one specific question very clearly:
+
+- does the receiver start accepting packets if MPM keeps transmitting the forced-ID bind packet long enough?
+
+The answer from `70*` / `71*` is **no**.
+
+#### TX-side comparison: stock `02b` vs long-bind MPM `71b`
+
+A direct byte-for-byte SPI comparison is not possible because the buses are different:
+
+- `02b` is the **original transmitter MCU talking to its LT8910-compatible radio**
+- `71b` is the **MPM MCU talking to the NRF24L01** that is emulating LT89xx behavior
+
+So the useful comparison is at the **functional** level:
+
+- what packets are transmitted
+- how long bind lasts
+- whether the TX ever makes the bind-to-data transition
+
+From the earlier stock analysis, `02b` shows:
+
+- **166 bind packets**
+- then the LT8910 sync-related write changes register `0x24` from `0x2211` to `0xAB06`
+- then the first normal data packet follows immediately
+
+The new long-bind MPM trace `71b` shows the debug firmware doing exactly what it was supposed to do:
+
+- after the short startup/config sequence, the first regular bind burst starts at about **1.557768 s**
+- there are **1299** repeated bind bursts using the expected 8-channel NRF hop sequence:
+  - `0x02, 0x2A, 0x0C, 0x34, 0x16, 0x3E, 0x20, 0x48`
+  - i.e. decimal **2, 42, 12, 52, 22, 62, 32, 72**
+- those bind bursts continue until about **4.556945 s**
+- the first data-mode burst appears at about **4.559260 s**
+
+So the effective MPM bind-only transmission window is about:
+
+- **4.559260 s - 1.557768 s = 3.00149 s**
+
+which matches the intended debug behavior.
+
+The `71b` trace also shows that MPM is **not** getting stuck in bind forever:
+
+- the repeated bind payload occupies **1299** transmitted bursts
+- then the transmitted payload changes to the normal idle/control-packet form
+- the remaining **840** bursts in the capture stay in data mode
+
+In other words, the new firmware is doing the requested experiment correctly:
+
+- **force original TX ID**
+- **transmit bind for about 3 seconds**
+- **then switch to data mode**
+
+That matters because it means the failed bind in `70*` is **not** caused by the old short 166-packet bind timeout anymore.
+
+#### Receiver-side comparison: stock `52*` vs long-bind MPM `70*`
+
+The receiver-side comparison is the most important result from this test.
+
+With the **stock TX**, `52a` / `52b` show the receiver eventually entering the accepted-packet path:
+
+- `52b` first shows FIFO-drain reads `0xB2` / `0xF2` at about **2.934349 s** / **2.934464 s**
+- `52b` later shows the bound/active-state families `0xB3` / `0xBA` at about **3.325888 s** / **3.328927 s**
+- `52a` shows **581** short `PKT_flag` low pulses below **10 ms**
+  - first short pulse starts at about **3.185052 s**
+
+With the **long-bind MPM firmware**, `70a` / `70b` still do **not** show that stock accepted-packet behavior:
+
+- `70a` contains **196** `PKT_flag` low pulses
+- `70a` contains **0** short `PKT_flag` pulses below **10 ms**
+- `70b` contains **0** `0xB2` FIFO-read transactions anywhere in the capture
+- `70b` contains **0** `0xBA` transactions anywhere in the capture
+
+There are a few isolated raw `0xF2` and `0xB3` bytes in `70b`, but they do **not** form the same stock accepted-packet sequences seen in `52b`, and they do **not** coincide with any receiver transition into the later active/bound state.
+
+Around the exact time where stock `52b` first starts draining accepted packets, the difference is stark:
+
+- stock `52b` at about **2.934 s** immediately begins:
+  - `0xB2 FF FF -> 0x0A 0x00`
+  - `0xB2 FF FF -> 0x11 0x22`
+  - `0xF2 FF FF -> 0x33 0x07`
+  - `0xB2 FF FF -> 0x00 0xFB`
+- long-bind MPM `70b` at the same time region shows only status/polling traffic such as:
+  - `0x90 FF FF`
+  - `0x98 FF FF`
+
+And around the later stock active-state window near **3.312 s** to **3.329 s**:
+
+- stock `52b` is already reading accepted data and then entering the `0xB3` / `0xBA` families
+- long-bind MPM `70b` still shows only polling / housekeeping traffic such as:
+  - `0xB0`
+  - `0xF0`
+  - `0x98`
+  - `0x87`
+  - `0x07`
+
+but never the stock receiver's accepted-packet flow.
+
+#### What changed vs the earlier forced-ID-only `53*` test
+
+The longer-bind firmware does change the receiver-side trace somewhat:
+
+- `70b` shows a noticeably different polling/status mix than `53b`
+- in particular, `70b` has many more `0x98` / `0xF0` style status bursts than the earlier forced-ID-only capture
+
+So extending bind to ~3 seconds is **not invisible** to the receiver.
+
+But the important thing is what still does **not** happen:
+
+- no receiver FIFO-drain sequence like stock `52b`
+- no short `PKT_flag` pulses like stock `52a`
+- no transition into the late active/bound state
+
+So the longer bind window changes the receiver's polling behavior, but it still does **not** make the receiver treat the MPM packets as valid bind packets.
+
+#### Conclusion from `70*` / `71*`
+
+These two new capture sets narrow the problem further:
+
+1. `71b` proves the new debug firmware is actually doing the requested test:
+   - original forced TX ID
+   - about **3 seconds** of bind packets
+   - then a clean change into data mode
+2. `70b` proves the receiver still never reaches the stock accepted-packet path while that long bind is being transmitted
+3. therefore the remaining bind failure is **not** just that MPM was previously leaving bind too early
+
+So after `70*` / `71*`, the most likely remaining blocker is still:
+
+- **bit-exact LT89xx emulation / OTA validity**
+- not TX ID selection
+- not bind duration
+- and not simply the lack of a long enough bind retry window
+
 ## Best emulation choice in this repository
 
 ### Recommended: NRF24L01
