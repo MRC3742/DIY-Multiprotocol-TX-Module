@@ -72,20 +72,19 @@ entire 6.3-second capture, confirming the receiver did not detect any
 valid packets from the MPM module (the stock TX produces ~1690 FIFO reads
 in the same time window when binding succeeds).
 
-## Root Cause: Protocol Selection
+## Root Cause: Protocol Not Compiled
 
 CG022 is registered as protocol number **109** in the multiprotocol
-firmware. The protocol must be correctly selected on the radio/transmitter.
+firmware. The original firmware build was missing `#define CG022_NRF24L01_INO`
+in `_Config.h`, which meant the CG022 protocol code was not compiled into
+the firmware binary. Without this define, the protocol does not appear in
+the module's protocol table and cannot be selected.
 
-### If Using PPM Mode (Rotary Switch)
+### Fix Applied
 
-CG022 was **not included** in the default PPM protocol table in
-`_Config.h`. The PPM table only has 14 positions, and CG022 was not
-assigned to any of them. This has now been fixed — CG022 is assigned to
-PPM **switch position 6** (replacing a duplicate AFHDS2A entry).
-
-After rebuilding and reflashing with the updated `_Config.h`, set the
-rotary switch to position 6 to select CG022.
+Added `#define CG022_NRF24L01_INO` to `_Config.h` (alongside the other
+NRF24L01 protocol defines). After rebuilding and reflashing the firmware,
+CG022 will appear in the protocol list.
 
 ### If Using Serial Mode (OpenTX/EdgeTX)
 
@@ -94,11 +93,13 @@ The module advertises CG022 in its protocol table. In your radio:
 2. Select "Multi" as the module type
 3. Scroll the protocol list and look for **"CG022"**
 4. Sub-protocol should be **"Std"**
-5. The module will auto-bind (CG022 uses autobind)
+5. Press the Bind button — CG022 uses autobind and will send 166 bind
+   packets (~0.38 seconds) before switching to data mode
+6. Power cycle the receiver within the bind window
 
 If "CG022" does not appear in the protocol list:
 - Ensure you rebuilt the firmware with `CG022_NRF24L01_INO` defined in
-  `_Config.h` (line 234) — it is enabled by default.
+  `_Config.h` — it must be uncommented/present.
 - Reflash the multiprotocol module with the updated firmware.
 - On some radios, you may need to re-scan the module's protocol list.
 
@@ -176,12 +177,12 @@ Channel 7: RF_CH = 0x48 (72)   → 2472 MHz
 ## Recommended Next Steps
 
 1. **Rebuild and reflash** the multiprotocol module firmware using the
-   latest code from this branch (which now includes CG022 in PPM
-   position 6).
+   latest code from this branch (which now includes `#define CG022_NRF24L01_INO`
+   in `_Config.h`).
 
 2. **Select CG022** on your radio:
-   - PPM mode: rotary switch position 6
    - Serial mode: select "CG022" / "Std" in the protocol list
+   - Press "Bind" in the radio to start the bind sequence
 
 3. **Verify with SPI capture** (optional): Take a new capture and confirm
    the NRF24L01 TX_ADDR is `[AA 88 44 55 55]` and the first RF_CH is

@@ -206,9 +206,13 @@ static void __attribute__((unused)) CG022_RF_init()
 
 uint16_t CG022_callback()
 {
-	if(IS_BIND_IN_PROGRESS)
+	#ifdef MULTI_SYNC
+		telemetry_set_input_sync(CG022_PACKET_PERIOD);
+	#endif
+	if(bind_counter)
 	{
-		if(bind_counter == 0)
+		bind_counter--;
+		if (bind_counter == 0)
 		{
 			BIND_DONE;
 			// Switch to TX-ID-derived sync word for data phase.
@@ -216,8 +220,6 @@ uint16_t CG022_callback()
 			// The receiver expects data packets on this new sync word.
 			CG022_set_data_sync();
 		}
-		else
-			bind_counter--;
 	}
 	CG022_send_packet();
 	return CG022_PACKET_PERIOD;

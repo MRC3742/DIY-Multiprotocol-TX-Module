@@ -457,7 +457,7 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 /*	3	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	1	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 1
 /*	4	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	2	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 2
 /*	5	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	3	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 3
-/*	6	*/	{PROTO_CG022,	CG022_STD	,	0	,	P_HIGH	,	AUTOBIND	,	0	,	0x00000000 },	// CG022/AO-SEN-MA quad
+/*	6	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	2	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 4
 /*	7	*/	{PROTO_AFHDS2A,	PWM_IBUS	,	3	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// RX number 5
 /*	8	*/	{PROTO_FUTABA,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	0	,	0x00000000 },	// option=fine freq tuning
 /*	9	*/	{PROTO_FRSKYV,	NONE		,	0	,	P_HIGH	,	NO_AUTOBIND	,	40	,	0x00000000 },	// option=fine freq tuning
@@ -599,8 +599,6 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 		CABELL_UNBIND
 	PROTO_CFLIE
 		NONE
-	PROTO_CG022
-		CG022_STD
 	PROTO_CG023
 		CG023
 		YD829
