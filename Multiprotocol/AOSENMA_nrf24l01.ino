@@ -18,7 +18,7 @@
 #include "iface_nrf24l01.h"
 
 #define AOSENMA_PACKET_PERIOD	2310
-#define AOSENMA_BIND_COUNT		1299
+#define AOSENMA_BIND_COUNT		1299	// Extended debug bind window: 1299 * 2310 us = about 3.0 s for capture-driven RX acceptance testing
 #define AOSENMA_PACKET_SIZE		9
 #define AOSENMA_CHECKSUM_START	1
 #define AOSENMA_CHECKSUM_END	8
@@ -26,7 +26,7 @@
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
-#define AOSENMA_CG022_FORCE_ID	// Original CG022 TX ID from analyzed captures: 11 22 33 06 AB
+#define AOSENMA_CG022_FORCE_ID	// Debug build: force the original CG022 TX ID (11 22 33 06 AB) for stock-vs-MPM capture comparison
 
 const uint8_t PROGMEM AOSENMA_hopping[] = { 0, 40, 10, 50, 20, 60, 30, 70 };	// Same 8-channel cycle as 10/50/20/60/30/70/0/40, reordered so the array starts at the power-on bind entry point (0)
 const uint8_t PROGMEM AOSENMA_bind_tail[] = { 0x07, 0x00, 0xFB, 0x02, 0x00 };	// fills packet[4..8]; LT8900_WritePayload prepends the LT89xx length byte on-air
