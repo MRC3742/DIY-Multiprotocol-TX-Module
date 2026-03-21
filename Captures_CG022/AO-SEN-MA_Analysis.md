@@ -68,6 +68,20 @@ From `02b-CG022_TX-PowerOn-withRX-Bind.csv`:
 - one captured transition is:
   - register `0x24` changes from `0x2211` to `0xAB06`
 
+### TX-only bind persistence from `01b`
+
+`01b-CG022_TX-PowerOn-NoRX.csv` shows the same bind-to-data handoff even when **no receiver is powered on**:
+
+- the trace contains **1101** transmitted packets over about **3.129 s**
+- packets **1..166** all carry the bind payload:
+  - `0A 00 11 22 33 06 AB FC AD 00`
+- at about **0.969762 s**, the transmitter again rewrites register `0x24` from `0x2211` to `0xAB06`
+- packet **167** at about **0.971638 s** is already a normal data packet:
+  - `0A 00 00 20 20 20 20 20 20 C0`
+- the remaining **935** packets in the capture stay in that data-packet mode; the transmitter does **not** return to the earlier bind payload during the rest of the capture
+
+So the original TX does **not** keep retrying bind indefinitely if no RX is present. It sends the original **166-packet bind burst**, then commits to normal data transmission anyway.
+
 ### Normal data packet shape
 
 A centered control packet appears as:
@@ -125,6 +139,34 @@ In other words:
 - the receiver traces do **not** support the earlier idea that a missing bidirectional bind handshake is the main problem
 
 That bind-tail discrepancy was therefore the most likely reason the earlier MPM branch still would not bind/fly even though its later data packets were much closer to what the receiver accepts.
+
+### RX no-TX state behavior from `51a` / `51b`
+
+The no-transmitter receiver capture is now specific enough to answer whether the RX gives up on bind by itself.
+
+After the initial power-on configuration writes, `51a-CG022_RX-PowerOn-NoTX.csv` / `51b-CG022_RX-PowerOn-NoTX.csv` settle into a **steady polling/search loop** and stay there for the full capture:
+
+- capture length is about **3.144 s**
+- after the startup sequence, `51a` shows **98** `PKT_flag` low pulses
+- excluding the very first long startup pulse, every low pulse is about **30.764 ms** to **30.772 ms**
+- `51a` shows **0** short `PKT_flag` pulses below **10 ms**
+- `51b` shows repeated polling/status traffic such as:
+  - **1191** first-byte `0xB0` transactions
+  - **264** first-byte `0x07` transactions
+  - **164** first-byte `0x87` transactions
+- but `51b` shows **no** accepted-packet families at all:
+  - **0** first-byte `0xB2`
+  - **0** first-byte `0xF2`
+  - **0** first-byte `0xB3`
+  - **0** first-byte `0xBA`
+
+Compared with `52a` / `52b`:
+
+- stock-with-TX `52a` develops **581** short `PKT_flag` pulses below **10 ms**, first appearing at about **3.185052 s**
+- stock-with-TX `52b` first shows the accepted-packet families `0xB2` / `0xF2` at about **2.934 s**
+- no such late transition appears anywhere in the `51*` no-TX capture
+
+So the receiver **does** change from startup/configuration into a stable listen/search state shortly after power-on, but within the full **3.144 s** no-TX capture it does **not** switch into any different later autonomous state. It simply keeps looking for valid bind traffic.
 
 ### Receiver-side bind-to-data sync transition findings from `52b`
 
