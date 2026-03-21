@@ -404,6 +404,19 @@ In other words, the new firmware is doing the requested experiment correctly:
 
 That matters because it means the failed bind in `70*` is **not** caused by the old short 166-packet bind timeout anymore.
 
+Using **stock `02*`** as the behavior to replicate, the TX-side SPI results for files `01*`, `02*`, and `71*` compare as follows:
+
+| TX-side check | `01*` TX-PowerOn-NoRX | `02*` TX-PowerOn-withRX-Bind (**target**) | `71*` MPM_TX-ForceID-Bind | Relative to `02*` |
+| --- | --- | --- | --- | --- |
+| Bind payload shape | **Present** — packets `1..166` carry `0A 00 11 22 33 06 AB FC AD 00` | **Present** — stock bind payload to replicate | **Present** — repeated bind bursts use the expected forced-ID bind payload model | `01*` = **correct**; `71*` = **correct** at the functional bind-payload level |
+| Bind duration before switching to data | **166 packets** | **166 packets** | **1299** bind bursts over about **3.00149 s** | `01*` = **correct** match to stock; `71*` = **intentionally different** for debug, so **not matching** `02*` timing even though the longer bind experiment itself worked as designed |
+| Bind-to-data transition occurs | **Yes** | **Yes** | **Yes** | `01*` = **correct**; `71*` = **correct** in principle because MPM still exits bind cleanly instead of getting stuck |
+| Sync-related handoff at transition | Register `0x24` rewrites from `0x2211` to `0xAB06` at about **0.969762 s** | Register `0x24` rewrites from `0x2211` to `0xAB06` immediately after bind | Functional equivalent handoff is present: bind bursts stop and data bursts begin at about **4.559260 s** | `01*` = **correct** direct stock match; `71*` = **functionally correct**, though not byte-for-byte comparable because the radio bus is NRF24L01 emulating LT89xx |
+| First data packet after bind | Packet **167** is already normal data: `0A 00 00 20 20 20 20 20 20 C0` | First normal data packet follows immediately after the bind phase | First data-mode burst appears immediately after the long bind window, at about **4.559260 s** | `01*` = **correct**; `71*` = **correct** at the handoff level |
+| Stays in data mode after transition | **Yes** — remaining **935** packets stay in data mode | **Yes** — stock TX commits to data mode | **Yes** — remaining **840** bursts stay in data mode | `01*` = **correct**; `71*` = **correct** |
+| Dependence on RX presence for the TX-side handoff | **No RX present**, but TX still performs the full stock handoff | **RX present**, but the TX-side handoff behavior is the same | MPM also completes its programmed handoff without needing receiver-side feedback | `01*` = **correct evidence** that stock handoff is self-timed; `71*` = **correct evidence** that current failure is not “MPM stuck in bind forever” |
+| Overall TX-side verdict relative to stock bind | **Essentially the same stock TX behavior as `02*`** | **Correct target behavior** to replicate | **Functionally correct experiment**, but **not a timing match** to `02*` because bind was intentionally extended from 166 packets to ~3 s | `71*` is **good evidence that TX-side bind/data sequencing works**, but it is **not** a strict stock-timing match to `02*` |
+
 #### Receiver-side comparison: stock `52*` vs long-bind MPM `70*`
 
 The receiver-side comparison is the most important result from this test.
