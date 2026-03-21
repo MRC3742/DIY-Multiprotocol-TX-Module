@@ -24,6 +24,7 @@
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
+#define AOSENMA_LT8900_TRAILER_LEN	7	// First framing experiment: shift payload start 1 bit earlier than the old 8-bit trailer
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
 #define AOSENMA_CG022_FORCE_ID	// Debug build: force the original CG022 TX ID (11 22 33 06 AB) for stock-vs-MPM capture comparison
@@ -46,7 +47,7 @@ static void __attribute__((unused)) AOSENMA_set_data_sync()
 static void __attribute__((unused)) AOSENMA_RF_init()
 {
 	NRF24L01_Initialize();
-	LT8900_Config(4, 8, AOSENMA_LT8900_FLAGS, 0xAA);
+	LT8900_Config(4, AOSENMA_LT8900_TRAILER_LEN, AOSENMA_LT8900_FLAGS, 0xAA);
 	AOSENMA_set_bind_sync();
 	LT8900_SetChannel(pgm_read_byte_near(&AOSENMA_hopping[0]));
 	LT8900_SetTxRxMode(TX_EN);
