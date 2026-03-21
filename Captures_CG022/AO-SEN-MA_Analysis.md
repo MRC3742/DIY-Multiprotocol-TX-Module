@@ -219,6 +219,34 @@ That comparison rules out several earlier suspects and narrows the remaining pro
 
 So the forced-ID MPM signal is not completely invisible to the receiver. The receiver is still running through roughly the same polling cadence and timing windows as it does with the stock TX.
 
+### Requested next firmware experiment
+
+Given the receiver-side baseline above:
+
+- `51*` shows the RX can stay in a pure polling/search loop for at least **3.144 s** when no valid transmitter is present
+- stock `01b` shows the original TX stops bind after only **166 packets** (about **0.383 s**) even with no RX present
+
+the next practical experiment is to deliberately deviate from the stock transmitter timing and see whether the receiver will accept a **much longer bind-only transmission window** from MPM.
+
+The current test branch therefore makes two intentional firmware changes for capture-driven debugging:
+
+1. **always force the original stock TX ID**
+   - `11 22 33 06 AB`
+2. **keep sending bind packets for about 3 seconds**
+   - `AOSENMA_PACKET_PERIOD = 2310 us`
+   - `AOSENMA_BIND_COUNT = 1299`
+   - effective bind duration ≈ **3.00069 s**
+
+This is not meant to model the stock TX more closely. It is a targeted debug build intended to answer a different question:
+
+- if the receiver is still polling for a valid bind after power-on, will it finally enter the accepted-packet path if MPM keeps transmitting the bind packet and stock TX ID long enough for the receiver to latch onto it?
+
+The imported `51*`, `52*`, and `53*` captures in this directory provide the receiver-side baseline for comparing that longer-bind firmware against both:
+
+- **no TX present**
+- **stock TX present**
+- **earlier forced-ID MPM present**
+
 #### What is missing in `53b`
 
 The important difference is that `53b` never shows the same **accepted-packet / later bound-state SPI activity** that appears in the stock trace.
