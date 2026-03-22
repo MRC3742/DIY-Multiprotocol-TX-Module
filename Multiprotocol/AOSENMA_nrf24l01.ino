@@ -24,8 +24,8 @@
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
-#define AOSENMA_LT8900_PREAMBLE_LEN	8	// 82b is the best preamble=8/10/12 result so far, so keep preamble fixed there
-#define AOSENMA_LT8900_TRAILER_LEN	9	// Next test steps the trailer one bit past the 82b baseline to keep probing final-bit alignment
+#define AOSENMA_LT8900_PREAMBLE_LEN	9	// 82b remains the strongest point, so the next step is a fine preamble check just above that 8-bit peak
+#define AOSENMA_LT8900_TRAILER_LEN	8	// The 88/90/92 trailer sweep regressed from 82b, so return to the best trailer=8 baseline
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
 #define AOSENMA_CG022_FORCE_ID	// Debug build: force the original CG022 TX ID (11 22 33 06 AB) for stock-vs-MPM capture comparison

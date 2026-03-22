@@ -608,6 +608,67 @@ If batching more than one user-side test, the most efficient next batch is:
 
 That keeps the current best correlator setting and spends the next captures on the most likely remaining OTA framing variable instead of re-testing larger preambles that already regressed in `84b` and `86b`.
 
+#### Update from the `88b` / `90b` / `92b` trailer sweep with preamble=`8`
+
+The new receiver-side captures
+
+- `88b-CG022_RX-PowerOn_MPM_FrameTest_Pre8_Tra9-Bind.csv`
+- `90b-CG022_RX-PowerOn_MPM_FrameTest_Pre8_Tra10-Bind.csv`
+- `92b-CG022_RX-PowerOn_MPM_FrameTest_Pre8_Tra11-Bind.csv`
+
+confirm that the trailer sweep is also being seen in receiver SPI, but they **do not beat** the earlier `82b` baseline.
+
+Compared with the current best `82b` framing (`preamble=8`, `trailer=8`):
+
+- `88b` regresses sharply:
+  - raw `0xB2` drops from **7** in `82b` to **1**
+  - that lone `0xB2` does not appear until about **5.368447 s**
+  - raw `0xF2` rises to **7**, which again looks like more search / partial-reaction activity than accepted-packet progress
+- `90b` is the strongest of the new trailer sweep, but still worse than `82b`:
+  - raw `0xB2` is only **2**
+  - first raw `0xB2` is about **0.798019 s**, still later than the **0.467988 s** seen in `82b`
+  - raw `0xB3` rises to **7**, showing the receiver definitely notices the framing change, but not in the same useful way as the `82b` `0xB2` burst
+- `92b` also regresses:
+  - raw `0xB2` falls to **1**
+  - first raw `0xB2` is delayed to about **2.086669 s**
+- none of `88b`, `90b`, or `92b` shows any `0xBA` transactions
+- none reaches the stock accepted FIFO-drain path around **2.934 s**
+
+The detailed counts line up with the same conclusion:
+
+| Capture | Framing under test | raw `0xB2` count | first raw `0xB2` | raw `0xB3` count | raw `0xF2` count | `0xBA` count | Verdict |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `82b` | preamble=`8`, trailer=`8` | 7 | 0.467988 s | 3 | 4 | 0 | **best current result** |
+| `88b` | preamble=`8`, trailer=`9` | 1 | 5.368447 s | 3 | 7 | 0 | regresses strongly |
+| `90b` | preamble=`8`, trailer=`10` | 2 | 0.798019 s | 7 | 3 | 0 | visible change, but still worse than `82b` |
+| `92b` | preamble=`8`, trailer=`11` | 1 | 2.086669 s | 4 | 3 | 0 | regresses |
+
+So this trailer sweep answers the next framing question cleanly:
+
+1. the RX **is** seeing the trailer changes
+2. moving the trailer **above 8** does **not** improve binding progress
+3. the best-known framing point is still **preamble=`8`, trailer=`8`**
+
+That means the next lowest-risk follow-up is now:
+
+1. restore the best trailer setting: **trailer=`8`**
+2. keep the LT89xx flags unchanged
+3. do a **fine preamble sweep around the `82b` peak** instead of continuing the now-unhelpful higher trailer sweep
+
+For the next single firmware build, the most sensible adjacent step is:
+
+- **preamble=`9`**
+- **trailer=`8`**
+
+because `82b` is already much better than `80b`, while `84b` shows that jumping all the way to `10` overshoots. Testing `9` is the smallest unexplored move around the current best point.
+
+If batching more than one user-side test, the most efficient next batch is:
+
+- keep **trailer=`8`** fixed
+- sweep **preamble=`7`**, **`9`**, and optionally **`8`** again as a local control
+
+That spends the next captures on the remaining nearby correlator alignment space around the `82b` peak instead of pushing farther in a trailer direction that already regressed in `88b`, `90b`, and `92b`.
+
 - **bit-exact LT89xx emulation / OTA validity**
 - not TX ID selection
 - not bind duration
