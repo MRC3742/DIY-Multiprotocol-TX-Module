@@ -27,6 +27,15 @@
 //   - CRC bytes on-air are LSBit-first (bit-reversed) like data bytes
 //   - Stock TX→RX (52b) produces 1690 FIFO reads; MPM→RX (53b) produces 0
 //   - CRC byte bit-reversal fix applied in LT8900 emulation layer
+//
+// NRF24L01 ↔ LT8900 compatibility notes (from captures 60-62, 72-98):
+//   - Preamble extended from stock 3 bytes to 4: NRF24L01's 1-byte hardware
+//     preamble is less effective for LT8910 correlator lock due to GFSK
+//     deviation mismatch (NRF ±160 kHz vs LT8900 ±96 kHz). The extra byte
+//     provides additional synchronization margin (matches working SHENQI).
+//   - TX power forced to maximum during bind: stock LT8900 TX uses full
+//     power from the first packet; standard MPM bind power (-18 dBm) is
+//     insufficient for the LT8910 receiver's narrower demodulator bandwidth.
 
 #if defined(CG022_NRF24L01_INO)
 
@@ -37,7 +46,7 @@
 	#define LT8900_CRC_ON 6
 #endif
 
-//#define FORCE_CG022_ORIGINAL_ID
+#define FORCE_CG022_ORIGINAL_ID
 
 // Protocol constants derived from SPI capture analysis
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
@@ -178,8 +187,24 @@ static void __attribute__((unused)) CG022_send_packet()
 	if(hopping_frequency_no >= CG022_NUM_CHANNELS)
 		hopping_frequency_no = 0;
 
-	// Set power
-	NRF24L01_SetPower();
+	// Set power — CG022 needs full TX power during bind.
+	// The stock LT8900 TX uses full power from the first bind packet, and the
+	// LT8910 receiver has reduced sensitivity to the NRF24L01's wider GFSK
+	// deviation (±160 kHz vs LT8900's ±96 kHz at 1 Mbps).  Using the standard
+	// NRF_BIND_POWER (-18 dBm) is 18 dB below the stock TX and insufficient
+	// for the LT8910 correlator to reliably lock onto the NRF24L01 signal.
+	if(IS_BIND_IN_PROGRESS)
+	{
+		if(prev_power != NRF_POWER_3)
+		{
+			uint8_t val = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
+			val = (val & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
+			NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, val);
+			prev_power = NRF_POWER_3;
+		}
+	}
+	else
+		NRF24L01_SetPower();
 }
 
 static void __attribute__((unused)) CG022_RF_init()
@@ -190,11 +215,16 @@ static void __attribute__((unused)) CG022_RF_init()
 	crc16_polynomial = 0x8005;
 
 	// Configure LT8900 emulation layer from register 0x20 = 0x4800:
-	// Preamble: 3 bytes (bits 15:13 = 010, value+1), Trailer: 8 bits (bits 12:8 = 01000)
+	// Stock LT8900 uses 3-byte preamble (R20 bits 15:13 = 010, value+1),
+	// but we use 4 bytes to compensate for the NRF24L01 hardware preamble
+	// byte being less effective for the LT8910 correlator (GFSK deviation
+	// mismatch between NRF24L01 ±160 kHz and LT8900 ±96 kHz at 1 Mbps).
+	// The SHENQI protocol also uses 4-byte preamble for LT8900 emulation.
+	// Trailer: 8 bits (R20 bits 12:8 = 01000)
 	// SyncWord: 2 bytes (bits 7:6 = 00), PACKET_LENGTH_EN: OFF (bit 5 = 0)
 	// CRC enabled, NRZ encoding
 	// CRC init from register 0x28 = 0x4402
-	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
+	LT8900_Config(4, 8, _BV(LT8900_CRC_ON), 0x4402);
 
 	// Set 2-byte bind sync word from register 0x24 = 0x2211
 	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
