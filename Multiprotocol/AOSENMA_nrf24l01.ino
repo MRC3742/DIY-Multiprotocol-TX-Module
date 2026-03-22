@@ -24,8 +24,8 @@
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
-#define AOSENMA_LT8900_PREAMBLE_LEN	6	// Keep the improved 6-byte preamble while testing the next adjacent LT89xx framing alignment
-#define AOSENMA_LT8900_TRAILER_LEN	8	// Next capture-driven framing test: try a byte-aligned trailer boundary after the preamble_len=6 capture still only partially correlated
+#define AOSENMA_LT8900_PREAMBLE_LEN	8	// 80b confirms trailer_len=8 perturbs RX SPI in the expected direction; next test increases preamble length while keeping that improved byte-aligned trailer
+#define AOSENMA_LT8900_TRAILER_LEN	8	// Keep the byte-aligned trailer from the 80b framing test while sweeping the remaining correlator/preamble alignment
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
 #define AOSENMA_CG022_FORCE_ID	// Debug build: force the original CG022 TX ID (11 22 33 06 AB) for stock-vs-MPM capture comparison

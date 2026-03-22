@@ -529,6 +529,29 @@ are:
    - These rank below the items above because `71b` shows the long-bind firmware is sending the intended burst pattern and `70b` still never reaches even the first accepted FIFO read.
    - So these details still matter, but they are less likely than a fundamental correlator / framing / CRC-validity mismatch.
 
+#### Update from the `80b` trailer=`8` framing test
+
+The new receiver-side capture `80b-CG022_RX-PowerOn_MPM_FrameTest_Pre6_Tra8-Bind.csv` confirms that the byte-aligned trailer change is being seen on the RX side, but it still does **not** complete a bind.
+
+Compared with the earlier `78b` preamble=`6`, trailer=`7` capture:
+
+- `80b` still shows **no** `0xBA` transactions anywhere in the capture, so it still never reaches the late stock bound-state family.
+- `80b` still does **not** show the stock accepted FIFO-drain sequence around **2.934 s** seen in `52b`.
+- But `80b` does show a stronger partial response than `78b`:
+  - raw `0xB2` bytes remain present (**2** in `80b`, same as `78b`), but the first one moves much earlier to about **1.561885 s** instead of about **3.263369 s**
+  - raw `0xB3` bytes increase from **4** in `78b` to **6** in `80b`
+  - the first raw `0xB3` byte now appears much earlier at about **0.544331 s** instead of about **3.008942 s**
+
+So trailer=`8` looks like a **real framing change that the receiver notices**, not a no-op. It improves the "receiver is being perturbed by something closer-to-valid" evidence, but it still does not produce the stock FIFO acceptance path.
+
+That makes the next lowest-risk follow-up:
+
+1. keep **trailer length = 8**
+2. keep the other LT89xx flags unchanged
+3. increase **preamble length** from **6** to **8** for the next capture-driven sweep
+
+If that still only produces partial `0xB2` / `0xB3` progress, the most efficient user-side batch after that would be additional preamble sweeps at **10** and **12** while leaving trailer=`8` fixed, because `80b` suggests the remaining blocker is still in correlator/preamble alignment rather than the already-improved trailer boundary.
+
 - **bit-exact LT89xx emulation / OTA validity**
 - not TX ID selection
 - not bind duration
