@@ -35,13 +35,13 @@ const uint8_t PROGMEM AOSENMA_bind_tail[] = { 0x07, 0x00, 0xFB, 0x02, 0x00 };	//
 
 static void __attribute__((unused)) AOSENMA_set_bind_sync()
 {
-	uint8_t bind_sync[] = { rx_tx_addr[0], rx_tx_addr[1], rx_tx_addr[2] };
+	uint8_t bind_sync[] = { rx_tx_addr[2], rx_tx_addr[1], rx_tx_addr[0] };	// Experimental next step: feed LT8900_SetAddress() in reverse so the emitted sync bytes stay in TX-ID order after its internal address reversal
 	LT8900_SetAddress(bind_sync, 3);
 }
 
 static void __attribute__((unused)) AOSENMA_set_data_sync()
 {
-	uint8_t data_sync[] = { rx_tx_addr[3], rx_tx_addr[4], AOSENMA_DATA_SYNC_BYTE };
+	uint8_t data_sync[] = { AOSENMA_DATA_SYNC_BYTE, rx_tx_addr[4], rx_tx_addr[3] };	// Match bind-sync experiment for the post-bind { txid[3], txid[4], 0xFC } transition
 	LT8900_SetAddress(data_sync, 3);
 }
 
