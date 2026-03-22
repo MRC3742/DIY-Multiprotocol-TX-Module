@@ -552,6 +552,62 @@ That makes the next lowest-risk follow-up:
 
 If that still only produces partial `0xB2` / `0xB3` progress, the most efficient user-side batch after that would be additional preamble sweeps at **10** and **12** while leaving trailer=`8` fixed, because `80b` suggests the remaining blocker is still in correlator/preamble alignment rather than the already-improved trailer boundary.
 
+#### Update from the `82b` / `84b` / `86b` preamble sweep with trailer=`8`
+
+The new receiver-side captures
+
+- `82b-CG022_RX-PowerOn_MPM_FrameTest_Pre8_Tra8-Bind.csv`
+- `84b-CG022_RX-PowerOn_MPM_FrameTest_Pre10_Tra8-Bind.csv`
+- `86b-CG022_RX-PowerOn_MPM_FrameTest_Pre12_Tra8-Bind.csv`
+
+show that the preamble sweep is definitely visible in receiver SPI, and that **preamble=`8`** is the strongest result of the three.
+
+Compared with the earlier `80b` preamble=`6`, trailer=`8` test:
+
+- `82b` is a clear improvement in the most useful partial-acceptance signal:
+  - raw `0xB2` bytes increase from **2** in `80b` to **7** in `82b`
+  - the first raw `0xB2` byte moves earlier from about **1.561885 s** to about **0.467988 s**
+- `84b` and `86b` both regress versus `82b` on `0xB2`:
+  - `84b` falls back to **2** raw `0xB2` bytes
+  - `86b` falls to only **1** raw `0xB2` byte
+- none of `82b`, `84b`, or `86b` shows any `0xBA` transactions, so none reaches the later stock bound-state family
+- none of the three shows the stock accepted FIFO-drain pattern around **2.934 s**
+
+The detailed counts line up with that same conclusion:
+
+| Capture | Framing under test | raw `0xB2` count | first raw `0xB2` | raw `0xB3` count | raw `0xF2` count | `0xBA` count | Verdict |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `80b` | preamble=`6`, trailer=`8` | 2 | 1.561885 s | 6 | 3 | 0 | improved over `78b`, but still partial only |
+| `82b` | preamble=`8`, trailer=`8` | 7 | 0.467988 s | 3 | 4 | 0 | **best current result** |
+| `84b` | preamble=`10`, trailer=`8` | 2 | 1.729320 s | 3 | 5 | 0 | regresses from `82b` |
+| `86b` | preamble=`12`, trailer=`8` | 1 | 5.963083 s | 4 | 12 | 0 | regresses further from `82b` |
+
+So the preamble sweep did exactly what it was meant to do:
+
+1. prove that the framing changes are being seen by the receiver
+2. identify a local best point near **preamble=`8`**
+3. rule out simply "keep increasing preamble length" as the next best direction
+
+That means the next lowest-risk follow-up is now:
+
+1. keep **preamble length = 8**
+2. keep the LT89xx flags unchanged
+3. resume a **trailer / final-bit alignment sweep** around the improved `82b` baseline
+
+For the next single firmware build, the most sensible adjacent step is:
+
+- **preamble=`8`**
+- **trailer=`9`**
+
+because `82b` says the correlator side is closer with preamble=`8`, while the remaining blocker still looks like the post-payload framing / final-bit closure that never reaches the stock FIFO-drain sequence.
+
+If batching more than one user-side test, the most efficient next batch is:
+
+- keep **preamble=`8`** fixed
+- sweep **trailer=`9`**, **`10`**, and **`11`**
+
+That keeps the current best correlator setting and spends the next captures on the most likely remaining OTA framing variable instead of re-testing larger preambles that already regressed in `84b` and `86b`.
+
 - **bit-exact LT89xx emulation / OTA validity**
 - not TX ID selection
 - not bind duration
