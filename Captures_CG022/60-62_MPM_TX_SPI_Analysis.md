@@ -7,11 +7,22 @@
 | 61a/61b | MPM TX (STM32→NRF24L01) SPI, ForceID firmware |
 | 62a/62b | MPM TX (STM32→NRF24L01) SPI, DefaultID firmware |
 
-## Critical Finding: CG022 Protocol Is NOT Running
+## ⚠️ UPDATE: Captures 61b/62b Have Been Replaced
 
-The SPI captures from the MPM TX module (61b, 62b) show that the CG022
-protocol code is **not being executed**. A different protocol is running
-instead. This explains why the model receiver never binds.
+The original 61b/62b captures below were taken when the wrong protocol was
+selected.  **Updated 61b/62b captures now show CG022 running correctly**
+(TX_ADDR = [AA 88 44 55 55], 8-channel hop, 12-byte payloads).  See
+`61-vs-02_and_60-vs-52_Comparison.md` for the current analysis.
+
+The text below documents the **original (incorrect) captures** for reference.
+
+---
+
+## ~~Critical Finding: CG022 Protocol Is NOT Running~~ (Original Captures Only)
+
+The **original** SPI captures from the MPM TX module (61b, 62b) showed that the
+CG022 protocol code was **not being executed**. A different protocol was running
+instead.
 
 ### Evidence
 
