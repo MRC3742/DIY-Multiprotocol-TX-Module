@@ -669,6 +669,70 @@ If batching more than one user-side test, the most efficient next batch is:
 
 That spends the next captures on the remaining nearby correlator alignment space around the `82b` peak instead of pushing farther in a trailer direction that already regressed in `88b`, `90b`, and `92b`.
 
+#### Update from the `94b` / `96b` / `98b` fine preamble sweep with trailer=`8`
+
+The new receiver-side captures
+
+- `94b-CG022_RX-PowerOn_MPM_FrameTest_Pre7_Tra8-Bind.csv`
+- `96b-CG022_RX-PowerOn_MPM_FrameTest_Pre8_Tra8-Bind.csv`
+- `98b-CG022_RX-PowerOn_MPM_FrameTest_Pre9_Tra8-Bind.csv`
+
+show that the fine preamble sweep is also visible in receiver SPI, but it does **not** produce a new result better than the original `82b` run.
+
+Compared with the earlier best `82b` framing (`preamble=8`, `trailer=8`):
+
+- `94b` is the strongest of the new batch:
+  - raw `0xB2` rises to **5**, clearly ahead of `96b` and `98b`
+  - raw `0xF2` drops to **2**, which is better than both `96b` and `98b`
+  - but first raw `0xB2` is still later than `82b`, at about **1.561561 s**
+- `96b` is a weak repeat of the old `82b` setting:
+  - raw `0xB2` falls from **7** in `82b` to only **1**
+  - raw `0xF2` rises to **8**
+  - that says the receiver is still sensitive to the framing point, but also that this region remains fragile / not yet robust enough to bind reliably
+- `98b` regresses further:
+  - raw `0xB2` falls to **0**
+  - raw `0xF2` stays high at **8**
+- none of `94b`, `96b`, or `98b` shows any `0xBA` transactions
+- none reaches the stock accepted FIFO-drain path around **2.934 s**
+
+The detailed counts line up with the same conclusion:
+
+| Capture | Framing under test | raw `0xB2` count | first raw `0xB2` | raw `0xB3` count | raw `0xF2` count | `0xBA` count | Verdict |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `82b` | preamble=`8`, trailer=`8` | 7 | 0.467988 s | 3 | 4 | 0 | **best single result so far** |
+| `94b` | preamble=`7`, trailer=`8` | 5 | 1.561561 s | 4 | 2 | 0 | strongest of the new batch, but still below `82b` |
+| `96b` | preamble=`8`, trailer=`8` repeat | 1 | 5.345909 s | 2 | 8 | 0 | large regression from `82b` |
+| `98b` | preamble=`9`, trailer=`8` | 0 | — | 3 | 8 | 0 | regresses further |
+
+So this fine sweep answers the next question cleanly:
+
+1. the RX **is** seeing the preamble changes
+2. `preamble=9` is clearly worse
+3. the best *new* point is `preamble=7`, but the strongest *overall* single run is still the earlier `82b` at `preamble=8`
+4. the absence of `0xBA` and FIFO-drain still says the protocol is close enough to perturb search, but not yet robustly accepted
+
+That means the next lowest-risk follow-up is now:
+
+1. keep **trailer=`8`**
+2. keep the LT89xx flags unchanged
+3. move the code to the strongest point from the latest batch: **preamble=`7`**
+4. spend the next capture batch on **repeatability around the 7/8 region** instead of extending the sweep upward
+
+For the next single firmware build, the most sensible adjacent step is:
+
+- **preamble=`7`**
+- **trailer=`8`**
+
+because `94b` was the strongest of the latest test batch, while `98b` rules out continuing higher and `96b` shows that the old `82b` point is not yet reliably repeatable.
+
+If batching more than one user-side test, the most efficient next batch is:
+
+- keep **trailer=`8`** fixed
+- repeat **preamble=`7`** and **`8`** to measure stability
+- optionally include **preamble=`6`** as the lower-side comparison, since `80b` was weaker but still showed partial progress
+
+That focuses the next captures on determining whether the remaining blocker is a narrow framing tolerance / repeatability issue around the `7`-to-`8` region instead of continuing farther into settings that already regress.
+
 - **bit-exact LT89xx emulation / OTA validity**
 - not TX ID selection
 - not bind duration
