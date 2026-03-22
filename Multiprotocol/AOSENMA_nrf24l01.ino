@@ -18,14 +18,14 @@
 #include "iface_nrf24l01.h"
 
 #define AOSENMA_PACKET_PERIOD	2310
-#define AOSENMA_BIND_COUNT		1299	// Extended debug bind window: 1299 * 2310 us = about 3.0 s for capture-driven RX acceptance testing
+#define AOSENMA_BIND_COUNT		1299	// FIXME: debug bind window for capture-driven RX acceptance testing (~3.0 s)
 #define AOSENMA_PACKET_SIZE		9
 #define AOSENMA_CHECKSUM_START	1
 #define AOSENMA_CHECKSUM_END	8
 #define AOSENMA_ACK_TIMEOUT		1000
 #define AOSENMA_DATA_SYNC_BYTE	0xFC
-#define AOSENMA_LT8900_PREAMBLE_LEN	8	// 80b confirms trailer_len=8 perturbs RX SPI in the expected direction; next test increases preamble length while keeping that improved byte-aligned trailer
-#define AOSENMA_LT8900_TRAILER_LEN	8	// Keep the byte-aligned trailer from the 80b framing test while sweeping the remaining correlator/preamble alignment
+#define AOSENMA_LT8900_PREAMBLE_LEN	8	// 80b shows trailer_len=8 is worth keeping; next test raises preamble length
+#define AOSENMA_LT8900_TRAILER_LEN	8	// Keep the improved byte-aligned trailer while sweeping preamble alignment
 #define AOSENMA_LT8900_FLAGS	(_BV(6) | _BV(4) | _BV(2))	// LT8910-compatible config flags: CRC enable + hardware payload-length byte + Manchester data packet type
 
 #define AOSENMA_CG022_FORCE_ID	// Debug build: force the original CG022 TX ID (11 22 33 06 AB) for stock-vs-MPM capture comparison
