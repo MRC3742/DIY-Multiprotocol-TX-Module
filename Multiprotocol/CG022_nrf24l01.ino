@@ -46,7 +46,7 @@
 	#define LT8900_CRC_ON 6
 #endif
 
-//#define FORCE_CG022_ORIGINAL_ID
+#define FORCE_CG022_ORIGINAL_ID
 
 // Protocol constants derived from SPI capture analysis
 #define CG022_PACKET_PERIOD		2310	// ~2.31ms per channel hop
@@ -197,8 +197,9 @@ static void __attribute__((unused)) CG022_send_packet()
 	{
 		if(prev_power != NRF_POWER_3)
 		{
-			rf_setup = (rf_setup & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
-			NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf_setup);
+			uint8_t val = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
+			val = (val & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
+			NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, val);
 			prev_power = NRF_POWER_3;
 		}
 	}
