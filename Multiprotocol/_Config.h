@@ -107,7 +107,6 @@
 //#define FORCE_REDPINE_TUNING	0
 //#define FORCE_FUTABA_TUNING	0
 //#define FORCE_SKYARTEC_TUNING	0
-//#define FORCE_ARES_TUNING		0
 
 /** A7105 Fine Frequency Tuning **/
 //This is required in rare cases where some A7105 modules and/or RXs have an inaccurate crystal oscillator.
@@ -222,7 +221,6 @@
 #define	SKYARTEC_CC2500_INO
 #define	REDPINE_CC2500_INO
 #define	RLINK_CC2500_INO
-#define	ARES_CC2500_INO
 
 //The protocols below need a NRF24L01 to be installed
 #define	ASSAN_NRF24L01_INO
@@ -853,7 +851,6 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 		MR100
 		V1_4CH
 		RF_SIM
-		SLT6_Tx
 	PROTO_SYMAX
 		SYMAX
 		SYMAX5C
