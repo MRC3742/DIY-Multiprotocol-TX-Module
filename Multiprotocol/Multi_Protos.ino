@@ -144,7 +144,7 @@ const char STR_SUBTYPE_SYMAX[] =      "\x03""Std""X5C";
 const char STR_SUBTYPE_SLT[] =        "\x07""V1_6ch\0""V2_8ch\0""Q100\0  ""Q200\0  ""MR100\0 ""V1_4ch\0""RF_SIM\0""SLT6_Tx";
 const char STR_SUBTYPE_CX10[] =       "\x07""Green\0 ""Blue\0  ""DM007\0 ""-\0     ""JC3015a""JC3015b""MK33041";
 #if defined(CG022_CC2500_INO)
-	const char STR_SUBTYPE_CG022[] =      "\x05""CC25\0";
+	const char STR_SUBTYPE_CG022[] =      "\x07""CC2500\0";
 #elif defined(CG022_NRF24L01_INO)
 	const char STR_SUBTYPE_CG022[] =      "\x03""Std";
 #endif

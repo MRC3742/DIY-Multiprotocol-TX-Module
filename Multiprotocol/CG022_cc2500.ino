@@ -104,16 +104,10 @@ static void __attribute__((unused)) CG022_CC2500_send_packet()
 	uint8_t pos = 0;
 
 	// --- Preamble: 3 bytes ---
-	// LT8900 preamble is 010101... pattern.  The sync word MSByte (bit-reversed)
-	// determines whether the preamble is 0x55 or 0xAA.
-	uint8_t preamble_byte = (CG022_CC_sync_trailer[0] & 0x80) ? 0x55 : 0xAA;
-	// For sync 0x2211: bit_reverse(0x22) = 0x44, MSBit = 0 → preamble = 0xAA
-	// Wait: preamble ends with the opposite of the first sync bit.
-	// NRF24L01 auto-preamble: if first address bit = 1 → preamble = 0xAA (starts with 1)
-	// LT8900: preamble is always 010101... (0x55) and ends naturally before sync.
-	// The key is: preamble byte = 0x55 when sync MSBit = 0, or 0xAA when sync MSBit = 1.
-	// For sync_hi_rev = 0x44 (01000100), MSBit = 0 → preamble = 0x55.
-	preamble_byte = (CG022_CC_sync_trailer[0] & 0x80) ? 0xAA : 0x55;
+	// The preamble must alternate bits and transition cleanly into the sync word.
+	// When sync_hi_rev MSBit = 0, preamble = 0x55 (01010101 → first sync bit 0).
+	// When sync_hi_rev MSBit = 1, preamble = 0xAA (10101010 → first sync bit 1).
+	uint8_t preamble_byte = (CG022_CC_sync_trailer[0] & 0x80) ? 0xAA : 0x55;
 	frame[pos++] = preamble_byte;
 	frame[pos++] = preamble_byte;
 	frame[pos++] = preamble_byte;
@@ -220,9 +214,9 @@ static void __attribute__((unused)) CG022_CC2500_RF_init()
 	// --- 1 Mbps data rate ---
 	// RDATA = 26 MHz / 2^28 * (256 + DRATE_M) * 2^DRATE_E
 	// With DRATE_E=15, DRATE_M=59: RDATA = 999.8 kbps ≈ 1 Mbps
-	// MDMCFG4[7:4] = CHANBW (don't care for TX, use default BW)
+	// MDMCFG4[7:4] = CHANBW_E:CHANBW_M = 0:0 → BW = 812.5 kHz (TX only, BW irrelevant)
 	// MDMCFG4[3:0] = DRATE_E = 0xF
-	CC2500_WriteReg(CC2500_10_MDMCFG4,  0x0F);  // DRATE_E=15, wide BW
+	CC2500_WriteReg(CC2500_10_MDMCFG4,  0x0F);
 	CC2500_WriteReg(CC2500_11_MDMCFG3,  0x3B);  // DRATE_M=59 → 1 Mbps
 
 	// --- GFSK, no CC2500 preamble/sync (raw mode) ---
