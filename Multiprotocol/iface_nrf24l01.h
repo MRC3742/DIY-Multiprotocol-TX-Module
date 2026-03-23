@@ -102,4 +102,13 @@ enum {
 #define REUSE_TX_PL   0xE3
 //#define NOP           0xFF
 
+// LT8900 emulation flags (used in LT8900_Config flags parameter)
+#define LT8900_CRC_ON 6
+#define LT8900_SCRAMBLE_ON 5
+#define LT8900_PACKET_LENGTH_EN 4
+#define LT8900_DATA_PACKET_TYPE_1 3
+#define LT8900_DATA_PACKET_TYPE_0 2
+#define LT8900_FEC_TYPE_1 1
+#define LT8900_FEC_TYPE_0 0
+
 #endif

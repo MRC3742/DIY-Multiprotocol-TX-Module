@@ -255,14 +255,6 @@ uint8_t LT8900_Preamble_Len;
 uint8_t LT8900_Tailer_Len;
 uint16_t LT8900_CRC_Initial_Data;
 uint8_t LT8900_Flags;
-#define LT8900_CRC_ON 6
-#define LT8900_SCRAMBLE_ON 5
-#define LT8900_PACKET_LENGTH_EN 4
-#define LT8900_DATA_PACKET_TYPE_1 3
-#define LT8900_DATA_PACKET_TYPE_0 2
-#define LT8900_FEC_TYPE_1 1
-#define LT8900_FEC_TYPE_0 0
-
 void LT8900_Config(uint8_t preamble_len, uint8_t trailer_len, uint8_t flags, uint16_t crc_init)
 {
 	//Preamble 1 to 8 bytes
