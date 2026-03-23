@@ -28,11 +28,13 @@
 //   - Stock TX→RX (52b) produces 1690 FIFO reads; MPM→RX (53b) produces 0
 //   - CRC byte bit-reversal fix applied in LT8900 emulation layer
 //
-// NRF24L01 ↔ LT8900 compatibility notes (from captures 60-62, 72-98):
-//   - Preamble extended from stock 3 bytes to 4: NRF24L01's 1-byte hardware
-//     preamble is less effective for LT8910 correlator lock due to GFSK
-//     deviation mismatch (NRF ±160 kHz vs LT8900 ±96 kHz). The extra byte
-//     provides additional synchronization margin (matches working SHENQI).
+// NRF24L01 ↔ LT8900 compatibility notes (from captures 60-65):
+//   - Preamble must match stock LT8900 TX exactly (3 bytes). The NRF24L01
+//     auto-generates 1 preamble byte, so LT8900_Config gets preamble_len=3
+//     which puts 2 software preamble bytes + 1 hardware preamble = 3 total.
+//     Using 4 bytes caused the LT8910 correlator to never lock (0 FIFO reads
+//     in captures 60b/64b), likely because the extra 0x55 byte shifts the
+//     sync word arrival outside the receiver's detection window.
 //   - TX power forced to maximum during bind: stock LT8900 TX uses full
 //     power from the first packet; standard MPM bind power (-18 dBm) is
 //     insufficient for the LT8910 receiver's narrower demodulator bandwidth.
@@ -215,16 +217,18 @@ static void __attribute__((unused)) CG022_RF_init()
 	crc16_polynomial = 0x8005;
 
 	// Configure LT8900 emulation layer from register 0x20 = 0x4800:
-	// Stock LT8900 uses 3-byte preamble (R20 bits 15:13 = 010, value+1),
-	// but we use 4 bytes to compensate for the NRF24L01 hardware preamble
-	// byte being less effective for the LT8910 correlator (GFSK deviation
-	// mismatch between NRF24L01 ±160 kHz and LT8900 ±96 kHz at 1 Mbps).
-	// The SHENQI protocol also uses 4-byte preamble for LT8900 emulation.
+	// Stock LT8900 uses 3-byte preamble (R20 bits 15:13 = 010, value+1).
+	// The NRF24L01 auto-generates 1 hardware preamble byte, so with
+	// preamble_len=3 the emulation places 2 software preamble bytes into
+	// the address field + 1 NRF hardware byte = 3 total on air — exactly
+	// matching the stock LT8900 TX.  Using 4 bytes previously caused the
+	// LT8910 receiver to never decode any packet (0 FIFO reads in captures
+	// 60b and 64b).
 	// Trailer: 8 bits (R20 bits 12:8 = 01000)
 	// SyncWord: 2 bytes (bits 7:6 = 00), PACKET_LENGTH_EN: OFF (bit 5 = 0)
 	// CRC enabled, NRZ encoding
 	// CRC init from register 0x28 = 0x4402
-	LT8900_Config(4, 8, _BV(LT8900_CRC_ON), 0x4402);
+	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
 
 	// Set 2-byte bind sync word from register 0x24 = 0x2211
 	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
