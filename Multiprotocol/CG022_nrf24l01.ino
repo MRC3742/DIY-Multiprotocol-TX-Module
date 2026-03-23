@@ -23,30 +23,26 @@
 //   - Data packets use this new sync word so receiver only hears its paired TX
 //   - CRC-16 poly=0x8005, init=0x4402, 3-byte preamble, 8-bit trailer
 //
-// Receiver-side captures (51-53) confirmed:
-//   - CRC bytes on-air are LSBit-first (bit-reversed) like data bytes
-//   - Stock TX→RX (52b) produces 1690 FIFO reads; MPM→RX (53b) produces 0
-//   - CRC byte bit-reversal fix applied in LT8900 emulation layer
+// NRF24L01 PCF workaround (captures 60-67 analysis):
+//   The NRF24L01 Enhanced ShockBurst inserts a 9-bit Packet Control Field
+//   (PCF) between the address field and payload on the air.  When the LT8900
+//   emulation layer packs sync+trailer into the NRF address, the PCF lands
+//   between trailer and data, creating a 9-bit offset that prevents the
+//   LT8910 correlator from decoding any packet (0 FIFO reads in all captures
+//   60b through 66b).
 //
-// NRF24L01 ↔ LT8900 compatibility notes (from captures 60-65):
-//   - Preamble must match stock LT8900 TX exactly (3 bytes). The NRF24L01
-//     auto-generates 1 preamble byte, so LT8900_Config gets preamble_len=3
-//     which puts 2 software preamble bytes + 1 hardware preamble = 3 total.
-//     Using 4 bytes caused the LT8910 correlator to never lock (0 FIFO reads
-//     in captures 60b/64b), likely because the extra 0x55 byte shifts the
-//     sync word arrival outside the receiver's detection window.
-//   - TX power forced to maximum during bind: stock LT8900 TX uses full
-//     power from the first packet; standard MPM bind power (-18 dBm) is
-//     insufficient for the LT8910 receiver's narrower demodulator bandwidth.
+//   Fix: set the NRF24L01 address to all-preamble bytes (0x55 or 0xAA) and
+//   place sync word + trailer + data + CRC entirely in the NRF payload.
+//   The PCF then sits between preamble and sync word — a gap the LT8910
+//   correlator can tolerate because it searches for the sync pattern within
+//   a window after preamble detection ends.
+//
+//   On air:  [NRF preamble 1B] [address 5B = preamble] [PCF 9b] [sync 2B]
+//            [trailer 1B] [data 10B] [CRC 2B]
 
 #if defined(CG022_NRF24L01_INO)
 
 #include "iface_nrf24l01.h"
-
-// LT8900 emulation flag - defined here because NRF24l01_SPI.ino is compiled after this file
-#ifndef LT8900_CRC_ON
-	#define LT8900_CRC_ON 6
-#endif
 
 #define FORCE_CG022_ORIGINAL_ID
 
@@ -57,6 +53,10 @@
 #define CG022_BIND_COUNT		166		// ~0.38 seconds of bind packets (matches original TX)
 #define CG022_INITIAL_WAIT		500
 
+// CRC-16 parameters from stock LT8900 registers
+#define CG022_CRC_INIT			0x4402	// register 0x28
+#define CG022_CRC_POLY			0x8005	// register 0x17
+
 // Channel hopping pattern from capture analysis: 0, 40, 10, 50, 20, 60, 30, 70
 static const uint8_t PROGMEM CG022_Channels[] = { 0, 40, 10, 50, 20, 60, 30, 70 };
 
@@ -66,6 +66,12 @@ static const uint8_t PROGMEM CG022_Channels[] = { 0, 40, 10, 50, 20, 60, 30, 70 
 // Flag definitions for packet byte 7
 #define CG022_FLAG_FLIP			0x40	// Bit 6: Flip mode (0x60 = 0x20 | 0x40)
 #define CG022_FLAG_HEADLESS		0xC0	// Bits 7+6: Headless mode (0xE0 = 0x20 | 0xC0)
+
+// Current sync word bytes (bit-reversed, ready for on-air transmission)
+// Updated when switching from bind to data phase
+static uint8_t CG022_sync[2];
+// Preamble byte for NRF address (0x55 or 0xAA, depends on sync word)
+static uint8_t CG022_preamble_byte;
 
 static void __attribute__((unused)) CG022_initialize_txid()
 {
@@ -84,6 +90,31 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	#endif
 }
 
+static void __attribute__((unused)) CG022_set_sync(uint8_t sync_lo, uint8_t sync_hi)
+{
+	// Set sync word for on-air transmission.
+	// LT8900 sync word register stores MSByte:LSByte, e.g. 0x2211 = hi=0x22, lo=0x11.
+	// LT8900 sends LSBit-first; NRF24L01 sends MSBit-first → bit-reverse each byte.
+	// The LT8900 transmits hi byte first, then lo byte.
+	CG022_sync[0] = bit_reverse(sync_hi);
+	CG022_sync[1] = bit_reverse(sync_lo);
+
+	// Preamble polarity: based on MSBit of the first sync byte on-air.
+	// After bit-reversal, CG022_sync[0] bit 0 determines polarity:
+	//   bit0 == 0 → preamble = 0x55 (01010101)
+	//   bit0 == 1 → preamble = 0xAA (10101010)
+	CG022_preamble_byte = (CG022_sync[0] & 0x01) ? 0xAA : 0x55;
+
+	// Set NRF24L01 address to 5 bytes of preamble.
+	// The NRF auto-generates 1 matching preamble byte, giving 6 total on air.
+	// This makes the entire NRF address look like preamble to the LT8910,
+	// so the PCF (between address and payload) cannot corrupt the sync/data.
+	uint8_t addr[5];
+	memset(addr, CG022_preamble_byte, 5);
+	NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, addr, 5);
+	NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, addr, 5);
+}
+
 static void __attribute__((unused)) CG022_set_data_sync()
 {
 	// After bind, the original TX changes the LT8900 sync word from the fixed
@@ -94,12 +125,43 @@ static void __attribute__((unused)) CG022_set_data_sync()
 	//   Bind packet bytes: 0A 00 [0] [1] [2] [3] [4] [5] [6] 00
 	//   reg 0x24 changes to: ([4] << 8) | [3] = (rx_tx_addr[4] << 8) | rx_tx_addr[3]
 	//   Example: TX_ID=11 22 33 06 AB FC AD → reg 0x24 = 0xAB06
+	CG022_set_sync(rx_tx_addr[3], rx_tx_addr[4]);
+}
+
+static void __attribute__((unused)) CG022_write_payload(uint8_t *msg, uint8_t len)
+{
+	// Build NRF24L01 payload with full LT8900-compatible framing:
+	//   [sync_word 2B] [trailer 1B] [data bit-reversed] [CRC-16 bit-reversed]
 	//
-	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
-	uint8_t sync[2];
-	sync[0] = rx_tx_addr[3];	// low byte of new sync word
-	sync[1] = rx_tx_addr[4];	// high byte of new sync word
-	LT8900_SetAddress(sync, 2);
+	// The NRF address is set to all-preamble bytes, so the on-air format is:
+	//   [preamble 6B] [PCF 9b] [sync 2B] [trailer 1B] [data 10B] [CRC 2B]
+	// The LT8910 detects preamble, skips the PCF gap, correlates the sync word,
+	// then reads trailer + data + CRC normally.
+	uint8_t buf[20];	// max: 2 sync + 1 trailer + 10 data + 2 CRC = 15
+	uint8_t pos = 0;
+
+	// Sync word (bit-reversed for on-air LSBit-first format)
+	buf[pos++] = CG022_sync[0];
+	buf[pos++] = CG022_sync[1];
+
+	// Trailer: 8 bits of alternating, complement of last sync byte's LSBit
+	// Last sync byte on-air: CG022_sync[1], bit 0 determines trailer polarity
+	buf[pos++] = (CG022_sync[1] & 0x01) ? 0x55 : 0xAA;
+
+	// Data bytes (bit-reversed) and CRC computation
+	crc = CG022_CRC_INIT;
+	for(uint8_t i = 0; i < len; i++)
+	{
+		uint8_t tmp = bit_reverse(msg[i]);
+		buf[pos++] = tmp;
+		crc16_update(tmp, 8);
+	}
+
+	// CRC (bit-reversed, matching LT8900 LSBit-first on-air format)
+	buf[pos++] = bit_reverse(crc >> 8);
+	buf[pos++] = bit_reverse(crc & 0xFF);
+
+	NRF24L01_WritePayload(buf, pos);
 }
 
 static void __attribute__((unused)) CG022_send_packet()
@@ -168,21 +230,21 @@ static void __attribute__((unused)) CG022_send_packet()
 	}
 
 	// Set channel frequency from hopping pattern
-	LT8900_SetChannel(pgm_read_byte_near(&CG022_Channels[hopping_frequency_no]));
+	// NRF24L01 channel = LT8900 channel + 2 (NRF base 2400 MHz vs LT8900 base 2402 MHz)
+	NRF24L01_WriteReg(NRF24L01_05_RF_CH, pgm_read_byte_near(&CG022_Channels[hopping_frequency_no]) + 2);
 
 	// Flush TX FIFO and clear status flags before sending
 	NRF24L01_FlushTx();
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
 
 	// Send packet and wait for TX completion, then retransmit once.
-	// The SHENQI LT8900 emulation also requires a retransmit to work
-	// reliably with NRF24L01 chips; the first transmission may have
-	// preamble ramp-up issues that cause the LT8910 correlator to miss
-	// the sync word.  Two transmissions per channel (~304µs total) still
-	// fit well within the 2310µs packet period.
-	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
+	// Two transmissions per channel give the LT8910 two chances to
+	// correlate the sync word despite the NRF24L01's wider GFSK deviation.
+	CG022_write_payload(packet, CG022_PACKET_SIZE);
 	while(NRF24L01_packet_ack() == PKT_PENDING);
-	LT8900_WritePayload(packet, CG022_PACKET_SIZE);
+	NRF24L01_FlushTx();
+	NRF24L01_WriteReg(NRF24L01_07_STATUS, _BV(NRF24L01_07_TX_DS) | _BV(NRF24L01_07_MAX_RT));
+	CG022_write_payload(packet, CG022_PACKET_SIZE);
 
 	// Advance to next hop channel
 	hopping_frequency_no++;
@@ -214,28 +276,29 @@ static void __attribute__((unused)) CG022_RF_init()
 	NRF24L01_Initialize();
 
 	// CRC-16 polynomial from register 0x17 = 0x8005
-	crc16_polynomial = 0x8005;
+	crc16_polynomial = CG022_CRC_POLY;
 
-	// Configure LT8900 emulation layer from register 0x20 = 0x4800:
-	// Stock LT8900 uses 3-byte preamble (R20 bits 15:13 = 010, value+1).
-	// The NRF24L01 auto-generates 1 hardware preamble byte, so with
-	// preamble_len=3 the emulation places 2 software preamble bytes into
-	// the address field + 1 NRF hardware byte = 3 total on air — exactly
-	// matching the stock LT8900 TX.  Using 4 bytes previously caused the
-	// LT8910 receiver to never decode any packet (0 FIFO reads in captures
-	// 60b and 64b).
-	// Trailer: 8 bits (R20 bits 12:8 = 01000)
-	// SyncWord: 2 bytes (bits 7:6 = 00), PACKET_LENGTH_EN: OFF (bit 5 = 0)
-	// CRC enabled, NRZ encoding
-	// CRC init from register 0x28 = 0x4402
-	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), 0x4402);
+	// 1 Mbps data rate matching LT8900
+	NRF24L01_SetBitrate(NRF24L01_BR_1M);
 
-	// Set 2-byte bind sync word from register 0x24 = 0x2211
-	// LT8900_SetAddress takes bytes in LSByte-first order and reverses internally
-	LT8900_SetAddress((uint8_t *)"\x11\x22", 2);
+	// Disable Enhanced ShockBurst features that are unnecessary for TX-only
+	// operation and may cause the NRF24L01 to insert a PCF on-air.
+	NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);		// No auto-ack
+	NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);	// No RX pipes needed for TX
+	NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);	// No auto-retransmit
+	NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);		// No dynamic payload
+	NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);		// No enhanced features
 
-	// Set to TX mode
-	LT8900_SetTxRxMode(TX_EN);
+	// 5-byte address width
+	NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, 0x03);
+
+	// Set bind sync word (0x2211) and preamble-only NRF address
+	CG022_set_sync(0x11, 0x22);
+
+	// TX mode, power up, CRC disabled (LT8900 CRC computed in software)
+	NRF24L01_SetTxRxMode(TXRX_OFF);
+	NRF24L01_SetTxRxMode(TX_EN);
+	NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP));
 }
 
 uint16_t CG022_callback()
