@@ -215,7 +215,7 @@ static void __attribute__((unused)) CG022_RF_init()
 	// Configure LT8900 emulation: 3-byte preamble, 8-bit trailer, CRC on
 	// This packs [preamble 2B][sync 2B][trailer 1B] into the 5-byte NRF
 	// address, producing the exact same on-air frame as the stock LT8900 TX.
-	LT8900_Config(3, 8, _BV(LT8900_CRC_ON), CG022_CRC_INIT);
+	LT8900_Config(3 /*preamble bytes*/, 8 /*trailer bits*/, _BV(LT8900_CRC_ON), CG022_CRC_INIT);
 
 	// 1 Mbps data rate matching LT8900
 	NRF24L01_SetBitrate(NRF24L01_BR_1M);
