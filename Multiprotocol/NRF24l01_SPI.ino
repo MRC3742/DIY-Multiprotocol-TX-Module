@@ -286,6 +286,14 @@ void LT8900_SetTxRxMode(enum TXRX_State mode)
 		NRF24L01_SetTxRxMode(TX_EN);
 		//Disable CRC
 		NRF24L01_WriteReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_PWR_UP));
+		// Ensure pure ShockBurst mode (no 9-bit PCF on air).
+		// NRF24L01_Initialize sets FEATURE=0x01 (EN_DYN_ACK) which forces
+		// Enhanced ShockBurst packet format.  Per nRF24L01+ spec Section 7.9,
+		// ShockBurst requires EN_AA=0, EN_DPL=0, AND EN_DYN_ACK=0.
+		// The 9-bit PCF shifts the payload by 9 bits on air, corrupting the
+		// LT8900/LT8910 frame alignment.
+		NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);
+		NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);
 	}
 	else
 		if (mode == RX_EN)
@@ -298,6 +306,9 @@ void LT8900_SetTxRxMode(enum TXRX_State mode)
 			NRF24L01_SetTxRxMode(RX_EN);
 			// Disable CRC
 			NRF24L01_WriteReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_PWR_UP) | (1 << NRF24L01_00_PRIM_RX) );
+			// Ensure pure ShockBurst mode for RX as well
+			NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);
+			NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);
 		}
 		else
 			NRF24L01_SetTxRxMode(TXRX_OFF);
