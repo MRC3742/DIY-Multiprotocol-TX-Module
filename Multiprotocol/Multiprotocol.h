@@ -360,6 +360,7 @@ enum ARES
 enum CG022
 {
 	CG022_STD	= 0,
+	CG022_CC	= 1,
 };
 enum E01X
 {
