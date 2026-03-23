@@ -23,14 +23,29 @@
 //     New reg 0x24 = (bind_pkt[6] << 8) | bind_pkt[5]  (i.e. rx_tx_addr[4], rx_tx_addr[3])
 //   - Data packets use this new sync word so receiver only hears its paired TX
 //   - CRC-16 poly=0x8005, init=0x4402, 3-byte preamble, 8-bit trailer
+//   - No data whitening/scrambling (LT8900 Reg41 never written in stock captures)
 //
-// Framing (captures 60-69 analysis):
+// NRF24L01 raw-mode requirements for LT8910 emulation (all verified in
+// captures 73a/73b with CS-framed SPI transaction analysis):
+//   1. EN_AA = 0x00       — disable auto-acknowledge (LT8900_SetTxRxMode)
+//   2. SETUP_RETR = 0x00  — disable auto-retransmit  (LT8900_SetTxRxMode)
+//   3. RF_SETUP 1Mbps     — matching LT8900 data rate (CG022_RF_init)
+//   4. CONFIG = 0x02      — PWR_UP only, NRF CRC disabled (LT8900_SetTxRxMode)
+//   5. FEATURE = 0x00     — pure ShockBurst, no PCF   (LT8900_SetTxRxMode)
+//   6. DYNPD = 0x00       — no dynamic payload         (LT8900_SetTxRxMode)
+//   7. CRC-16 computed in software and appended to payload (LT8900_WritePayload)
+//
+// Framing (captures 60-73 analysis):
 //   The LT8900 emulation layer packs [preamble][sync][trailer] into the
 //   NRF24L01 address field.  With preamble_len=3, addr_size=2, trailer=8:
 //     NRF address (5 bytes) = [pre pre sync_hi sync_lo trailer]
 //     NRF payload = [data 10B bit-reversed] [CRC 2B bit-reversed]
 //   On air: [pre pre pre] [sync 2B] [trailer 1B] [data 10B] [CRC 2B]
 //   This exactly matches the stock LT8900 TX on-air frame.
+//
+// NOTE: NRF_CE_on / NRF_CE_off are no-ops on MPM hardware (CE tied HIGH).
+// This is correct for TX — the NRF24L01 transmits immediately when data
+// is written to the FIFO.
 
 #if defined(CG022_NRF24L01_INO)
 
@@ -247,9 +262,8 @@ void CG022_init()
 	// sensitivity to the NRF24L01's wider GFSK deviation (±160 kHz vs
 	// LT8900's ±96 kHz at 1 Mbps), so full power is critical for the
 	// correlator to lock onto the signal.
-	uint8_t rf = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
-	rf = (rf & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
-	NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf);
+	rf_setup = (rf_setup & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
+	NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf_setup);
 	prev_power = NRF_POWER_3;
 }
 

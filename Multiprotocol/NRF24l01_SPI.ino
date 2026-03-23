@@ -284,9 +284,17 @@ void LT8900_SetTxRxMode(enum TXRX_State mode)
 		//Switch to TX
 		NRF24L01_SetTxRxMode(TXRX_OFF);
 		NRF24L01_SetTxRxMode(TX_EN);
-		// Disable NRF24L01 hardware CRC — LT8900 CRC is computed in software.
-		// Also disable auto-acknowledge and auto-retransmit to ensure the
-		// NRF24L01 operates in pure ShockBurst mode (raw packet, no 9-bit PCF).
+		// Override NRF24L01 defaults to produce raw LT8900-compatible packets:
+		//   CONFIG  = 0x02 (PWR_UP only) — disables NRF hardware CRC so the
+		//             LT8900 CRC-16 computed in LT8900_WritePayload is used.
+		//   EN_AA   = 0x00 — disables auto-acknowledge on all pipes.
+		//   RETR    = 0x00 — disables auto-retransmit.
+		//   DYNPD   = 0x00 — disables dynamic payload length.
+		//   FEATURE = 0x00 — clears EN_DYN_ACK and EN_DPL to ensure the
+		//             NRF24L01 operates in pure ShockBurst mode with no 9-bit
+		//             Packet Control Field (PCF) between address and payload.
+		//   These five registers together satisfy all the requirements for
+		//   NRF24L01 "raw mode" transmission to an LT8910 receiver.
 		NRF24L01_WriteReg(NRF24L01_00_CONFIG, (1 << NRF24L01_00_PWR_UP));
 		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);
 		NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);
