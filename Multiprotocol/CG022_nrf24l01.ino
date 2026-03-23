@@ -185,23 +185,8 @@ static void __attribute__((unused)) CG022_send_packet()
 	if(hopping_frequency_no >= CG022_NUM_CHANNELS)
 		hopping_frequency_no = 0;
 
-	// Set power — CG022 needs full TX power during bind.
-	// The stock LT8900 TX uses full power from the first bind packet, and the
-	// LT8910 receiver has reduced sensitivity to the NRF24L01's wider GFSK
-	// deviation (±160 kHz vs LT8900's ±96 kHz at 1 Mbps).  Using the standard
-	// NRF_BIND_POWER (-18 dBm) is 18 dB below the stock TX and insufficient
-	// for the LT8910 correlator to reliably lock onto the NRF24L01 signal.
-	if(IS_BIND_IN_PROGRESS)
-	{
-		if(prev_power != NRF_POWER_3)
-		{
-			uint8_t val = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
-			val = (val & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
-			NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, val);
-			prev_power = NRF_POWER_3;
-		}
-	}
-	else
+	// Set power for data mode (bind power handled in CG022_init)
+	if(!IS_BIND_IN_PROGRESS)
 		NRF24L01_SetPower();
 }
 
@@ -255,6 +240,17 @@ void CG022_init()
 	CG022_RF_init();
 	hopping_frequency_no = 0;
 	bind_counter = CG022_BIND_COUNT;
+
+	// Override bind power to full (0 dBm) BEFORE any packets are sent.
+	// NRF24L01_Initialize sets NRF_BIND_POWER (-18 dBm) which is 18 dB
+	// below the stock LT8900 TX.  The LT8910 receiver has reduced
+	// sensitivity to the NRF24L01's wider GFSK deviation (±160 kHz vs
+	// LT8900's ±96 kHz at 1 Mbps), so full power is critical for the
+	// correlator to lock onto the signal.
+	uint8_t rf = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
+	rf = (rf & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
+	NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf);
+	prev_power = NRF_POWER_3;
 }
 
 #endif
