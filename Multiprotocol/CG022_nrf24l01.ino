@@ -262,8 +262,9 @@ void CG022_init()
 	// sensitivity to the NRF24L01's wider GFSK deviation (±160 kHz vs
 	// LT8900's ±96 kHz at 1 Mbps), so full power is critical for the
 	// correlator to lock onto the signal.
-	rf_setup = (rf_setup & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
-	NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf_setup);
+	uint8_t rf = NRF24L01_ReadReg(NRF24L01_06_RF_SETUP);
+	rf = (rf & 0xF8) | (NRF_POWER_3 << 1) | 0x01;
+	NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, rf);
 	prev_power = NRF_POWER_3;
 }
 
