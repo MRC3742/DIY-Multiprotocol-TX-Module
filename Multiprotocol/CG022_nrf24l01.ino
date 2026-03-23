@@ -137,7 +137,7 @@ static void __attribute__((unused)) CG022_write_payload(uint8_t *msg, uint8_t le
 	//   [preamble 6B] [PCF 9b] [sync 2B] [trailer 1B] [data 10B] [CRC 2B]
 	// The LT8910 detects preamble, skips the PCF gap, correlates the sync word,
 	// then reads trailer + data + CRC normally.
-	uint8_t buf[20];	// max: 2 sync + 1 trailer + 10 data + 2 CRC = 15
+	uint8_t buf[15];	// 2 sync + 1 trailer + 10 data + 2 CRC = 15
 	uint8_t pos = 0;
 
 	// Sync word (bit-reversed for on-air LSBit-first format)
@@ -281,13 +281,12 @@ static void __attribute__((unused)) CG022_RF_init()
 	// 1 Mbps data rate matching LT8900
 	NRF24L01_SetBitrate(NRF24L01_BR_1M);
 
-	// Disable Enhanced ShockBurst features that are unnecessary for TX-only
-	// operation and may cause the NRF24L01 to insert a PCF on-air.
+	// Disable Enhanced ShockBurst features unnecessary for TX-only operation.
 	NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);		// No auto-ack
-	NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);	// No RX pipes needed for TX
+	NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);	// No RX pipes (TX-only)
 	NRF24L01_WriteReg(NRF24L01_04_SETUP_RETR, 0x00);	// No auto-retransmit
-	NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);		// No dynamic payload
-	NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);		// No enhanced features
+	NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x00);		// No dynamic payload length
+	NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x00);		// No dynamic ACK/payload features
 
 	// 5-byte address width
 	NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, 0x03);
