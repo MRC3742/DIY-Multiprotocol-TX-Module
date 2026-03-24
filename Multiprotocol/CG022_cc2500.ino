@@ -40,7 +40,7 @@
 #define CG022_CC_PACKET_PERIOD		2310
 #define CG022_CC_PACKET_SIZE		10
 #define CG022_CC_NUM_CHANNELS		8
-#define CG022_CC_BIND_COUNT			166
+#define CG022_CC_BIND_COUNT			4340	// ~10 seconds at 2310µs period (stock TX binds continuously)
 #define CG022_CC_INITIAL_WAIT		500
 
 // CRC-16 from stock LT8900 registers
@@ -187,6 +187,9 @@ static void __attribute__((unused)) CG022_CC2500_send_packet()
 	hopping_frequency_no++;
 	if(hopping_frequency_no >= CG022_CC_NUM_CHANNELS)
 		hopping_frequency_no = 0;
+
+	// Apply user-configured frequency offset (compensates for crystal differences)
+	CC2500_SetFreqOffset();
 
 	// Use standard CC2500 power management for data mode (handles RANGE flag etc.)
 	if(!IS_BIND_IN_PROGRESS)
