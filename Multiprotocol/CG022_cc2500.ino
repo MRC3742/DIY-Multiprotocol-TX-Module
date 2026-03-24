@@ -187,6 +187,10 @@ static void __attribute__((unused)) CG022_CC2500_send_packet()
 	hopping_frequency_no++;
 	if(hopping_frequency_no >= CG022_CC_NUM_CHANNELS)
 		hopping_frequency_no = 0;
+
+	// Use standard CC2500 power management for data mode (handles RANGE flag etc.)
+	if(!IS_BIND_IN_PROGRESS)
+		CC2500_SetPower();
 }
 
 static void __attribute__((unused)) CG022_CC2500_RF_init()
@@ -233,7 +237,7 @@ static void __attribute__((unused)) CG022_CC2500_RF_init()
 	CC2500_WriteReg(CC2500_15_DEVIATN,  0x57);
 
 	// --- Standard radio control settings ---
-	CC2500_WriteReg(CC2500_18_MCSM0,    0x08);  // Auto-cal when going from IDLE to TX
+	CC2500_WriteReg(CC2500_18_MCSM0,    0x08);  // Manual cal only (FSCAL1 pre-loaded per channel)
 	CC2500_WriteReg(CC2500_19_FOCCFG,   0x1D);  // FOC config
 	CC2500_WriteReg(CC2500_1A_BSCFG,    0x1C);  // Bit sync config
 	CC2500_WriteReg(CC2500_1B_AGCCTRL2, 0xC7);  // AGC
@@ -293,6 +297,15 @@ void CG022_CC2500_init()
 
 	// CRC polynomial
 	crc16_polynomial = CG022_CC_CRC_POLY;
+
+	// Override bind power to maximum (+1 dBm).
+	// CC2500_SetPower() uses CC2500_BIND_POWER (-30 dBm) which is designed
+	// for standard CC2500 protocols (FrSky etc.) where the receiver is highly
+	// sensitive.  The CG022/LT8910 receiver needs a much stronger signal,
+	// especially at the out-of-spec 1 Mbps data rate.  The stock LT8900 TX
+	// outputs at approximately 0 dBm.
+	CC2500_WriteReg(CC2500_3E_PATABLE, CC2500_POWER_17);
+	prev_power = CC2500_POWER_17;
 }
 
 #endif
