@@ -72,6 +72,7 @@ Protocol Name|Build|Protocol Number|Sub_Proto 0|Sub_Proto 1|Sub_Proto 2|Sub_Prot
 [BugsMini](Protocols_Details.md#BUGSMINI---42)|AIR|42|BUGSMINI|BUGS3H|||||||NRF24L01|XN297
 [Cabell](Protocols_Details.md#Cabell---34)||34|Cabell_V3|C_TELEM|-|-|-|-|F_SAFE|UNBIND|NRF24L01|
 CFlie|AIR|38|CFlie||||||||NRF24L01|
+[CG022](Protocols_Details.md#CG022---109)|AIR|109|AO-SENMA||||||||NRF24L01|LT8910 (test)
 [CG023](Protocols_Details.md#CG023---13)|AIR|13|CG023|YD829|||||||NRF24L01|XN297
 [Corona](Protocols_Details.md#CORONA---37)|AIR/SFC|37|COR_V1|COR_V2|FD_V3||||||CC2500|
 [CX10](Protocols_Details.md#CX10---12)|AIR|12|GREEN|BLUE|DM007|-|J3015_1|J3015_2|MK33041||NRF24L01|XN297
@@ -1755,6 +1756,13 @@ Stores failsafe values in the RX.  The channel values are set when the sub-proto
 
 ### Sub_protocol CABELL_UNBIND - *7*
 The receiver bound to the model is un-bound.  This happens immediately when the sub-protocol is set to 7.
+
+## CG022 - *109*
+Proof-of-possibility NRF24L01 transmission test for the CG022 AO-SEN-MA (LT8910) protocol.
+
+CH1|CH2|CH3|CH4|CH5|CH6|CH7
+---|---|---|---|---|---|---
+A|E|T|R|FLIP|LED|HEADLESS
 
 ## CG023 - *13*
 Autobind protocol
