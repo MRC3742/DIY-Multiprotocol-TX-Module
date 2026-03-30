@@ -46,6 +46,15 @@ Current Multiprotocol boards check status: [![Travis Build Status for Multi Boar
 1. [Troubleshooting](docs/Troubleshooting.md)
 2. [Advanced Topics (not for the fainthearted!)](docs/Advanced_Topics.md)
 
+## Logic analyzer capture notes (CG022/LT8910)
+- LT8910 uses SPI mode 1 (CPHA=1). For LT8910 comparisons, use the SPI analyzer export configured for CPHA=1 (for example `b_1`) and optionally the raw digital export (`a`) to verify edges when sampling is marginal.
+- NRF24L01 uses SPI mode 0 (CPHA=0). A `b_1` export decoded with CPHA=1 will be bit-shifted, so use either the raw digital export (`a`) or an analyzer export configured for CPHA=0 for accurate byte comparisons.
+- Recommended capture set for protocol decoding:
+  - Power-on/bind capture from the stock TX (includes RESET/PKT/CS lines and the first SPI transactions).
+  - Power-on/bind capture from the MPM implementation for side-by-side comparison.
+  - A full bind burst (to extract hop table and timing).
+  - Optional stick-movement captures to map channel encoding.
+
 ## Introduction
 A functioning MULTI-Module consists of (see image below):  
 <img src="docs/images/MULTI_Module_Overview.png" width="700" height="400" />
