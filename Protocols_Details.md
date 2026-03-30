@@ -1759,6 +1759,7 @@ The receiver bound to the model is un-bound.  This happens immediately when the 
 
 ## CG022 - *109*
 Proof-of-possibility NRF24L01 transmission test for the CG022 AO-SEN-MA (LT8910) protocol.
+Uses the stock TX bind ID sequence 00 11 22 33 for initial testing.
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---

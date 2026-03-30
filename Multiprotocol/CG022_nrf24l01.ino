@@ -24,6 +24,7 @@
 
 static const uint8_t PROGMEM CG022_hop[] = { 0x0A, 0x32, 0x14, 0x3C, 0x1E, 0x46, 0x00, 0x28 };
 static const uint8_t CG022_addr[] = { 0x5A, 0x5A, 0x00, 0x33 };
+static const uint8_t CG022_bind_id[] = { 0x00, 0x11, 0x22, 0x33 };
 
 static uint8_t CG022_scale_channel(uint8_t channel)
 {
@@ -40,13 +41,11 @@ static void __attribute__((unused)) CG022_set_channel()
 
 static void __attribute__((unused)) CG022_build_bind_packet()
 {
-	uint8_t id = rx_tx_addr[3] & 0x3F;
-
 	packet[0] = 0x0A;
-	packet[1] = id;
-	packet[2] = rx_tx_addr[0];
-	packet[3] = rx_tx_addr[1];
-	packet[4] = rx_tx_addr[2];
+	packet[1] = CG022_bind_id[0];
+	packet[2] = CG022_bind_id[1];
+	packet[3] = CG022_bind_id[2];
+	packet[4] = CG022_bind_id[3];
 	packet[5] = 0x06;
 	packet[6] = 0xAB;
 	packet[7] = 0xFC;
@@ -56,10 +55,8 @@ static void __attribute__((unused)) CG022_build_bind_packet()
 
 static void __attribute__((unused)) CG022_build_data_packet()
 {
-	uint8_t id = rx_tx_addr[3] & 0x3F;
-
 	packet[0] = 0x0A;
-	packet[1] = id;
+	packet[1] = CG022_bind_id[0];
 	packet[2] = CG022_scale_channel(THROTTLE);
 	packet[3] = CG022_scale_channel(ELEVATOR);
 	packet[4] = CG022_scale_channel(RUDDER);
