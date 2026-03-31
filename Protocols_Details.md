@@ -1782,6 +1782,8 @@ Capture notes:
   - † Compare on-air preamble/sync/whitening/CRC behavior against NRF24 output.
   - † Validate actual RF center frequency and deviation during a hop cycle.
   - If you do not have SDR/sniffer hardware, the next step is confirming LT8910 register readback and checking those settings fall within NRF24 capabilities; SDR is then the remaining proof point for PHY-level equivalence.
+  - Status (no SDR): LT8910 register readback is not confirmed in the MPM traces yet; resolve any `0xFF` readback before mapping the PHY fields.
+  - NRF24 capability reference for the mapping: GFSK modulation, data rate 250 kbps/1 Mbps/2 Mbps, CRC 1 or 2 bytes, address width 3–5 bytes, payload 1–32 bytes, built-in data whitening (not user-disableable).
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
