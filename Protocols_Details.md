@@ -1764,6 +1764,11 @@ Uses the stock TX bind ID sequence 00 11 22 33 for initial testing.
 Capture notes:
 - Stock LT8910 SPI uses CPHA=1. Use the CPHA=1 export (e.g. `02b_1`) for correct LT8910 byte decoding.
 - MPM NRF24L01 captures (e.g. `20/21`) use CPHA=0 and show NRF24 register/payload commands, so they will not match LT8910 register traces from `02b_1`. Compare the NRF24 payload bytes instead (Write TX payload `0xA0` contains `0x0A 00 11 22 33 06 AB FC AD 00` during bind).
+- Bind payload comparison (LT8910 payload decoded from `02b_1` `0x32` writes after the `0x00 0x00` marker vs NRF24 `0xA0` payloads in `21b`):  
+  | Source | Payload bytes |
+  | --- | --- |
+  | LT8910 `02b_1` | `0x0A 00 11 22 33 06 AB FC AD 00` |
+  | NRF24 `21b` (`0xA0`) | `0x0A 00 11 22 33 06 AB FC AD 00` |
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
