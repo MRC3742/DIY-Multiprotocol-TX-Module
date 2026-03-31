@@ -1775,6 +1775,13 @@ Capture notes:
   | LT8910 `02b_1` | `0x00 0x28 0x0A 0x32 0x14 0x3C 0x1E 0x46` |
   | NRF24 `21b` (`0x25`) | `0x0A 0x32 0x14 0x3C 0x1E 0x46 0x00 0x28` |
   (Same 8-channel set; LT8910 trace is phase-shifted because it begins with the `0x00/0x28` prelude.)
+- PHY traceability checklist (items marked † require SDR/sniffer capture):
+  - Confirm LT8910 SPI readback works (MISO not stuck at `0xFF`) so register values are trustworthy.
+  - Record LT8910 register config for data rate/modulation, preamble + sync, CRC width/polynomial, whitening seed, and address width; compare to NRF24 feature set.
+  - Verify packet timing (bind burst length, dwell time, inter-packet spacing) with logic analyzer captures.
+  - † Compare on-air preamble/sync/whitening/CRC behavior against NRF24 output.
+  - † Validate actual RF center frequency and deviation during a hop cycle.
+  - If you do not have SDR/sniffer hardware, the next step is confirming LT8910 register readback and checking those settings fall within NRF24 capabilities; SDR is then the remaining proof point for PHY-level equivalence.
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
