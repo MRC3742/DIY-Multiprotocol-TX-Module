@@ -1769,6 +1769,12 @@ Capture notes:
   | --- | --- |
   | LT8910 `02b_1` | `0x0A 00 11 22 33 06 AB FC AD 00` |
   | NRF24 `21b` (`0xA0`) | `0x0A 00 11 22 33 06 AB FC AD 00` |
+- Channel hop comparison (LT8910 `02b_1` `0x07` writes use `0x07 00 <CH>` then `0x07 01 <CH>` per hop; NRF24 `21b` writes `RF_CH` via command `0x25`):  
+  | Source | Hop sequence (one cycle) |
+  | --- | --- |
+  | LT8910 `02b_1` | `0x00 0x28 0x0A 0x32 0x14 0x3C 0x1E 0x46` |
+  | NRF24 `21b` (`0x25`) | `0x0A 0x32 0x14 0x3C 0x1E 0x46 0x00 0x28` |
+  (Same 8-channel set; LT8910 trace is phase-shifted because it begins with the `0x00/0x28` prelude.)
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
