@@ -1761,6 +1761,10 @@ The receiver bound to the model is un-bound.  This happens immediately when the 
 Proof-of-possibility NRF24L01 transmission test for the CG022 AO-SEN-MA (LT8910) protocol.
 Uses the stock TX bind ID sequence 00 11 22 33 for initial testing.
 
+Capture notes:
+- Stock LT8910 SPI uses CPHA=1. Use the CPHA=1 export (e.g. `02b_1`) for correct LT8910 byte decoding.
+- MPM NRF24L01 captures (e.g. `20/21`) use CPHA=0 and show NRF24 register/payload commands, so they will not match LT8910 register traces from `02b_1`. Compare the NRF24 payload bytes instead (Write TX payload `0xA0` contains `0x0A 00 11 22 33 06 AB FC AD 00` during bind).
+
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
 A|E|T|R|FLIP|LED|HEADLESS
