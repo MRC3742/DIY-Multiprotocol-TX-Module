@@ -17,14 +17,17 @@
 
 #include "iface_nrf24l01.h"
 
-#define CG022_PACKET_PERIOD		2315
+#define CG022_PACKET_PERIOD		2310
+#define CG022_BIND_START_DELAY	15614
 #define CG022_BIND_COUNT		166
 #define CG022_PACKET_SIZE		10
 #define CG022_RF_CHANNEL_COUNT	8
 
-static const uint8_t PROGMEM CG022_hop[] = { 0x0A, 0x32, 0x14, 0x3C, 0x1E, 0x46, 0x00, 0x28 };
+#define CG022_HOP_START_INDEX	1
+static const uint8_t PROGMEM CG022_hop[] = { 0x00, 0x28, 0x0A, 0x32, 0x14, 0x3C, 0x1E, 0x46 };
 static const uint8_t CG022_addr[] = { 0x5A, 0x5A, 0x00, 0x33 };
 static const uint8_t CG022_bind_id[] = { 0x00, 0x11, 0x22, 0x33 };
+static uint8_t CG022_startup_delay_done;
 
 static uint8_t CG022_scale_channel(uint8_t channel)
 {
@@ -95,6 +98,11 @@ uint16_t CG022_callback()
 	#ifdef MULTI_SYNC
 		telemetry_set_input_sync(CG022_PACKET_PERIOD);
 	#endif
+	if (!CG022_startup_delay_done)
+	{
+		CG022_startup_delay_done = 1;
+		return CG022_BIND_START_DELAY;
+	}
 	if (bind_counter)
 	{
 		bind_counter--;
@@ -109,7 +117,8 @@ void CG022_init(void)
 {
 	BIND_IN_PROGRESS;	// autobind protocol
 	bind_counter = CG022_BIND_COUNT;
-	hopping_frequency_no = 0;
+	hopping_frequency_no = CG022_HOP_START_INDEX;
+	CG022_startup_delay_done = 0;
 	CG022_RF_init();
 	packet_period = CG022_PACKET_PERIOD;
 }
