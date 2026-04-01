@@ -1783,6 +1783,11 @@ Capture notes:
   - † Validate actual RF center frequency and deviation during a hop cycle.
   - If you do not have SDR/sniffer hardware, the next step is confirming LT8910 register readback and checking those settings fall within NRF24 capabilities; SDR is then the remaining proof point for PHY-level equivalence.
   - Status (no SDR): LT8910 register readback is not confirmed in the MPM traces yet; resolve any `0xFF` readback before mapping the PHY fields.
+  - What `0xFF` readback means: MISO is staying high/undriven during read transactions, so the LT8910 is not responding and the returned register bytes are not trustworthy.
+  - What is required to fix readback:
+    - Ensure the LT8910 is powered and has a reset pulse (RET low → high) before SPI reads.
+    - Confirm the MISO wiring path is correct and not blocked by bus contention (only the LT8910 should drive MISO during its reads).
+    - Match the stock SPI mode (CPHA=1, as noted above) and keep the SPI clock conservative if reads are still `0xFF`.
   - NRF24 capability reference for the mapping: GFSK modulation, data rate 250 kbps/1 Mbps/2 Mbps, CRC 1 or 2 bytes, address width 3–5 bytes, payload 1–32 bytes, built-in data whitening (not user-disableable).
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
