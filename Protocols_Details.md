@@ -1788,6 +1788,8 @@ Capture notes:
     - Ensure the LT8910 is powered and has a reset pulse (RET low → high) before SPI reads.
     - Confirm the MISO wiring path is correct and not blocked by bus contention (only the LT8910 should drive MISO during its reads).
     - Match the stock SPI mode (CPHA=1, as noted above) and keep the SPI clock conservative if reads are still `0xFF`.
+  - Scope clarification: this readback refers to SPI register reads from an LT8910 device (original TX or RX board) captured with a logic analyzer; NRF24 emulation has no LT8910 to read back.
+  - If you already have successful-bind captures from the model’s RX (e.g., files 52+), those are valid inputs as long as they include LT8910 register writes/reads; they do not require the MPM to bind.
   - NRF24 capability reference for the mapping: GFSK modulation, data rate 250 kbps/1 Mbps/2 Mbps, CRC 1 or 2 bytes, address width 3–5 bytes, payload 1–32 bytes, built-in data whitening (not user-disableable).
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
