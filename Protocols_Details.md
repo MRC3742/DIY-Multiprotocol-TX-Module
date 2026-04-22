@@ -777,9 +777,9 @@ A|E|T|R|RATE|FLIP|HEADLESS|LED
 **Rate control (CH5):** 3-position switch for rate/sensitivity mode:
 - Low position (-100%): 20% rate (gentle)
 - Mid position (0%): 60% rate (normal)
-- High position (+100%): 100% rate (aggressive)
+- High position (+100%): 100% rate (aggressive with flip near endpoints)
 
-**Binding:** Binding can occur in two ways:
+**Binding:** Binding can occur in one of these two ways:
 1. Automatic bind on TX power-on: The transmitter automatically enters bind mode when the protocol is selected
 2. Manual rebind via CH16: Enable "Bind on channel" in GUI, then toggle CH16 from low to high to trigger a rebind sequence
 

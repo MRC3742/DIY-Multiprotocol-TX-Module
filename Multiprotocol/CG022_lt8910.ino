@@ -22,10 +22,9 @@
 //   - SCK  (PB13) → LT8910 SCK
 //   - CS   (PA15/SPI_CSN) → LT8910 CS
 //   - 3.3V, GND
-//   - RESET (PA14/LT8910_RST) → LT8910 RET pin (remove 10k pullup from RET)
+//   - RESET (PA14/LT8910_RST) → LT8910 RET pin
 //
 // PA14 (SWCLK) is available after afio_cfg_debug_ports(AFIO_DEBUG_NONE).
-// Using a dedicated pin avoids conflict with CYRF6936 reset on PB8.
 
 #if defined(CG022_LT8910_INO)
 
@@ -157,7 +156,6 @@ static void __attribute__((unused)) CG022_LT8910_init()
 	// The hardware RESET initializes the LT8910's SPI interface including the
 	// MISO output driver, which may not be activated by software reset alone.
 	// LT8910_RST_pin (PA14) is a dedicated pin to avoid conflict with CYRF6936.
-	// Wire PA14 → LT8910 RET pin; remove the 10k pullup from RET.
 	// PKT pin is left floating (matching stock TX where PKT is unconnected).
 #ifdef LT8910_RST_HI
 	// Ensure RET is HIGH before starting reset sequence.

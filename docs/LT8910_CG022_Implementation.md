@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This document summarizes all testing and analysis performed during the implementation of the Ao-Sen-Ma CG022 quadcopter protocol on the DIY Multiprotocol TX Module (MPM) using an external LT8910 RF board connected via the MPM's 6-pin SPI output header.
+This document summarizes all testing and analysis performed during the implementation of the Ao-Sen-Ma (Eachine) CG022 quadcopter protocol on the DIY Multiprotocol TX Module (MPM) using an external LT8910 RF board connected via the MPM's 6-pin SPI output header and a separate line from RST to STM32 Pin 37 (PA14).
 
-**Outcome:** ✅ **WORKING** — The MPM successfully binds and controls the CG022 model receiver. All three rate modes (20%, 60%, 100%) function correctly with the values decoded from stock TX captures.
+**Outcome:** ✅ **WORKING** — The MPM successfully binds and controls the CG022 model receiver. All options and rate modes (20%, 60%, 100%) function correctly with the values decoded from stock TX captures.
 
 **Implementation Summary:**
 - Hardware RESET via PA14 (dedicated LT8910_RST pin) provides reliable chip initialization
@@ -24,9 +24,20 @@ Implement CG022 protocol support in the DIY Multiprotocol TX Module firmware to 
 - **MPM Board:** STM32F103-based Multiprotocol TX Module
 - **RF Module:** Standalone LT8910 RF board (extracted from or identical to stock CG022 TX)
 - **Connection:** MPM 6-pin SPI header → external LT8910 RF board via wires
-- **RET Pin:** Wired to PA14 (LT8910_RST_pin) for hardware RESET control; 10kΩ pullup removed. PA14 drives RET LOW (500ms) → HIGH, replicating stock TX behavior.
+- **RET Pin:** Wired to PA14 (LT8910_RST_pin) for hardware RESET control. PA14 drives RET LOW (500ms) → HIGH, replicating stock TX behavior.
 - **PKT Pin:** Left floating (matching stock TX behavior)
 - **Logic Analyzer:** Saleae Logic analyzer for SPI capture verification
+
+**LT8910 RF Board Harvesting:** The LT8910 RF board needs to be harvested from the original CG022 TX. The following images show the RF board that needs to be extracted and the connection points clearly marked:
+
+![Stock CG022 TX](images/01_TX.jpeg)
+*Stock CG022 TX with internal RF board*
+
+![LT8910 RF Board Right Side](images/02_LT8910_RF_Right.jpeg)
+*LT8910 RF board (right side) showing connection points*
+
+![LT8910 RF Board Left Side](images/03_LT8910_RF_Left.jpeg)
+*LT8910 RF board (left side) showing connection points*
 
 ### 1.3 Reference Hardware
 - **Stock CG022 TX:** Original transmitter with LT8910 chip on-board, using bit-banged SPI at ~114kHz
