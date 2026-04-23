@@ -362,13 +362,11 @@ uint16_t CG022_callback()
 
 static void __attribute__((unused)) CG022_initialize_txid()
 {
-	// TX ID bytes from stock capture bind packets (02b)
-	// Stock FIFO word 2 = 0x1122, word 3 = 0x3306
-	// -> bind bytes: 0x11, 0x22, 0x33, 0x06
-	rx_tx_addr[0] = 0x11;
-	rx_tx_addr[1] = 0x22;
-	rx_tx_addr[2] = 0x33;
-	rx_tx_addr[3] = 0x06;
+	// Use the model-match ID derived from RX_num + module ID.
+	// MProtocol_id is updated in Multiprotocol.ino to include RX_num (0-63),
+	// giving each model a unique bind ID while remaining consistent with
+	// other protocols' model-match behavior.
+	set_rx_tx_addr(MProtocol_id);
 }
 
 void CG022_init(void)
