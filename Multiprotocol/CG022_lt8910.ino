@@ -366,7 +366,7 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	// Stock FIFO word 2 = 0x1122, word 3 = 0x3306
 	// -> bind bytes: 0x11, 0x22, 0x33, 0x06
 	// Model match: keep syncword bytes fixed and vary byte index 3 with RX_num.
-	// XOR keeps the stock ID when RX_num=0 while spreading values across the low 6 bits.
+	// XOR keeps the stock ID when RX_num=0 (0x06 ^ 0x00 = 0x06) while spreading values across the low 6 bits.
 	rx_tx_addr[0] = 0x11;
 	rx_tx_addr[1] = 0x22;
 	rx_tx_addr[2] = 0x33;
