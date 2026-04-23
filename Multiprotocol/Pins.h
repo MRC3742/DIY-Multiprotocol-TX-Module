@@ -236,7 +236,7 @@
 	#define SPI_CSN_pin		PA15
 	//LT8910 RESET pin (external RF board via SPI header)
 	//PA14 (SWCLK) is available after afio_cfg_debug_ports(AFIO_DEBUG_NONE).
-	//Using a dedicated pin avoids conflict with CYRF6936 reset on PB8.
+	//Using a dedicated pin avoids conflict with onboard 4in1 RF chips
 	#define	LT8910_RST_pin	PA14
 	#define	LT8910_RST_HI	digitalWrite(LT8910_RST_pin,HIGH)
 	#define	LT8910_RST_LO	digitalWrite(LT8910_RST_pin,LOW)
