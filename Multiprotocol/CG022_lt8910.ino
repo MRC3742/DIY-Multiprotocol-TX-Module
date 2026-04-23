@@ -80,18 +80,6 @@ static const uint8_t PROGMEM CG022_init_regs[] = {
 static bool cg022_first_packet = true;
 static bool cg022_post_bind_sync = false;
 
-// Non-blocking rebind state machine to avoid 500ms blocking delay that kills telemetry.
-// The hardware reset sequence is split across multiple callback cycles:
-//   State 0: Normal operation (no rebind pending)
-//   State 1: Prepare hardware, drive RESET HIGH, start 50ms timer
-//   State 2: Drive RESET LOW, start 480ms timer (split into smaller chunks)
-//   State 3-22: Continue 480ms LOW (24ms per cycle × 20 cycles ≈ 480ms)
-//   State 23: Drive RESET HIGH, start 6ms settle timer
-//   State 24: Initialize LT8910 registers and start bind
-static uint8_t cg022_reset_state = 0;
-static uint32_t cg022_reset_timer = 0;
-#define CG022_RESET_CHUNK_MS 24  // Each callback cycle during reset LOW phase
-
 static void __attribute__((unused)) CG022_restart_bind_sequence()
 {
 	// Restore bind-time sync words and channel before sending bind packets again.
@@ -218,16 +206,6 @@ static void __attribute__((unused)) CG022_write_fifo_post_bind(const uint8_t *da
 	}
 }
 
-static void __attribute__((unused)) CG022_start_bind()
-{
-	// Start non-blocking rebind sequence via state machine.
-	// The reset sequence (500ms+) is split across multiple callback cycles
-	// to avoid blocking the main loop which would break serial telemetry.
-	// State machine runs in CG022_callback() and progresses each cycle.
-	BIND_IN_PROGRESS;
-	cg022_reset_state = 1;  // Start state machine at step 1
-}
-
 static void __attribute__((unused)) CG022_write_fifo_no_clear(const uint8_t *data, uint8_t length)
 {
 	// Stock TX does not clear FIFO between the CRC seed read and the first bind payload.
@@ -330,111 +308,12 @@ uint16_t CG022_callback()
 	// CRITICAL: Exit immediately if protocol is being changed.
 	// modules_reset() restores SPI to Mode 0, but CG022 uses Mode 1.
 	// Doing ANY SPI operations after SPI settings change would hang/corrupt.
-	// Also abort any pending reset state machine - it won't complete anyway.
 	if(IS_CHANGE_PROTOCOL_FLAG_on)
-	{
-		cg022_reset_state = 0;  // Abort state machine
 		return CG022_PACKET_PERIOD;
-	}
 
 	#ifdef MULTI_SYNC
 		telemetry_set_input_sync(CG022_PACKET_PERIOD);
 	#endif
-
-	// Non-blocking rebind state machine.
-	// Each state returns quickly to allow main loop to process telemetry.
-	// States progress the hardware reset sequence across multiple callback cycles.
-	if(cg022_reset_state > 0)
-	{
-		switch(cg022_reset_state)
-		{
-			case 1:
-				// Step 1: Prepare hardware, drive RESET HIGH to ensure clean start
-				CG022_prepare_hardware();
-				#ifdef LT8910_RST_HI
-					LT8910_RST_HI;
-				#endif
-				cg022_reset_timer = millis();
-				cg022_reset_state = 2;
-				return CG022_PACKET_PERIOD;  // ~2.3ms - fast return for telemetry
-
-			case 2:
-				// Step 2: After 50ms HIGH, drive RESET LOW to start reset
-				if((millis() - cg022_reset_timer) >= 50)
-				{
-					#ifdef LT8910_RST_HI
-						LT8910_RST_LO;
-					#endif
-					cg022_reset_timer = millis();
-					cg022_reset_state = 3;
-				}
-				return CG022_PACKET_PERIOD;
-
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-			case 8:
-			case 9:
-			case 10:
-			case 11:
-			case 12:
-			case 13:
-			case 14:
-			case 15:
-			case 16:
-			case 17:
-			case 18:
-			case 19:
-			case 20:
-			case 21:
-			case 22:
-				// Steps 3-22: Hold RESET LOW for ~480ms total (20 × 24ms chunks)
-				// Each callback returns quickly to maintain telemetry
-				if((millis() - cg022_reset_timer) >= CG022_RESET_CHUNK_MS)
-				{
-					cg022_reset_timer = millis();
-					cg022_reset_state++;
-				}
-				return CG022_PACKET_PERIOD;
-
-			case 23:
-				// Step 23: Release RESET HIGH, wait 6ms for settling
-				#ifdef LT8910_RST_HI
-					LT8910_RST_HI;
-				#endif
-				cg022_reset_timer = millis();
-				cg022_reset_state = 24;
-				return CG022_PACKET_PERIOD;
-
-			case 24:
-				// Step 24: After 6ms settle, initialize LT8910 and start bind
-				if((millis() - cg022_reset_timer) >= 6)
-				{
-					// Write all init registers (this takes ~6ms at /256 clock)
-					for(uint8_t i = 0; i < CG022_NUM_INIT_REGS; i++)
-					{
-						uint8_t  reg = pgm_read_byte_near(&CG022_init_regs[i * 3]);
-						uint16_t val = ((uint16_t)pgm_read_byte_near(&CG022_init_regs[i * 3 + 1]) << 8)
-									 | pgm_read_byte_near(&CG022_init_regs[i * 3 + 2]);
-						LT8910_WriteReg(reg, val);
-					}
-					// Clear FIFO and read CRC seed (stock TX sequence)
-					LT8910_WriteReg(LT8910_REG_FIFO, 0x0000);
-					LT8910_ReadReg(LT8910_REG_CRC_SEED);
-					
-					// Initialize bind sequence
-					CG022_restart_bind_sequence();
-					
-					// Reset state machine - ready for normal operation
-					cg022_reset_state = 0;
-				}
-				return CG022_PACKET_PERIOD;
-		}
-		// Should not reach here, but return anyway
-		return CG022_PACKET_PERIOD;
-	}
 
 	// Handle bind counter exhausted during bind - restart bind sequence.
 	// This only triggers the soft reset (sync words, channel) since the
@@ -495,10 +374,8 @@ static void __attribute__((unused)) CG022_initialize_txid()
 void CG022_init(void)
 {
 	BIND_IN_PROGRESS;	// autobind protocol
-	cg022_reset_state = 0;  // Clear state machine
 	CG022_initialize_txid();
 	// Initial startup uses blocking reset - telemetry not started yet.
-	// Rebind via GUI/CH16 uses non-blocking state machine in callback.
 	CG022_reset_lt8910_for_bind();
 	// Init writes R07=0x0000 (channel 0, TX off) as part of register config.
 }
