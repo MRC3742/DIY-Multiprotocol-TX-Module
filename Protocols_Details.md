@@ -760,7 +760,7 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
 
 ***
-# CC2500 RF Module
+# LT8910 RF Module
 
 ## AOSENMA - *109*
 Requires an external LT8910 RF board connected to the MPM 6-pin SPI header (MOSI, MISO, SCK, CS, 3.3V, GND), also RET wired to STM32 MPU Pin 37 (PA14), with PKT not connected (floating - same as Original TX).
@@ -769,6 +769,7 @@ Requires an external LT8910 RF board connected to the MPM 6-pin SPI header (MOSI
 Autobind protocol
 
 Model: Ao-Sen-Ma CG022 quad copter
+Only one model can be flown at the same time since the ID is hardcoded.
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8
 ---|---|---|---|---|---|---|---
@@ -782,6 +783,8 @@ A|E|T|R|RATE|FLIP|HEADLESS|LED
 **Binding:** Binding can occur in one of these two ways:
 1. Automatic bind on TX power-on: The transmitter automatically enters bind mode when the protocol is selected
 2. Manual rebind via CH16: Enable "Bind on channel" in GUI, then toggle CH16 from low to high to trigger a rebind sequence
+
+# CC2500 RF Module
 
 ## ARES - *108*
 Models: ARES RTF Park Flyer Aircraft.
