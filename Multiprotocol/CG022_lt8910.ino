@@ -188,6 +188,12 @@ static void __attribute__((unused)) CG022_reset_lt8910_for_bind()
 	// Reinitialize LT8910 and reset bind state to match power-on autobind.
 	CG022_prepare_hardware();
 	CG022_LT8910_init();
+	if(!LT8910_DetectChip())
+	{
+		SUB_PROTO_INVALID;
+		BIND_DONE;
+		return;
+	}
 	CG022_restart_bind_sequence();
 }
 
@@ -384,6 +390,7 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	cg022_txid[1] = (uint8_t)((txid >> 8) & 0xFF);
 	cg022_txid[2] = (uint8_t)((txid >> 16) & 0xFF);
 	rx_tx_addr[3] = cg022_txid[0];
+	rx_tx_addr[4] = (rx_tx_addr[2] & 0xF0) | (rx_tx_addr[3] & 0x0F);
 }
 
 void CG022_init(void)

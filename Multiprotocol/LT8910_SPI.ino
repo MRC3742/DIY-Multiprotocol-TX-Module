@@ -37,16 +37,12 @@ uint16_t LT8910_ReadReg(uint8_t address)
 {
 	uint16_t result;
 	SPI_CSN_off;
-	SPI_Write(address | 0x80);		// bit7=1 for read
-	while(SPI2_BASE->SR & SPI_SR_BSY);	// Wait for address byte fully clocked out
-	SPI_Write(0xFF);			// Stock TX clocks 0xFF during reads
-	while(SPI2_BASE->SR & SPI_SR_BSY);
-	result  = (uint16_t)SPI2_BASE->DR << 8;	// MSB first
-	SPI_Write(0xFF);
-	while(SPI2_BASE->SR & SPI_SR_BSY);
-	result |= SPI2_BASE->DR;			// LSB
+	SPI_Transfer(address | 0x80);		// bit7=1 for read
+	uint8_t msb = SPI_Transfer(0xFF);	// Stock TX clocks 0xFF during reads
+	uint8_t lsb = SPI_Transfer(0xFF);
 	while(SPI2_BASE->SR & SPI_SR_BSY);	// Ensure last byte done before CS rise
 	SPI_CSN_on;
+	result = ((uint16_t)msb << 8) | lsb;
 	return result;
 }
 
