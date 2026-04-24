@@ -53,6 +53,23 @@ Implement CG022 protocol support in the DIY Multiprotocol TX Module firmware to 
 - Decoded protocol: 8-channel frequency hopping (channels 0,40,10,50,20,60,30,70), 2310µs hop period, 10-byte FIFO payload with checksum
 - **Sample rate:** 8MHz (Saleae Logic v1.1.18) — adequate for ~114kHz stock SPI
 
+### Phase 1b: Model Match Capture Comparison (TX1–TX4)
+- Captured bind packets from four different stock transmitters (02b/22b/32b/42b)
+- The bind payload format is consistent: `0A 00 11 22 33 xx yy zz cc 00`
+  - Bytes 0–4 and byte 9 are fixed
+  - Bytes 5–7 are unique per TX
+  - Byte 8 is a checksum: `(byte5 + byte6 + byte7) & 0xFF`
+
+| TX | Capture | Bind Payload |
+| --- | --- | --- |
+| TX1 | 02b | `0A 00 11 22 33 06 AB FC AD 00` |
+| TX2 | 22b | `0A 00 11 22 33 FB E0 FC D7 00` |
+| TX3 | 32b | `0A 00 11 22 33 F4 B9 FA A7 00` |
+| TX4 | 42b | `0A 00 11 22 33 14 D2 F9 DF 00` |
+
+- Comparing these packets showed the unique bytes are the TX ID, so model match can be implemented by generating bytes 5–7 from `MProtocol_id` (which incorporates the receiver number 0–63) and recalculating the checksum.
+- Changing the RX number updates the TX ID bytes, giving unique model match after re-binding.
+
 ### Phase 2: Receiver Analysis (Captures 51–54)
 - Captured stock RX SPI during successful bind with stock TX
 - **Capture 54b** confirmed as reference for successful bind: 301 FIFO reads, 48 complete bind packets starting with 0x0A00

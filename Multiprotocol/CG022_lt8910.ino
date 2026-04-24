@@ -223,6 +223,11 @@ static void __attribute__((unused)) CG022_write_fifo_no_clear(const uint8_t *dat
 
 static void __attribute__((unused)) CG022_send_bind_packet()
 {
+	// Unique bind payloads from four stock TX captures:
+	// TX1 (02b): 0A 00 11 22 33 06 AB FC AD 00
+	// TX2 (22b): 0A 00 11 22 33 FB E0 FC D7 00
+	// TX3 (32b): 0A 00 11 22 33 F4 B9 FA A7 00
+	// TX4 (42b): 0A 00 11 22 33 14 D2 F9 DF 00
 	// Bind payload from stock TX captures (02b/22b/32b/42b):
 	// 0A 00 11 22 33 xx yy zz cc 00
 	// Byte 0: length (0x0A = 10)

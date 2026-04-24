@@ -769,7 +769,7 @@ Requires an external LT8910 RF board connected to the MPM 6-pin SPI header (MOSI
 Autobind protocol
 
 Model: Ao-Sen-Ma CG022 quad copter
-Only one model can be flown at the same time since the ID is hardcoded.
+Unique model match is available by changing receiver numbers (0-63); changing the RX number requires re-binding.
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8
 ---|---|---|---|---|---|---|---
