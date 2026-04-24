@@ -79,6 +79,7 @@ static const uint8_t PROGMEM CG022_init_regs[] = {
 
 static bool cg022_first_packet = true;
 static bool cg022_post_bind_sync = false;
+static uint8_t cg022_txid[3] = { 0x06, 0xAB, 0xFC };
 
 static void __attribute__((unused)) CG022_restart_bind_sequence()
 {
@@ -194,8 +195,8 @@ static void __attribute__((unused)) CG022_write_fifo_post_bind(const uint8_t *da
 {
 	// Stock TX (02b) clears FIFO, updates sync words 4/7, then loads first data payload.
 	LT8910_WriteReg(LT8910_REG_FIFO, 0x0000);
-	LT8910_WriteReg(LT8910_REG_SYNCWORD4, (uint16_t)(0xAB << 8) | rx_tx_addr[3]);
-	LT8910_WriteReg(LT8910_REG_SYNCWORD7, (uint16_t)(0x00 << 8) | 0xFC);
+	LT8910_WriteReg(LT8910_REG_SYNCWORD4, (uint16_t)(cg022_txid[1] << 8) | cg022_txid[0]);
+	LT8910_WriteReg(LT8910_REG_SYNCWORD7, (uint16_t)cg022_txid[2]);
 	LT8910_WriteReg(LT8910_REG_FIFO_CTRL, 0x8080);
 	for(uint8_t i = 0; i < length; i += 2)
 	{
@@ -235,10 +236,10 @@ static void __attribute__((unused)) CG022_send_bind_packet()
 	buf[2] = rx_tx_addr[0];	// Bind prefix byte 0 (syncword4 LSB)
 	buf[3] = rx_tx_addr[1];	// Bind prefix byte 1 (syncword4 MSB)
 	buf[4] = rx_tx_addr[2];	// Bind prefix byte 2 (syncword7 LSB)
-	buf[5] = rx_tx_addr[3];	// TX ID byte 0 (post-bind syncword4 LSB)
-	buf[6] = 0xAB;			// TX ID byte 1 (post-bind syncword4 MSB) - 02b stock
-	buf[7] = 0xFC;			// TX ID byte 2 (post-bind syncword7 LSB) - 02b stock
-	buf[8] = 0xAD;			// Checksum of bytes 5-7 - 02b stock
+	buf[5] = cg022_txid[0];	// TX ID byte 0 (post-bind syncword4 LSB)
+	buf[6] = cg022_txid[1];	// TX ID byte 1 (post-bind syncword4 MSB)
+	buf[7] = cg022_txid[2];	// TX ID byte 2 (post-bind syncword7 LSB)
+	buf[8] = (uint8_t)(cg022_txid[0] + cg022_txid[1] + cg022_txid[2]);	// Checksum of bytes 5-7
 	buf[9] = 0x00;
 
 	if(cg022_first_packet)
@@ -368,13 +369,15 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	// Fixed bind prefix bytes from stock capture bind packets (capture 02b)
 	// Stock FIFO word 2 = 0x1122, word 3 = 0x3306
 	// -> bind prefix bytes: 0x11, 0x22, 0x33 (bytes 2-4)
-	// -> TX ID byte 0: 0x06 (payload byte 5, syncword4 LSB)
-	// Remaining TX ID bytes (payload bytes 6-7) are fixed in CG022_send_bind_packet()
-	// to the 02b values for now (no model match) for reliable control.
+	// -> TX ID bytes 0-2 derived from MProtocol_id lower 24 bits
 	rx_tx_addr[0] = 0x11;
 	rx_tx_addr[1] = 0x22;
 	rx_tx_addr[2] = 0x33;
-	rx_tx_addr[3] = 0x06;
+	uint32_t txid = MProtocol_id & 0x00FFFFFF;
+	cg022_txid[0] = (uint8_t)(txid & 0xFF);
+	cg022_txid[1] = (uint8_t)((txid >> 8) & 0xFF);
+	cg022_txid[2] = (uint8_t)((txid >> 16) & 0xFF);
+	rx_tx_addr[3] = cg022_txid[0];
 }
 
 void CG022_init(void)
