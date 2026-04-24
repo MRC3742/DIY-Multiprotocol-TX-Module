@@ -221,21 +221,24 @@ static void __attribute__((unused)) CG022_write_fifo_no_clear(const uint8_t *dat
 
 static void __attribute__((unused)) CG022_send_bind_packet()
 {
-	// Bind payload from stock TX capture: 0A 00 11 22 33 06 AB FC AD 00
+	// Bind payload from stock TX captures (02b/22b/32b/42b):
+	// 0A 00 11 22 33 xx yy zz cc 00
 	// Byte 0: length (0x0A = 10)
 	// Byte 1: 0x00 (bind indicator)
-	// Bytes 2-8: TX identity (derived from sync words)
+	// Bytes 2-4: fixed bind prefix (11 22 33) from bind-time sync words
+	// Bytes 5-7: unique TX ID bytes (match post-bind syncword4/7 writes)
+	// Byte 8: checksum = (byte5 + byte6 + byte7) & 0xFF
 	// Byte 9: 0x00
 	uint8_t buf[CG022_PAYLOAD_SIZE];
 	buf[0] = 0x0A;			// Length
 	buf[1] = 0x00;			// Bind mode
-	buf[2] = rx_tx_addr[0];	// TX ID byte 0
-	buf[3] = rx_tx_addr[1];	// TX ID byte 1
-	buf[4] = rx_tx_addr[2];	// TX ID byte 2
-	buf[5] = rx_tx_addr[3];	// TX ID byte 3
-	buf[6] = 0xAB;			// Fixed bytes from stock capture
-	buf[7] = 0xFC;
-	buf[8] = 0xAD;
+	buf[2] = rx_tx_addr[0];	// Bind prefix byte 0 (syncword4 LSB)
+	buf[3] = rx_tx_addr[1];	// Bind prefix byte 1 (syncword4 MSB)
+	buf[4] = rx_tx_addr[2];	// Bind prefix byte 2 (syncword7 LSB)
+	buf[5] = rx_tx_addr[3];	// TX ID byte 0 (post-bind syncword4 LSB)
+	buf[6] = 0xAB;			// TX ID byte 1 (post-bind syncword4 MSB) - 02b stock
+	buf[7] = 0xFC;			// TX ID byte 2 (post-bind syncword7 LSB) - 02b stock
+	buf[8] = 0xAD;			// Checksum of bytes 5-7 - 02b stock
 	buf[9] = 0x00;
 
 	if(cg022_first_packet)
@@ -362,10 +365,12 @@ uint16_t CG022_callback()
 
 static void __attribute__((unused)) CG022_initialize_txid()
 {
-	// TX ID bytes from stock capture bind packets (capture 02b)
+	// Fixed bind prefix bytes from stock capture bind packets (capture 02b)
 	// Stock FIFO word 2 = 0x1122, word 3 = 0x3306
-	// -> bind bytes: 0x11, 0x22, 0x33, 0x06
-	// Use fixed stock ID only (no model match) for reliable control.
+	// -> bind prefix bytes: 0x11, 0x22, 0x33 (bytes 2-4)
+	// -> TX ID byte 0: 0x06 (payload byte 5, syncword4 LSB)
+	// Remaining TX ID bytes (payload bytes 6-7) are fixed in CG022_send_bind_packet()
+	// to the 02b values for now (no model match) for reliable control.
 	rx_tx_addr[0] = 0x11;
 	rx_tx_addr[1] = 0x22;
 	rx_tx_addr[2] = 0x33;
