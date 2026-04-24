@@ -79,7 +79,7 @@ static const uint8_t PROGMEM CG022_init_regs[] = {
 
 static bool cg022_first_packet = true;
 static bool cg022_post_bind_sync = false;
-static uint8_t cg022_txid[3] = { 0x06, 0xAB, 0xFC };
+static uint8_t cg022_txid[3] = { 0x00, 0x00, 0x00 };
 
 static void __attribute__((unused)) CG022_restart_bind_sequence()
 {
@@ -196,6 +196,7 @@ static void __attribute__((unused)) CG022_write_fifo_post_bind(const uint8_t *da
 	// Stock TX (02b) clears FIFO, updates sync words 4/7, then loads first data payload.
 	LT8910_WriteReg(LT8910_REG_FIFO, 0x0000);
 	LT8910_WriteReg(LT8910_REG_SYNCWORD4, (uint16_t)(cg022_txid[1] << 8) | cg022_txid[0]);
+	// Syncword7 uses the low byte only; the high byte is unused by the LT8910 for this protocol.
 	LT8910_WriteReg(LT8910_REG_SYNCWORD7, (uint16_t)cg022_txid[2]);
 	LT8910_WriteReg(LT8910_REG_FIFO_CTRL, 0x8080);
 	for(uint8_t i = 0; i < length; i += 2)
