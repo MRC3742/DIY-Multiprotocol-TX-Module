@@ -144,7 +144,7 @@ static void __attribute__((unused)) CG022_LT8910_init()
 	//   RET=0 at t=60.275ms, RET=1 at t=561.317ms, first SPI at t=567.180ms.
 	// The hardware RESET initializes the LT8910's SPI interface including the
 	// MISO output driver, which may not be activated by software reset alone.
-	// LT8910_RST_pin (PA14) is a dedicated pin to avoid conflict with CYRF6936.
+	// LT8910_RST_pin (PA14) is a dedicated line wired to STM32 pin 37
 	// PKT pin is left floating (matching stock TX where PKT is unconnected).
 #ifdef LT8910_RST_HI
 	// Ensure RET is HIGH before starting reset sequence.
