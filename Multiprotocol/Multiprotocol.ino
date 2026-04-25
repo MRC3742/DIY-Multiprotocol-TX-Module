@@ -104,7 +104,7 @@ uint16_t packet_period;
 uint8_t  packet_count;
 uint8_t  packet_sent;
 uint8_t  packet_length;
-#if defined(HOTT_CC2500_INO) || defined(ESKY150V2_CC2500_INO) || defined(MLINK_CYRF6936_INO)
+#if defined(HOTT_CC2500_INO) || defined(ESKY150V2_CC2500_INO) || defined(MLINK_CYRF6936_INO) || defined(ARES_CC2500_INO)
 	uint8_t  hopping_frequency[78];
 #else
 	uint8_t  hopping_frequency[50];
@@ -130,7 +130,7 @@ uint16_t pps_counter;
 #ifdef CC2500_INSTALLED
 	#ifdef SCANNER_CC2500_INO
 		uint8_t calData[255];
-	#elif defined(HOTT_CC2500_INO) || defined(ESKY150V2_CC2500_INO)
+	#elif defined(HOTT_CC2500_INO) || defined(ESKY150V2_CC2500_INO) || defined(ARES_CC2500_INO)
 		uint8_t calData[75];
 	#else
 		uint8_t calData[50];

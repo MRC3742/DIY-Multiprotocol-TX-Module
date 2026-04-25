@@ -25,6 +25,10 @@
 #define ARES_PACKET_LEN		17
 #define ARES_NUM_FREQUENCE	60
 
+#if ARES_NUM_FREQUENCE > 75
+	#error "ARES_NUM_FREQUENCE exceeds CC2500 hop/cal table size"
+#endif
+
 enum {
 	ARES_START = 0x00,
 	ARES_CALIB = 0x01,
