@@ -22,11 +22,11 @@
 
 #define ARES_COARSE			0
 
-#define ARES_PACKET_LEN		17
-#define ARES_NUM_FREQUENCE	60
+#define ARES_PACKET_LEN			17
+#define ARES_NUM_FREQUENCIES	60
 
-#if ARES_NUM_FREQUENCE > 75
-	#error "ARES_NUM_FREQUENCE exceeds CC2500 hop/cal table size"
+#if ARES_NUM_FREQUENCIES > 75
+	#error "ARES_NUM_FREQUENCIES exceeds CC2500 hop/cal table size"
 #endif
 
 enum {
@@ -81,7 +81,7 @@ static void __attribute__((unused)) ARES_CC2500_init()
 // Load hopping table
 static void __attribute__((unused)) ARES_RF_channels()
 {
-	for (uint8_t i = 0; i < ARES_NUM_FREQUENCE; i++)
+	for (uint8_t i = 0; i < ARES_NUM_FREQUENCIES; i++)
 		hopping_frequency[i] = pgm_read_byte_near(&ARES_hop[i]);
 }
 
@@ -193,7 +193,7 @@ uint16_t ARES_callback()
 		case ARES_CALIB:
 			calData[hopping_frequency_no] = CC2500_ReadReg(CC2500_25_FSCAL1);
 			hopping_frequency_no++;
-			if (hopping_frequency_no < ARES_NUM_FREQUENCE)
+			if (hopping_frequency_no < ARES_NUM_FREQUENCIES)
 				ARES_tune_chan();
 			else
 			{
@@ -216,7 +216,7 @@ uint16_t ARES_callback()
 		case ARES_DATA:
 			ARES_send_packet();
 			hopping_frequency_no++;
-			if (hopping_frequency_no >= ARES_NUM_FREQUENCE)
+			if (hopping_frequency_no >= ARES_NUM_FREQUENCIES)
 				hopping_frequency_no = 0;
 			bind_phase++;
 			if (bind_phase >= 3)
