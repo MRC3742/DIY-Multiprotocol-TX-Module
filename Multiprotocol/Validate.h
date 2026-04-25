@@ -243,6 +243,7 @@
 	#define SX1276_INSTALLED
 	#undef	ENABLE_PPM
 	#undef	SEND_CPPM
+	#undef	RLINK_CC2500_INO       // Save flash space...
 #endif
 
 //Make sure protocols are selected correctly
