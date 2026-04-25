@@ -12,7 +12,7 @@
  You should have received a copy of the GNU General Public License
  along with Multiprotocol.  If not, see <http://www.gnu.org/licenses/>.
  */
-// Compatible with ARES 6HPA transmitter
+// Compatible with ARES 6HPA_Tx transmitter
 
 #if defined(ARES_CC2500_INO)
 
@@ -32,7 +32,7 @@ enum {
 	ARES_DATA  = 0x03,
 };
 
-// CC2500 register init values captured from the ARES 6HPA transmitter
+// CC2500 register init values captured from the ARES 6HPA_Tx transmitter
 const PROGMEM uint8_t ARES_init_values[] = {
   /* 00 */ 0x06, 0x2E, 0x2E, 0x07, 0x5A, 0x60, 0x30, 0x04,
   /* 08 */ 0x05, 0x00, 0x00, 0x06, 0x00, 0x5C, 0xB1, 0x3B + ARES_COARSE,
@@ -41,7 +41,7 @@ const PROGMEM uint8_t ARES_init_values[] = {
   /* 20 */ 0xF8, 0x56, 0x10, 0xA9, 0x0A, 0x00, 0x11
 };
 
-// Fixed hopping sequence captured from the ARES 6HPA transmitter.
+// Fixed hopping sequence captured from the ARES 6HPA_Tx transmitter.
 // This is a permutation of 60 channel values spread across the band.
 static const PROGMEM uint8_t ARES_hop[] = {
 	0xB0, 0x6F, 0x1D, 0xB4, 0x74, 0x20, 0xB8, 0xD8,

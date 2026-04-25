@@ -103,4 +103,4 @@
 105,Shenqi2
 106,WL91x
 107,WPL
-108,Ares,6HPA
+108,Ares,6HPA_Tx
