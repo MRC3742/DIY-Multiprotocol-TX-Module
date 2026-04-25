@@ -409,7 +409,6 @@
 	#undef	WL91X_CCNRF_INO
 	#undef	WPL_NRF24L01_INO
 	//Save flash space...
-	#undef	RLINK_CC2500_INO
 	#undef	CABELL_NRF24L01_INO
 	#undef	REDPINE_CC2500_INO
 #endif
