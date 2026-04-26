@@ -354,7 +354,7 @@ enum HITEC
 };
 enum ARES
 {
-	ARES_6HPA_Tx	= 0,
+	6HPA_Tx	= 0,
 };
 enum E01X
 {
