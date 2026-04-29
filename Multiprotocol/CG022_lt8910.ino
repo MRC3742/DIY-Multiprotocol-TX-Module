@@ -155,7 +155,7 @@ static void __attribute__((unused)) CG022_LT8910_init()
 	LT8910_RST_HI;				// Ensure RET HIGH — chip fully out of reset
 	delayMilliseconds(50);		// Extended settle time for rebind (was 10ms)
 	LT8910_RST_LO;				// Drive RET LOW — begin hardware reset
-	delayMilliseconds(480);		// Hold LOW for ~480ms to target ~500ms in capture
+	delayMilliseconds(480);		// Hold LOW for 480ms; with the 50ms pre-pulse and 6ms settle this matches the stock reset timing budget.
 	LT8910_RST_HI;				// Release RET HIGH — chip exits reset
 	delayMilliseconds(6);		// 6ms settling before first SPI (stock TX: 5.9ms)
 #else
@@ -387,9 +387,9 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	rx_tx_addr[1] = 0x22;
 	rx_tx_addr[2] = 0x33;
 	uint32_t txid = MProtocol_id & 0x00FFFFFF;
-	cg022_txid[0] = (uint8_t)(txid & 0xFF);
-	cg022_txid[1] = (uint8_t)((txid >> 8) & 0xFF);
-	cg022_txid[2] = (uint8_t)((txid >> 16) & 0xFF);
+	cg022_txid[0] = (uint8_t)txid;
+	cg022_txid[1] = (uint8_t)(txid >> 8);
+	cg022_txid[2] = (uint8_t)(txid >> 16);
 	rx_tx_addr[3] = cg022_txid[0];
 	// The fifth sync/address byte keeps the stock 0x3? high nibble and uses
 	// the TX ID low nibble, which matches the captured bind/data packet format.
