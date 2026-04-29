@@ -144,8 +144,9 @@ static void __attribute__((unused)) CG022_LT8910_init()
 	//   RET=0 at t=60.275ms, RET=1 at t=561.317ms, first SPI at t=567.180ms.
 	// The hardware RESET initializes the LT8910's SPI interface including the
 	// MISO output driver, which may not be activated by software reset alone.
-	// LT8910_RST_pin (PA14) is a dedicated line wired to STM32 package pin 37
-	// PKT pin is left floating (matching stock TX where PKT is unconnected).
+	// LT8910_RST_pin (PA14) is a dedicated line wired to STM32 package pin 37.
+	// PKT is the LT8910 packet-status/IRQ output and stays unconnected here,
+	// matching the stock TX hardware described in docs/LT8910_CG022_Implementation.md.
 #ifdef LT8910_RST_HI
 	// Ensure RET is HIGH before starting reset sequence.
 	// By driving HIGH for 50ms, we ensure the chip fully exits any prior
@@ -390,6 +391,8 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	cg022_txid[1] = (uint8_t)((txid >> 8) & 0xFF);
 	cg022_txid[2] = (uint8_t)((txid >> 16) & 0xFF);
 	rx_tx_addr[3] = cg022_txid[0];
+	// The fifth sync/address byte keeps the stock 0x3? high nibble and uses
+	// the TX ID low nibble, which matches the captured bind/data packet format.
 	rx_tx_addr[4] = (rx_tx_addr[2] & 0xF0) | (rx_tx_addr[3] & 0x0F);
 }
 

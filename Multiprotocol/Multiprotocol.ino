@@ -1187,7 +1187,7 @@ static void protocol_init()
 			release_trainer_ppm();
 		#endif
 		
-		//Set global ID and rx_tx_addr (RX_num 0-63 drives model match/bind ID)
+		// Set global ID and rx_tx_addr (RX_num 0-63 drives model match/bind ID)
 		MProtocol_id = RX_num + MProtocol_id_master;
 		set_rx_tx_addr(MProtocol_id);
 		

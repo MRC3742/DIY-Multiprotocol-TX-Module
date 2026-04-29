@@ -398,7 +398,7 @@
 	#undef CG022_LT8910_INO
 #endif
 #if defined(LT8910_INSTALLED) && defined(SX1276_INSTALLED)
-	#error "LT8910 SPI_CSN and SX1276 share PA15 and cannot both be installed"
+	#error "LT8910 and SX1276 both use PA15 for chip select and cannot both be installed"
 #endif
 
 #ifdef MULTI_AIR
