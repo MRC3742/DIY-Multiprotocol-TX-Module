@@ -1262,6 +1262,7 @@ static void protocol_init()
 	}
 
 #if defined(WAIT_FOR_BIND) && defined(ENABLE_BIND_CH)
+		// Use the current serial frame bind bit here, not cur_protocol, so autobind does not wait on a stale bind flag from the previous selection.
 		if( IS_AUTOBIND_FLAG_on && IS_BIND_CH_PREV_off && (rx_ok_buff[1]&0x80)==0 && mode_select == MODE_SERIAL)
 		{ // Autobind is active but no bind requested by either BIND_CH or BIND. But do not wait if in PPM mode...
 			WAIT_BIND_on;
