@@ -79,7 +79,6 @@
 #define CC2500_INSTALLED
 #define NRF24L01_INSTALLED
 //#define SX1276_INSTALLED		// only supported on STM32 modules
-//#define LT8910_INSTALLED		// external LT8910 board via 6-pin SPI header plus (PA14 RET)
 
 //Uncomment (remove //) if you have an internal 5-in-1 Multi module in a Jumper T18 or T-Lite.
 //All components are considered to be installed and specifics to that module are automatically configured 
@@ -287,9 +286,6 @@
 
 //The protocols below need a SX1276 to be installed
 #define	FRSKYR9_SX1276_INO
-
-//The protocols below need a LT8910 to be installed
-#define	CG022_LT8910_INO
 
 /***************************/
 /*** PROTOCOLS SETTINGS  ***/
