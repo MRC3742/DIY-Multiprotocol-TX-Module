@@ -390,10 +390,6 @@ static void __attribute__((unused)) CG022_initialize_txid()
 	cg022_txid[0] = (uint8_t)txid;
 	cg022_txid[1] = (uint8_t)(txid >> 8);
 	cg022_txid[2] = (uint8_t)(txid >> 16);
-	rx_tx_addr[3] = cg022_txid[0];
-	// The fifth sync/address byte keeps the stock 0x3? high nibble and uses
-	// the TX ID low nibble, which matches the captured bind/data packet format.
-	rx_tx_addr[4] = (rx_tx_addr[2] & 0xF0) | (rx_tx_addr[3] & 0x0F);
 }
 
 void CG022_init(void)
