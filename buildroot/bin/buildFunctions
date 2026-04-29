@@ -40,6 +40,8 @@ buildMulti() {
     echo ::group::_Config.h
     git diff Multiprotocol/_Config.h
     echo ::endgroup::
+    rm -rf "${GITHUB_WORKSPACE}/build"
+    mkdir -p "${GITHUB_WORKSPACE}/build"
     BUILDCMD="arduino-cli compile -b $BOARD ${GITHUB_WORKSPACE}/Multiprotocol/Multiprotocol.ino --build-path ${GITHUB_WORKSPACE}/build/";
     echo $BUILDCMD;
     $BUILDCMD
@@ -51,10 +53,10 @@ buildProtocol() {
     opt_disable $ALL_PROTOCOLS;
     opt_enable $1;
     if [[ "$1" =~ _SX1276_INO$ ]]; then
-        opt_disable LT8910_INSTALLED;
+        opt_disable $ALL_RFMODULES;
         opt_enable SX1276_INSTALLED;
     elif [[ "$1" =~ _LT8910_INO$ ]]; then
-        opt_disable SX1276_INSTALLED;
+        opt_disable $ALL_RFMODULES;
         opt_enable LT8910_INSTALLED;
     fi
     buildMulti;
