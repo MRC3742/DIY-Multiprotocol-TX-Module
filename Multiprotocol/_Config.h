@@ -171,6 +171,9 @@
 //Comment the protocols you are not using with "//" to save Flash space.
 
 //Already defined protocols selection
+//#define MULTI_AIR			//Only Air protocols will be available, all the others are disabled
+//#define MULTI_SURFACE		//Only Surface protocols will be available, all the others are disabled
+//#define MULTI_EU			//Only LBT/EU protocols will be available, all the others are disabled
 
 //Protocol for module configuration
 #define MULTI_CONFIG_INO
@@ -930,4 +933,3 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 //CHANNEL2 - 3pos switch
 #define DI_CH2_read			IS_DI2_on ? PPM_MAX_100*2 : (IS_DI2_on ? PPM_MAX_100 + PPM_MIN_100 : PPM_MIN_100*2)
 */
-#define MULTI_AIR 
