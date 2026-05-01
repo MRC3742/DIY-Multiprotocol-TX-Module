@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+source ./buildroot/bin/buildFunctions;
+exitcode=0;
+
+opt_disable $ALL_PROTOCOLS;
+opt_enable CG022_LT8910_INO;
+opt_disable $ALL_RFMODULES;
+opt_enable LT8910_INSTALLED;
+opt_disable ENABLE_PPM;
+opt_remove MULTI_SURFACE;
+opt_remove MULTI_EU;
+opt_add MULTI_AIR;
+
+printf "\e[33;1mBuilding mm-stm-ser-lt8910-aetr-air-v$MULTI_VERSION.bin\e[0m\n";
+opt_replace TAER AETR;
+opt_replace RETA AETR;
+buildMulti;
+exitcode=$((exitcode+$?));
+mv build/Multiprotocol.ino.bin ./binaries/mm-stm-ser-lt8910-aetr-air-v$MULTI_VERSION.bin;
+
+printf "\e[33;1mBuilding mm-stm-ser-lt8910-taer-air-v$MULTI_VERSION.bin\e[0m\n";
+opt_replace AETR TAER;
+buildMulti;
+exitcode=$((exitcode+$?));
+mv build/Multiprotocol.ino.bin ./binaries/mm-stm-ser-lt8910-taer-air-v$MULTI_VERSION.bin;
+
+printf "\e[33;1mBuilding mm-stm-ser-lt8910-reta-air-v$MULTI_VERSION.bin\e[0m\n";
+opt_replace TAER RETA;
+buildMulti;
+exitcode=$((exitcode+$?));
+mv build/Multiprotocol.ino.bin ./binaries/mm-stm-ser-lt8910-reta-air-v$MULTI_VERSION.bin;
+
+exit $exitcode;
