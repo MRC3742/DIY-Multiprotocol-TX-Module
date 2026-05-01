@@ -79,7 +79,7 @@
 #define CC2500_INSTALLED
 #define NRF24L01_INSTALLED
 //#define SX1276_INSTALLED		// only supported on STM32 modules
-#define LT8910_INSTALLED		// only supported on STM32 modules with external LT8910 hardware
+//#define LT8910_INSTALLED		// only supported on STM32 modules with external LT8910 hardware
 
 //Uncomment (remove //) if you have an internal 5-in-1 Multi module in a Jumper T18 or T-Lite.
 //All components are considered to be installed and specifics to that module are automatically configured 
@@ -289,7 +289,7 @@
 #define	FRSKYR9_SX1276_INO
 
 //The protocols below need a LT8910 to be installed
-#define	CG022_LT8910_INO
+//#define	CG022_LT8910_INO
 
 /***************************/
 /*** PROTOCOLS SETTINGS  ***/
