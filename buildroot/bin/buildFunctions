@@ -113,6 +113,8 @@ buildReleaseFiles(){
         build_release_stm32f1_4in1_native_debug;
     elif [[ "$RELEASE" == "stm32f103-128k-serial-debug" ]]; then
         build_release_stm32f1_4in1_serial_debug;
+    elif [[ "$RELEASE" == "stm32f103-128k-lt8910" ]]; then
+        build_release_stm32f1_lt8910;
     elif [[ "$RELEASE" == "stm32f103-cc2500-64k" ]]; then
         build_release_stm32f1_cc2500_64k;
     elif [[ "$RELEASE" == "stm32f103-cc2500-128k" ]]; then

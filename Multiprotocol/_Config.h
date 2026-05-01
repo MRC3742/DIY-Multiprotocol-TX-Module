@@ -41,7 +41,7 @@
 //Modify the channel order based on your TX: AETR, TAER, RETA...
 //Examples: Flysky & DEVO is AETR, JR/Spektrum radio is TAER, Multiplex is AERT...
 //Default is AETR.
-#define AETR
+#define RETA
 
 //Uncomment to reverse the direction of the specified channel for all protocols
 //#define REVERSE_AILERON
@@ -171,9 +171,6 @@
 //Comment the protocols you are not using with "//" to save Flash space.
 
 //Already defined protocols selection
-//#define MULTI_AIR			//Only Air protocols will be available, all the others are disabled
-//#define MULTI_SURFACE		//Only Surface protocols will be available, all the others are disabled
-//#define MULTI_EU			//Only LBT/EU protocols will be available, all the others are disabled
 
 //Protocol for module configuration
 #define MULTI_CONFIG_INO
@@ -337,7 +334,7 @@
 #define INVERT_TELEMETRY_TX
 
 //Sends Multi status and allow OpenTX and erskyTX to autodetect the telemetry format. Comment to disable.
-#define MULTI_TELEMETRY
+//#define MULTI_TELEMETRY
 
 //Work in progress: Sync OpenTX frames with the current protocol timing. This feature is only available on the STM32 module. Uncomment to enable.
 //#define MULTI_SYNC
@@ -394,7 +391,7 @@
 //This is available natively for ER9X, ERSKY9X and OpenTX.
 
 //If you do not plan to use the Serial mode comment this line using "//" to save Flash space
-#define ENABLE_SERIAL
+//#define ENABLE_SERIAL
 
 
 /*************************/
@@ -449,7 +446,7 @@
 // Full procedure is located here: https://github.com/pascallanger/DIY-Multiprotocol-TX-Module/blob/master/Protocols_Details.md#protocol-selection-in-ppm-mode
 
 //The parameter below indicates the number of desired banks between 1 and 5. Default is 1.
-#define NBR_BANKS 1
+#define NBR_BANKS 5
 
 const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 #if NBR_BANKS > 0
@@ -933,3 +930,4 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 //CHANNEL2 - 3pos switch
 #define DI_CH2_read			IS_DI2_on ? PPM_MAX_100*2 : (IS_DI2_on ? PPM_MAX_100 + PPM_MIN_100 : PPM_MIN_100*2)
 */
+#define MULTI_AIR 

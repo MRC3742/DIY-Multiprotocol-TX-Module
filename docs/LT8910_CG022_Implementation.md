@@ -74,6 +74,12 @@ To compile CG022 support on STM32 targets, enable the LT8910 RF module and leave
 
 `Validate.h` automatically removes `CG022_LT8910_INO` when `LT8910_INSTALLED` is not enabled.
 
+LT8910 / CG022 is intended as an **opt-in external-module build**. It is not part of the normal 4-in-1 release binaries. When a prebuilt image is desired, use the dedicated LT8910 air release variant named:
+
+```text
+mm-stm-ser-lt8910-[channel_order]-air-v[version].bin
+```
+
 ---
 
 ## 3. Protocol Summary
