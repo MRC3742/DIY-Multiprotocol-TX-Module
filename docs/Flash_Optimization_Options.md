@@ -177,11 +177,14 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 
 ### Tier 1 - Highest Impact, Lowest Risk (~12-16 KB)
 **Disable niche/rare air protocols in Validate.h under MULTI_AIR:**
-- `CFLIE_NRF24L01_INO` (~5-6 KB) - Crazyflie research drone
-- `PROPEL_NRF24L01_INO` (~2-3 KB) - Discontinued toy
-- `NCC1701_NRF24L01_INO` (~2-3 KB) - Star Trek toy
-- `XERALL_NRF24L01_INO` (~2-3 KB) - Niche drone
-- `SCORPIO_CYRF6936_INO` (~1-2 KB) - Niche
+
+| Protocol | Approx. Flash Saving | Notes |
+|----------|----------------------|-------|
+| `CFLIE_NRF24L01_INO` | ~5-6 KB | Crazyflie research drone |
+| `PROPEL_NRF24L01_INO` | ~2-3 KB | Discontinued toy |
+| `NCC1701_NRF24L01_INO` | ~2-3 KB | Star Trek toy |
+| `XERALL_NRF24L01_INO` | ~2-3 KB | Niche drone |
+| `SCORPIO_CYRF6936_INO` | ~1-2 KB | Niche |
 
 ### Tier 2 - High Impact, Low Risk (~12-16 KB)
 **Disable trainer/RX protocols and diagnostic tools:**
@@ -193,16 +196,19 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 
 ### Tier 3 - Moderate Impact, Low Risk (~10-17 KB)
 **Disable more niche protocols:**
-- `Q303_CCNRF_INO` (~2-3 KB)
-- `Q90C_CCNRF_INO` (~1-2 KB)
-- `BUMBLEB_CCNRF_INO` (~1-2 KB)
-- `BLUEFLY_CCNRF_INO` (~1 KB)
-- `DM002_NRF24L01_INO` (~1-2 KB)
-- `GW008_NRF24L01_INO` (~1-2 KB)
-- `POTENSIC_NRF24L01_INO` (~1-2 KB)
-- `REALACC_NRF24L01_INO` (~1-2 KB)
-- `H36_NRF24L01_INO` (~1 KB)
-- `ZSX_NRF24L01_INO` (~1 KB)
+
+| Protocol | Approx. Flash Saving | Notes |
+|----------|----------------------|-------|
+| `Q303_CCNRF_INO` | ~2-3 KB | Q303/CX35/CX10D |
+| `Q90C_CCNRF_INO` | ~1-2 KB | Q90C |
+| `BUMBLEB_CCNRF_INO` | ~1-2 KB | BumbleB |
+| `BLUEFLY_CCNRF_INO` | ~1 KB | BlueFly |
+| `DM002_NRF24L01_INO` | ~1-2 KB | DM002 |
+| `GW008_NRF24L01_INO` | ~1-2 KB | GW008 |
+| `POTENSIC_NRF24L01_INO` | ~1-2 KB | Potensic A20 |
+| `REALACC_NRF24L01_INO` | ~1-2 KB | Realacc |
+| `H36_NRF24L01_INO` | ~1 KB | H36 |
+| `ZSX_NRF24L01_INO` | ~1 KB | ZSX 280 JJRC |
 
 ### Tier 4 - Moderate Impact, Moderate Risk (~1.5-5 KB)
 **Optimize data tables and compiler settings:**
