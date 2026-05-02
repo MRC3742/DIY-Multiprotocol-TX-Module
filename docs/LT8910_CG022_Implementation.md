@@ -28,8 +28,8 @@ Validated behavior:
 - `MISO` `PB14` → LT8910 MISO
 - `SCK` `PB13` → LT8910 SCK
 - `CS` `PA15` → LT8910 CS
-- Wired reset `PA14` → LT8910 RET / RESET
 - `3.3V` and `GND`
+- Wired reset `PA14` → LT8910 RET / RESET
 
 `PA14` is available after `afio_cfg_debug_ports(AFIO_DEBUG_NONE)` and is used as a dedicated LT8910 reset line to avoid conflicts with the onboard RF chips.
 
