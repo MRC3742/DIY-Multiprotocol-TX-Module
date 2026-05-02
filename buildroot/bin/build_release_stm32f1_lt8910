@@ -3,14 +3,13 @@
 source ./buildroot/bin/buildFunctions;
 exitcode=0;
 
-opt_disable $ALL_PROTOCOLS;
-opt_enable CG022_LT8910_INO;
-opt_disable $ALL_RFMODULES;
-opt_enable LT8910_INSTALLED;
+# STM32 4-in-1 AIR builds with LT8910 added
+opt_add MULTI_AIR
 opt_disable ENABLE_PPM;
+opt_enable LT8910_INSTALLED;
+opt_enable CG022_LT8910_INO;
 opt_remove MULTI_SURFACE;
 opt_remove MULTI_EU;
-opt_add MULTI_AIR;
 
 printf "\e[33;1mBuilding mm-stm-ser-lt8910-aetr-air-v$MULTI_VERSION.bin\e[0m\n";
 opt_replace TAER AETR;
