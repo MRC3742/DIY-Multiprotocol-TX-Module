@@ -289,7 +289,7 @@
 #define	FRSKYR9_SX1276_INO
 
 //The protocols below need a LT8910 to be installed
-//#define	CG022_LT8910_INO
+#define	CG022_LT8910_INO
 
 /***************************/
 /*** PROTOCOLS SETTINGS  ***/
