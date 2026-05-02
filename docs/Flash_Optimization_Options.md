@@ -178,13 +178,13 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 ### Tier 1 - Highest Impact, Lowest Risk (~12-16 KB)
 **Disable niche/rare air protocols in Validate.h under MULTI_AIR:**
 
-| Protocol | Approx. Flash Saving | Notes |
-|----------|----------------------|-------|
-| `CFLIE_NRF24L01_INO` | ~5-6 KB | Crazyflie research drone |
-| `PROPEL_NRF24L01_INO` | ~2-3 KB | Discontinued toy |
-| `NCC1701_NRF24L01_INO` | ~2-3 KB | Star Trek toy |
-| `XERALL_NRF24L01_INO` | ~2-3 KB | Niche drone |
-| `SCORPIO_CYRF6936_INO` | ~1-2 KB | Niche |
+| Protocol | Approx. Flash Saving | Date Added | Notes |
+|----------|----------------------|------------|-------|
+| `CFLIE_NRF24L01_INO` | ~5-6 KB | 02/2026 | Crazyflie research drone |
+| `PROPEL_NRF24L01_INO` | ~2-3 KB | 02/2026 | Discontinued toy |
+| `NCC1701_NRF24L01_INO` | ~2-3 KB | 02/2026 | Star Trek toy |
+| `XERALL_NRF24L01_INO` | ~2-3 KB | 02/2026 | Niche drone |
+| `SCORPIO_CYRF6936_INO` | ~1-2 KB | 02/2026 | Niche |
 
 ### Tier 2 - High Impact, Low Risk (~12-16 KB)
 **Disable trainer/RX protocols and diagnostic tools:**
@@ -197,18 +197,18 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 ### Tier 3 - Moderate Impact, Low Risk (~10-17 KB)
 **Disable more niche protocols:**
 
-| Protocol | Approx. Flash Saving | Notes |
-|----------|----------------------|-------|
-| `Q303_CCNRF_INO` | ~2-3 KB | Q303/CX35/CX10D |
-| `Q90C_CCNRF_INO` | ~1-2 KB | Q90C |
-| `BUMBLEB_CCNRF_INO` | ~1-2 KB | BumbleB |
-| `BLUEFLY_CCNRF_INO` | ~1 KB | BlueFly |
-| `DM002_NRF24L01_INO` | ~1-2 KB | DM002 |
-| `GW008_NRF24L01_INO` | ~1-2 KB | GW008 |
-| `POTENSIC_NRF24L01_INO` | ~1-2 KB | Potensic A20 |
-| `REALACC_NRF24L01_INO` | ~1-2 KB | Realacc |
-| `H36_NRF24L01_INO` | ~1 KB | H36 |
-| `ZSX_NRF24L01_INO` | ~1 KB | ZSX 280 JJRC |
+| Protocol | Approx. Flash Saving | Date Added | Notes |
+|----------|----------------------|------------|-------|
+| `Q303_CCNRF_INO` | ~2-3 KB | 02/2026 | Q303/CX35/CX10D |
+| `Q90C_CCNRF_INO` | ~1-2 KB | 02/2026 | Q90C |
+| `BUMBLEB_CCNRF_INO` | ~1-2 KB | 02/2026 | BumbleB |
+| `DM002_NRF24L01_INO` | ~1-2 KB | 02/2026 | DM002 |
+| `GW008_NRF24L01_INO` | ~1-2 KB | 02/2026 | GW008 |
+| `POTENSIC_NRF24L01_INO` | ~1-2 KB | 02/2026 | Potensic A20 |
+| `REALACC_NRF24L01_INO` | ~1-2 KB | 02/2026 | Realacc |
+| `BLUEFLY_CCNRF_INO` | ~1 KB | 02/2026 | BlueFly |
+| `H36_NRF24L01_INO` | ~1 KB | 02/2026 | H36 |
+| `ZSX_NRF24L01_INO` | ~1 KB | 02/2026 | ZSX 280 JJRC |
 
 ### Tier 4 - Moderate Impact, Moderate Risk (~1.5-5 KB)
 **Optimize data tables and compiler settings:**
