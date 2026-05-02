@@ -6,11 +6,8 @@ The 128KB STM32F103 MULTI_AIR build (`build_release_stm32f1_4in1_no_debug`) curr
 PPM mode and adds `MULTI_AIR` to exclude surface-only protocols. Despite these exclusions,
 the build is tight on flash space and requires removal of additional protocols to fit.
 
-**Release-build note:** In the release scripts, `CFLIE_NRF24L01_INO` is already disabled for
-STM32 5-in-1 AIR builds (`buildroot/bin/build_release_stm32f1_5in1`, `opt_disable CFLIE_NRF24L01_INO`)
-and for LT8910 AIR builds (`buildroot/bin/build_release_stm32f1_lt8910`, `opt_disable CFLIE_NRF24L01_INO`).
-For 5-in-1 surface builds, it is re-enabled (`opt_enable CFLIE_NRF24L01_INO`). T18 release builds use
-`MULTI_AIR`/`MULTI_SURFACE` profiles via `buildroot/bin/build_release_stm32f1_t18int`.
+**Release-build note:** In the release scripts, `CFLIE_NRF24L01_INO` is already disabled for 
+"5-in-1 AIR builds" (`buildroot/bin/build_release_stm32f1_5in1`), "T18 release builds" (`buildroot/bin/build_release_stm32f1_t18int`), and "LT8910 AIR builds" (`buildroot/bin/build_release_stm32f1_lt8910`) using (`opt_disable CFLIE_NRF24L01_INO`)
 
 ### Already Excluded by MULTI_AIR (Validate.h lines 394-415)
 These protocols are already `#undef`'d when `MULTI_AIR` is defined:
@@ -60,7 +57,7 @@ the `multi_protocols[]` table (~14 bytes per entry) and associated strings.
 
 | Protocol | Source Size | Est. Flash | Use Case |
 |----------|-----------|------------|----------|
-| CFLIE_NRF24L01_INO | 31,151 B | **~5-6 KB** | Crazyflie (very niche) |
+| CFLIE_NRF24L01_INO* | 31,151 B | **~5-6 KB*** | Crazyflie (very niche) |
 | PROPEL_NRF24L01_INO | 11,132 B | ~2-3 KB | Propel 74-Z |
 | NCC1701_NRF24L01_INO | 8,161 B | ~2-3 KB | Star Trek toy |
 | Q303_CCNRF_INO | 9,270 B | ~2-3 KB | Q303/CX35/CX10D |
@@ -86,13 +83,13 @@ the `multi_protocols[]` table (~14 bytes per entry) and associated strings.
 
 | Protocol | Est. Flash Saving | Impact |
 |----------|------------------|--------|
-| CFLIE_NRF24L01_INO | ~5-6 KB | Very niche (Crazyflie research drone) |
+| CFLIE_NRF24L01_INO* | ~5-6 KB* | Very niche (Crazyflie research drone) |
 | PROPEL_NRF24L01_INO | ~2-3 KB | Discontinued toy |
 | NCC1701_NRF24L01_INO | ~2-3 KB | Star Trek toy |
 | XERALL_NRF24L01_INO | ~2-3 KB | Niche |
 | SCORPIO_CYRF6936_INO | ~1-2 KB | Niche |
 
-**Total estimated savings: ~12-16 KB**
+***Note**:  CFLIE_NRF24L01_INO is already disabled for 5-in-1 AIR, T18 AIR, and LT8910 AIR, in build release files.
 
 ### Option 2: Disable Additional Sub-Protocol Features Within Existing Protocols
 
@@ -186,12 +183,14 @@ functionality. The telemetry code is already well-guarded with `#ifdef` blocks.
 
 | Protocol | Approx. Flash Saving | Date Added | Notes |
 |----------|----------------------|------------|-------|
-| `CFLIE_NRF24L01_INO` | ~5-6 KB | 05/2018 | Crazyflie research drone |
+| `CFLIE_NRF24L01_INO`* | ~5-6 KB* | 05/2018 | Crazyflie research drone |
 | `NCC1701_NRF24L01_INO` | ~2-3 KB | 11/2018 | Star Trek toy |
 | `PROPEL_NRF24L01_INO` | ~2-3 KB | 04/2020 | Discontinued toy |
 | `XERALL_NRF24L01_INO` | ~2-3 KB | 09/2021 | Niche drone |
 | `SCORPIO_CYRF6936_INO` | ~1-2 KB | 06/2023 | Niche |
-
+ 
+***Note**:  CFLIE_NRF24L01_INO is already disabled for 5-in-1 AIR, T18 AIR, and LT8910 AIR, in build release files.
+ 
 ### Tier 2 - High Impact, Low Risk (~12-16 KB)
 **Disable trainer/RX protocols and diagnostic tools:**
 - `SCANNER_CC2500_INO` (~2-3 KB) - Diagnostic, not flight
