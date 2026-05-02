@@ -6,6 +6,10 @@ The 128KB STM32F103 MULTI_AIR build (`build_release_stm32f1_4in1_no_debug`) curr
 PPM mode and adds `MULTI_AIR` to exclude surface-only protocols. Despite these exclusions,
 the build is tight on flash space and requires removal of additional protocols to fit.
 
+**Release-build note:** In the release scripts, `CFLIE_NRF24L01_INO` is already disabled for
+STM32 5-in-1 AIR builds (`buildroot/bin/build_release_stm32f1_5in1`, `opt_disable CFLIE_NRF24L01_INO`)
+and re-enabled for 5-in-1 surface builds.
+
 ### Already Excluded by MULTI_AIR (Validate.h lines 394-415)
 These protocols are already `#undef`'d when `MULTI_AIR` is defined:
 
