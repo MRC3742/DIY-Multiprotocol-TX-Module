@@ -763,7 +763,7 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
 # LT8910 RF Module
 
 ## AOSENMA - *109*
-Requires an external LT8910 RF board connected to the MPM 6-pin SPI header (MOSI, MISO, SCK, CS, 3.3V, GND), also RET wired to STM32 MPU Pin 37 (PA14), with PKT not connected (floating - same as Original TX).
+Requires an external LT8910 RF board connected to the MPM 6-pin SPI header (MOSI, MISO, SCK, CS, 3.3V, GND), also RET wired to STM32 MPU Pin 37 (PA14), with PKT not connected (floating - same as Original TX). Hardware setup: [docs/LT8910_CG022_Implementation.md#1-hardware-setup](docs/LT8910_CG022_Implementation.md#1-hardware-setup).
 
 ### Sub_protocol CG022 - *0*
 Autobind protocol

@@ -23,12 +23,12 @@ Validated behavior:
 - **RF Module:** external LT8910/LT8900 RF board
 - **Connection:** MPM 6-pin SPI header plus a dedicated reset wire
 
-### 1.2 Wiring
-- `PB15` → LT8910 MOSI
-- `PB14` → LT8910 MISO
-- `PB13` → LT8910 SCK
-- `PA15` → LT8910 CS
-- `PA14` → LT8910 RET / RESET
+### 1.2 Wiring to MPM Header
+- `MOSI` `PB15` → LT8910 MOSI
+- `MISO` `PB14` → LT8910 MISO
+- `SCK` `PB13` → LT8910 SCK
+- `CS` `PA15` → LT8910 CS
+- `Wired` `PA14` → LT8910 RET / RESET
 - `3.3V` and `GND`
 
 `PA14` is available after `afio_cfg_debug_ports(AFIO_DEBUG_NONE)` and is used as a dedicated LT8910 reset line to avoid conflicts with the onboard RF chips.
@@ -53,8 +53,10 @@ Validated behavior:
 - `Multiprotocol/LT8910_SPI.ino`
 - `Multiprotocol/iface_lt8910.h`
 - `Multiprotocol/Pins.h`
-- `Multiprotocol/Validate.h`
 - `Multiprotocol/Multi_Protos.ino`
+- `Multiprotocol/Multiprotocol.ino`
+- `Multiprotocol/_Config.h`
+- `Multiprotocol/Validate.h`
 
 ### 2.2 Key Implementation Choices
 1. **Dedicated LT8910 reset line on `PA14`**
@@ -64,15 +66,14 @@ Validated behavior:
 5. **SPI restore in `modules_reset()`** before other RF chips are reset, so protocol switching remains safe
 
 ### 2.3 Build Configuration
-To compile CG022 support on STM32 targets, enable the LT8910 RF module and leave the protocol enabled:
+To compile CG022 support on STM32 targets, enable the LT8910 RF module:
 
 ```c
 //#define SX1276_INSTALLED
 #define LT8910_INSTALLED
-#define CG022_LT8910_INO
 ```
 
-`Validate.h` automatically removes `CG022_LT8910_INO` when `LT8910_INSTALLED` is not enabled.
+`CG022_LT8910_INO` is enabled in `_Config.h`, and `Validate.h` automatically removes it when `LT8910_INSTALLED` is not enabled.
 
 LT8910 / CG022 is intended as an **opt-in external-module build**. It is not part of the normal 4-in-1 release binaries. When a prebuilt image is desired, use the dedicated LT8910 air release variant named:
 
