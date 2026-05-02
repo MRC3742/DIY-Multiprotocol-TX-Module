@@ -8,7 +8,9 @@ the build is tight on flash space and requires removal of additional protocols t
 
 **Release-build note:** In the release scripts, `CFLIE_NRF24L01_INO` is already disabled for
 STM32 5-in-1 AIR builds (`buildroot/bin/build_release_stm32f1_5in1`, `opt_disable CFLIE_NRF24L01_INO`)
-and re-enabled for 5-in-1 surface builds.
+and for LT8910 AIR builds (`buildroot/bin/build_release_stm32f1_lt8910`, `opt_disable CFLIE_NRF24L01_INO`).
+For 5-in-1 surface builds, it is re-enabled (`opt_enable CFLIE_NRF24L01_INO`). T18 release builds use
+`MULTI_AIR`/`MULTI_SURFACE` profiles via `buildroot/bin/build_release_stm32f1_t18int`.
 
 ### Already Excluded by MULTI_AIR (Validate.h lines 394-415)
 These protocols are already `#undef`'d when `MULTI_AIR` is defined:
