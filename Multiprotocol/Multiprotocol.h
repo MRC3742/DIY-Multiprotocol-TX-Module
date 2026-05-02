@@ -136,6 +136,7 @@ enum PROTOCOLS
 	PROTO_WL91X		= 106,	// =>CC2500 & NRF24L01
 	PROTO_WPL		= 107,	// =>NRF24L01
 	PROTO_ARES		= 108,	// =>CC2500
+	PROTO_AOSENMA	= 109,	// =>LT8910
 	
 	PROTO_NANORF	= 126,	// =>NRF24L01
 	PROTO_TEST		= 127,	// =>CC2500
@@ -241,6 +242,10 @@ enum CG023
 {
     CG023	= 0,
     YD829	= 1,
+};
+enum AOSENMA
+{
+    CG022	= 0,
 };
 enum BAYANG
 {
