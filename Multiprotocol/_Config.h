@@ -41,7 +41,7 @@
 //Modify the channel order based on your TX: AETR, TAER, RETA...
 //Examples: Flysky & DEVO is AETR, JR/Spektrum radio is TAER, Multiplex is AERT...
 //Default is AETR.
-#define AETR
+#define RETA
 
 //Uncomment to reverse the direction of the specified channel for all protocols
 //#define REVERSE_AILERON
@@ -79,7 +79,7 @@
 #define CC2500_INSTALLED
 #define NRF24L01_INSTALLED
 //#define SX1276_INSTALLED		// only supported on STM32 modules
-//#define LT8910_INSTALLED		// only supported on STM32 modules with external LT8910 hardware
+#define LT8910_INSTALLED		// only supported on STM32 modules with external LT8910 hardware
 
 //Uncomment (remove //) if you have an internal 5-in-1 Multi module in a Jumper T18 or T-Lite.
 //All components are considered to be installed and specifics to that module are automatically configured 
@@ -172,8 +172,6 @@
 
 //Already defined protocols selection
 //#define MULTI_AIR			//Only Air protocols will be available, all the others are disabled
-//#define MULTI_SURFACE		//Only Surface protocols will be available, all the others are disabled
-//#define MULTI_EU			//Only LBT/EU protocols will be available, all the others are disabled
 
 //Protocol for module configuration
 #define MULTI_CONFIG_INO
@@ -289,7 +287,7 @@
 #define	FRSKYR9_SX1276_INO
 
 //The protocols below need a LT8910 to be installed
-//#define	CG022_LT8910_INO
+#define	CG022_LT8910_INO
 
 /***************************/
 /*** PROTOCOLS SETTINGS  ***/
@@ -402,7 +400,7 @@
 /*************************/
 //In this section you can configure all details about PPM.
 //If you do not plan to use the PPM mode comment this line using "//" to save Flash space, you don't need to configure anything below in this case
-#define ENABLE_PPM
+//#define ENABLE_PPM
 
 /** TX END POINTS **/
 //It is important for the module to know the endpoints of your radio.
@@ -933,3 +931,4 @@ const PPM_Parameters PPM_prot[14*NBR_BANKS]=	{
 //CHANNEL2 - 3pos switch
 #define DI_CH2_read			IS_DI2_on ? PPM_MAX_100*2 : (IS_DI2_on ? PPM_MAX_100 + PPM_MIN_100 : PPM_MIN_100*2)
 */
+#define MULTI_AIR 
