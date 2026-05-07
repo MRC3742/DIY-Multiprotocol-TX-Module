@@ -23,6 +23,8 @@
 #define FQ777_PACKET_SIZE		8
 #define FQ777_BIND_COUNT		1000
 #define FQ777_NUM_RF_CHANNELS	4
+#define XBM37_PACKET_PERIOD		2070
+#define XBM37_BIND_COUNT		400
 
 enum {
 	FQ777_FLAG_RETURN     = 0x40,  // 0x40 when not off, !0x40 when one key return
@@ -31,8 +33,26 @@ enum {
 	FQ777_FLAG_FLIP       = 0x80,
 };
 
+enum {
+	XBM37_FLAG_RATE_MID		= 0x01,
+	XBM37_FLAG_RATE_HIGH	= 0x02,
+	XBM37_FLAG_LED			= 0x04,
+	XBM37_FLAG_HEADLESS		= 0x10,
+	XBM37_FLAG_VIDEO		= 0x20,
+	XBM37_FLAG_PICTURE		= 0x40,
+	XBM37_FLAG_FLIP			= 0x80,
+};
+
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
+
+static uint8_t __attribute__((unused)) FQ777_checksum(uint8_t *payload)
+{
+	uint8_t checksum = 0;
+	for(uint8_t i = 0; i < FQ777_PACKET_SIZE - 1; i++)
+		checksum += payload[i];
+	return checksum;
+}
 
 static void __attribute__((unused)) ssv_pack_dpl(uint8_t addr[], uint8_t pid, uint8_t* len, uint8_t* payload, uint8_t* packed_payload)
 {
@@ -83,6 +103,49 @@ static void __attribute__((unused)) ssv_pack_dpl(uint8_t addr[], uint8_t pid, ui
 
 static void __attribute__((unused)) FQ777_send_packet()
 {
+	if(sub_protocol == XBM37)
+	{
+		if (IS_BIND_IN_PROGRESS)
+		{
+			packet[0] = 0x20;
+			packet[1] = 0x14;
+			packet[2] = 0x07;
+			packet[3] = 0x03;
+			packet[4] = rx_tx_addr[0];
+			packet[5] = rx_tx_addr[1];
+			packet[6] = rx_tx_addr[2];
+		}
+		else
+		{
+			packet[0] = 0xE1 - convert_channel_16b_limit(THROTTLE, 0, 0xE1);
+			packet[1] = convert_channel_16b_limit(RUDDER, 0, 0xE1);
+			packet[2] = 0xE1 - convert_channel_16b_limit(AILERON, 0, 0xE1);
+			packet[3] = 0xE1 - convert_channel_16b_limit(ELEVATOR, 0, 0xE1);
+			packet[4] = 0x20;
+			packet[5] = 0x20 | GET_FLAG(CH12_SW, 0x80);		// OK switch
+
+			uint8_t flags = GET_FLAG(CH11_SW, XBM37_FLAG_LED)
+						| GET_FLAG(CH9_SW,  XBM37_FLAG_HEADLESS)
+						| GET_FLAG(CH8_SW,  XBM37_FLAG_VIDEO)
+						| GET_FLAG(CH7_SW,  XBM37_FLAG_PICTURE)
+						| GET_FLAG(CH6_SW,  XBM37_FLAG_FLIP);
+			if(CH5_SW)
+				flags |= XBM37_FLAG_RATE_HIGH;
+			else if(Channel_data[CH5] > CHANNEL_MIN_COMMAND)
+				flags |= XBM37_FLAG_RATE_MID;
+			packet[6] = flags;
+		}
+		packet[7] = FQ777_checksum(packet);
+
+		NRF24L01_SetPower();
+		NRF24L01_WriteReg(NRF24L01_05_RF_CH, IS_BIND_IN_PROGRESS ? 0 : hopping_frequency[hopping_frequency_no++]);
+		hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
+		NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
+		NRF24L01_FlushTx();
+		NRF24L01_WritePayload(packet, FQ777_PACKET_SIZE);
+		return;
+	}
+
 	uint8_t packet_len = FQ777_PACKET_SIZE;
 	uint8_t packet_ori[8];
 	if (IS_BIND_IN_PROGRESS)
@@ -155,13 +218,24 @@ static void __attribute__((unused)) FQ777_RF_init()
 	NRF24L01_Initialize();
 
 	NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, FQ777_bind_addr, 5);
-	NRF24L01_SetBitrate(NRF24L01_BR_250K);
+	if(sub_protocol == XBM37)
+	{
+		NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, FQ777_bind_addr, 5);
+		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);
+		NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);
+		NRF24L01_SetBitrate(NRF24L01_BR_250K);
+		NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);
+		NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x01);
+		NRF24L01_SetTxRxMode(TX_EN);
+	}
+	else
+		NRF24L01_SetBitrate(NRF24L01_BR_250K);
 }
 
 uint16_t FQ777_callback()
 {
 	#ifdef MULTI_SYNC
-		telemetry_set_input_sync(FQ777_PACKET_PERIOD);
+		telemetry_set_input_sync(sub_protocol == XBM37 ? XBM37_PACKET_PERIOD : FQ777_PACKET_PERIOD);
 	#endif
 	if(bind_counter)
 	{
@@ -173,22 +247,37 @@ uint16_t FQ777_callback()
 		}
 	}
 	FQ777_send_packet();
-	return FQ777_PACKET_PERIOD;
+	return sub_protocol == XBM37 ? XBM37_PACKET_PERIOD : FQ777_PACKET_PERIOD;
 }
 
 void FQ777_init(void)
 {
 	BIND_IN_PROGRESS;	// autobind protocol
-	bind_counter = FQ777_BIND_COUNT;
 	packet_count=0;
-	hopping_frequency[0] = 0x4D;
-	hopping_frequency[1] = 0x43;
-	hopping_frequency[2] = 0x27;
-	hopping_frequency[3] = 0x07;
 	hopping_frequency_no=0;
-	rx_tx_addr[2] = 0x00;
-	rx_tx_addr[3] = 0xe7;
-	rx_tx_addr[4] = 0x67;
+	if(sub_protocol == XBM37)
+	{
+		bind_counter = XBM37_BIND_COUNT;
+		hopping_frequency[0] = 0x49;
+		hopping_frequency[1] = 0x34;
+		hopping_frequency[2] = 0x26;
+		hopping_frequency[3] = 0x07;
+		rx_tx_addr[1] = 0x05;
+		rx_tx_addr[2] = 0x05;
+		rx_tx_addr[3] = 0xe7;
+		rx_tx_addr[4] = 0x67;
+	}
+	else
+	{
+		bind_counter = FQ777_BIND_COUNT;
+		hopping_frequency[0] = 0x4D;
+		hopping_frequency[1] = 0x43;
+		hopping_frequency[2] = 0x27;
+		hopping_frequency[3] = 0x07;
+		rx_tx_addr[2] = 0x00;
+		rx_tx_addr[3] = 0xe7;
+		rx_tx_addr[4] = 0x67;
+	}
 	FQ777_RF_init();
 }
 

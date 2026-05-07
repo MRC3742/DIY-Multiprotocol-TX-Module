@@ -92,7 +92,7 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [Flysky](Protocols_Details.md#FLYSKY---1)||1|Flysky|V9x9|V6x6|V912|CX20||||A7105|
 [Flysky AFHDS2A](Protocols_Details.md#FLYSKY-AFHDS2A---28)||28|PWM_IBUS|PPM_IBUS|PWM_SBUS|PPM_SBUS|Gyro_Off|Gyro_On|Gyro_On_Rev||A7105|
 [Flysky AFHDS2A RX](Protocols_Details.md#FLYSKY-AFHDS2A-RX---56)||56|Multi|CPPM|||||||A7105|
-[FQ777](Protocols_Details.md#FQ777---23)||23|||||||||NRF24L01|SSV7241
+[FQ777](Protocols_Details.md#FQ777---23)||23|Std|XBM-37|||||||NRF24L01|
 [FrskyD](Protocols_Details.md#FRSKYD---3)||3|D8|Cloned|||||||CC2500|
 [FrskyL](Protocols_Details.md#FRSKYL---67)||67|LR12|LR12 6CH|||||||CC2500|
 [FrskyR9](Protocols_Details.md#FRSKYR9---65)||65|FrskyR9|R9_915|R9_868||||||SX1276|
@@ -1968,11 +1968,19 @@ A|E|T|R|FLIP|RTH|HEADLESS|EXPERT|CALIBRATE
 Model: X6 FY319 Quadcopter (Needs Testing)
 
 ## FQ777 - *23*
+### Sub_protocol Std - *0*
 Model: FQ777-124 (with SV7241A)
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8
 ---|---|---|---|---|---|---|---
 A|E|T|R|FLIP|RTH|HEADLESS|EXPERT
+
+### Sub_protocol XBM-37 - *1*
+Model: T-Smart XBM-37
+
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12
+---|---|---|---|---|---|---|---|---|---|---|---
+A|E|T|R|RATE|FLIP|PICTURE|VIDEO|HEADLESS|UNUSED|LED|OK
 
 ## GW008 - *32*
 Model: Global Drone GW008 from Banggood

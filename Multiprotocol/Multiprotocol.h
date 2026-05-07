@@ -191,6 +191,11 @@ enum DSM_RX
 	DSM_CLONE	= 1,
 	DSM_ERASE	= 2,
 };
+enum FQ777
+{
+	FQ777		= 0,
+	XBM37		= 1,
+};
 enum YD717
 {       			
 	YD717	= 0,
