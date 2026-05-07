@@ -129,12 +129,12 @@ static void __attribute__((unused)) FQ777_send_packet()
 						| GET_FLAG(CH8_SW,  XBM37_FLAG_VIDEO)
 						| GET_FLAG(CH7_SW,  XBM37_FLAG_PICTURE)
 						| GET_FLAG(CH6_SW,  XBM37_FLAG_FLIP);
-			if(Channel_data[CH5] < CHANNEL_MIN_COMMAND)
-				;
-			else if(CH5_SW)
-				flags |= XBM37_FLAG_RATE_HIGH;
-			else
-				flags |= XBM37_FLAG_RATE_MID;
+			uint8_t rate = 0;
+			if(CH5_SW)
+				rate = XBM37_FLAG_RATE_HIGH;
+			else if(Channel_data[CH5] >= CHANNEL_MIN_COMMAND)
+				rate = XBM37_FLAG_RATE_MID;
+			flags |= rate;
 			packet[6] = flags;
 		}
 		packet[7] = FQ777_checksum(packet);
@@ -264,6 +264,7 @@ void FQ777_init(void)
 		hopping_frequency[1] = 0x34;
 		hopping_frequency[2] = 0x26;
 		hopping_frequency[3] = 0x07;
+		// Captured XBM-37 bind/data address bytes: 91 05 05 e7 67
 		rx_tx_addr[0] = 0x91;
 		rx_tx_addr[1] = 0x05;
 		rx_tx_addr[2] = 0x05;
