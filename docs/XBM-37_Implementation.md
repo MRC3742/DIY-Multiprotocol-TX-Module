@@ -178,7 +178,7 @@ Based on the captures reviewed so far, the current mapping is:
 | 9 | Headless | decoded from `11b` |
 | 10 | Unused | not assigned |
 | 11 | LED | decoded from `13b` |
-| 12 | OK | decoded from `14b` |
+| 12 | OK | separate bit observed in `14b`; purpose still unknown |
 
 ### Notes
 
@@ -189,6 +189,7 @@ Based on the captures reviewed so far, the current mapping is:
 - `11b` showed the headless bit.
 - `13b` showed the LED bit.
 - `14b` showed a change in byte 5, which is currently mapped to the **OK** switch.
+- The **OK** button does **not** match the currently decoded rate / flip / picture / video / headless / LED flags. It appears as its own separate bit by changing byte `5` from `0x20` to `0xA0` while the other feature flags stay unchanged.
 
 ---
 
@@ -197,8 +198,10 @@ Based on the captures reviewed so far, the current mapping is:
 The following items are **not yet fully confirmed** and should be revisited during live testing:
 
 1. **RTH mapping**
-   - `12b` did not show a clear stable packet difference in the reviewed capture summary.
-   - No RTH channel/bit is currently assigned.
+   - `12b` still does not show a clear packet-byte change in the currently decoded 8-byte payload.
+   - No separate RTH channel/bit is assigned in the implementation yet.
+   - Flight testing now suggests the stock transmitter's RTH button behaves more like a **reverse-from-bind-heading** command than a true return-to-home function.
+   - The behavior can reportedly be canceled by pushing forward elevator / pitch.
 
 2. **Exact stick scaling**
    - The current implementation follows the captured endpoints and direction assumptions, but live testing may require inversion or endpoint refinement.
@@ -206,13 +209,28 @@ The following items are **not yet fully confirmed** and should be revisited duri
 3. **Meaning of fixed bytes**
    - Data bytes `4` and `5` include fixed base values observed in the stock traffic.
    - Their full meaning is not yet known beyond the confirmed OK-button effect in byte `5`.
+   - The OK button's operational purpose is still unknown; it may be a calibration or mode command, but this has not been confirmed.
 
 4. **Any hidden bind/model-match logic**
    - The current implementation is based on the captured address behavior and may need refinement if additional transmitters or receiver variants are tested.
 
 ---
 
-## 8. Why This Document Exists
+## 8. Testing Updates
+
+### 2026-05-07
+
+- Additional live testing suggests the **OK** button is **separate from the other decoded feature flags**.
+- In the stock transmitter capture, pressing **OK** changes byte `5` from `0x20` to `0xA0`, while byte `6` stays unchanged.
+- This means **OK does not replicate flip, picture, video, headless, LED, or rate** in the currently decoded payload.
+- The actual flight purpose of **OK** is still unknown. A calibration-style function is possible, but not yet verified.
+- Additional live testing suggests the **RTH** button is not a normal position-aware return-to-home mode.
+- Reported behavior is that the model flies back in the **opposite direction from the original bind orientation**, and pushing forward elevator / pitch cancels it.
+- The existing `12b` capture still does **not** show a clean separate payload-byte change for RTH, so the command may depend on a state or encoding detail that has not been isolated yet.
+
+---
+
+## 9. Why This Document Exists
 
 This file is intended to be a **living implementation log** for the XBM-37 work.
 
@@ -233,7 +251,7 @@ Suggested future update pattern:
 
 ---
 
-## 9. Suggested Future Sections
+## 10. Suggested Future Sections
 
 As XBM-37 support matures, extend this document with:
 
@@ -246,5 +264,5 @@ As XBM-37 support matures, extend this document with:
 
 ---
 
-*Document created: May 7, 2026*  
+*Document updated: May 7, 2026*  
 *Repository: MRC3742/DIY-Multiprotocol-TX-Module*
