@@ -25,6 +25,8 @@
 #define FQ777_NUM_RF_CHANNELS	4
 #define XBM37_PACKET_PERIOD		2070
 #define XBM37_BIND_COUNT		400
+#define XBM37_PACKET4_BASE		0x20
+#define XBM37_PACKET5_BASE		0x20
 
 enum {
 	FQ777_FLAG_RETURN     = 0x40,  // 0x40 when not off, !0x40 when one key return
@@ -121,8 +123,8 @@ static void __attribute__((unused)) FQ777_send_packet()
 			packet[1] = convert_channel_16b_limit(RUDDER, 0, 0xE1);
 			packet[2] = 0xE1 - convert_channel_16b_limit(AILERON, 0, 0xE1);
 			packet[3] = 0xE1 - convert_channel_16b_limit(ELEVATOR, 0, 0xE1);
-			packet[4] = 0x20;
-			packet[5] = 0x20 | GET_FLAG(CH12_SW, 0x80);		// OK switch
+			packet[4] = XBM37_PACKET4_BASE;
+			packet[5] = XBM37_PACKET5_BASE | GET_FLAG(CH12_SW, 0x80);	// OK switch
 
 			uint8_t flags = GET_FLAG(CH11_SW, XBM37_FLAG_LED)
 						| GET_FLAG(CH9_SW,  XBM37_FLAG_HEADLESS)
