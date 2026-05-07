@@ -27,6 +27,7 @@
 #define XBM37_BIND_COUNT		400
 #define XBM37_PACKET4_BASE		0x20
 #define XBM37_PACKET5_BASE		0x20
+#define XBM37_PACKET5_OK		0x80
 
 enum {
 	FQ777_FLAG_RETURN     = 0x40,  // 0x40 when not off, !0x40 when one key return
@@ -43,7 +44,6 @@ enum {
 	XBM37_FLAG_VIDEO		= 0x20,
 	XBM37_FLAG_PICTURE		= 0x40,
 	XBM37_FLAG_FLIP			= 0x80,
-	XBM37_FLAG_OK			= 0x80,
 };
 
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
@@ -125,7 +125,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 			packet[2] = 0xE1 - convert_channel_16b_limit(AILERON, 0, 0xE1);
 			packet[3] = 0xE1 - convert_channel_16b_limit(ELEVATOR, 0, 0xE1);
 			packet[4] = XBM37_PACKET4_BASE;
-			packet[5] = XBM37_PACKET5_BASE | GET_FLAG(CH12_SW, XBM37_FLAG_OK);	// OK switch
+			packet[5] = XBM37_PACKET5_BASE | GET_FLAG(CH12_SW, XBM37_PACKET5_OK);	// OK switch
 
 			uint8_t flags = GET_FLAG(CH11_SW, XBM37_FLAG_LED)
 						| GET_FLAG(CH9_SW,  XBM37_FLAG_HEADLESS)
@@ -134,7 +134,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 						| GET_FLAG(CH6_SW,  XBM37_FLAG_FLIP);
 			if(CH5_SW)
 				flags |= XBM37_FLAG_RATE_HIGH;
-			else if(!CH5_SW && Channel_data[CH5] > CHANNEL_MIN_COMMAND)
+			else if(Channel_data[CH5] > CHANNEL_MIN_COMMAND)
 				flags |= XBM37_FLAG_RATE_MID;
 			packet[6] = flags;
 		}
