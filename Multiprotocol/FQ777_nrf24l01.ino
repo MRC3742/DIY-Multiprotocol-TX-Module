@@ -138,7 +138,10 @@ static void __attribute__((unused)) FQ777_send_packet()
 				flags |= XBM37_FLAG_RATE_MID;
 			packet[6] = flags;
 		}
-		packet[7] = FQ777_checksum(packet);
+		if (IS_BIND_IN_PROGRESS)
+			packet[7] = packet[4] + packet[5] + packet[6];
+		else
+			packet[7] = FQ777_checksum(packet);
 
 		NRF24L01_SetPower();
 		NRF24L01_WriteReg(NRF24L01_05_RF_CH, IS_BIND_IN_PROGRESS ? 0 : hopping_frequency[hopping_frequency_no++]);
