@@ -191,9 +191,9 @@ enum DSM_RX
 	DSM_CLONE	= 1,
 	DSM_ERASE	= 2,
 };
-enum FQ777
+enum FQ777_subproto
 {
-	FQ777		= 0,
+	FQ777_STD	= 0,
 	XBM37		= 1,
 };
 enum YD717
