@@ -136,7 +136,7 @@ The captured bind packet format is currently treated as:
 Where:
 
 - `aa bb cc` are the XBM-37 address bytes
-- `sum` is the checksum of bytes `0..6`
+- `sum` is the checksum of the address bytes (`4..6`)
 
 ### 5.2 Data Packet
 
@@ -157,7 +157,8 @@ The current XBM-37 data packet implementation uses:
 
 The checksum currently matches the observed stock behavior:
 
-- byte `7` = sum of bytes `0..6`
+- bind packet: byte `7` = sum of bytes `4..6`
+- data packet: byte `7` = sum of bytes `0..6`
 
 ---
 
