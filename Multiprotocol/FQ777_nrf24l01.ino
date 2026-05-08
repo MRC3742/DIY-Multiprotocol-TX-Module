@@ -25,9 +25,10 @@
 #define FQ777_NUM_RF_CHANNELS	4
 #define XBM37_PACKET_PERIOD		2070
 #define XBM37_BIND_COUNT		400
-#define XBM37_PACKET4_BASE		0x21
+#define XBM37_PACKET4_BASE		0x20
 #define XBM37_PACKET5_BASE		0x20
 #define XBM37_PACKET5_OK		0x80
+#define XBM37_RF_SETUP			0x26
 
 enum {
 	FQ777_FLAG_RETURN     = 0x40,  // 0x40 when not off, !0x40 when one key return
@@ -143,8 +144,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 		else
 			packet[7] = FQ777_checksum(packet);
 
-		NRF24L01_SetPower();
-		NRF24L01_WriteReg(NRF24L01_05_RF_CH, IS_BIND_IN_PROGRESS ? 0 : hopping_frequency[hopping_frequency_no++]);
+		NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[hopping_frequency_no++]);
 		hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
 		NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
 		NRF24L01_FlushTx();
@@ -229,9 +229,10 @@ static void __attribute__((unused)) FQ777_RF_init()
 		NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, FQ777_bind_addr, 5);
 		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);
 		NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);
-		NRF24L01_SetBitrate(NRF24L01_BR_250K);
+		NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[0]);
 		NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);
 		NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x01);
+		NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, XBM37_RF_SETUP);
 		NRF24L01_SetTxRxMode(TX_EN);
 	}
 	else
@@ -243,6 +244,20 @@ uint16_t FQ777_callback()
 	#ifdef MULTI_SYNC
 		telemetry_set_input_sync(sub_protocol == XBM37 ? XBM37_PACKET_PERIOD : FQ777_PACKET_PERIOD);
 	#endif
+	if(sub_protocol == XBM37)
+	{
+		FQ777_send_packet();
+		if(bind_counter)
+		{
+			bind_counter--;
+			if (bind_counter == 0)
+			{
+				NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, rx_tx_addr, 5);
+				BIND_DONE;
+			}
+		}
+		return XBM37_PACKET_PERIOD;
+	}
 	if(bind_counter)
 	{
 		bind_counter--;

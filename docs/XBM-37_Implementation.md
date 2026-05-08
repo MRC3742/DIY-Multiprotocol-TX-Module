@@ -97,6 +97,8 @@ Observed hop sequence:
 49, 34, 26, 07
 ```
 
+The successful `02b` bind capture uses this same 4-channel hop sequence during bind and after bind.
+
 ### 4.3 Packet Timing
 
 Observed packet cadence is approximately:
@@ -120,6 +122,7 @@ for the initial bind address, then moved to a captured data address pattern incl
 ```
 
 The current implementation uses those captured bytes directly for the initial XBM-37 subtype work.
+In `02b`, the transmitter switches `TX_ADDR` to `91 05 05 E7 67` immediately after the 400th bind payload and before the first data payload.
 
 ---
 
@@ -147,7 +150,7 @@ The current XBM-37 data packet implementation uses:
 [1] rudder
 [2] aileron
 [3] elevator
-[4] fixed base byte (observed as `0x21` during control captures)
+[4] fixed base byte (`0x20` in the successful `02b` bind capture; `0x21` in later control captures)
 [5] fixed base byte (`0x20`) + OK bit
 [6] rate/feature flags
 [7] checksum
@@ -208,8 +211,8 @@ The following items are **not yet fully confirmed** and should be revisited duri
    - The current implementation follows the captured endpoints and direction assumptions, but live testing may require inversion or endpoint refinement.
 
 3. **Meaning of fixed bytes**
-- Data bytes `4` and `5` include fixed base values observed in the stock traffic.
-- Control captures consistently show byte `4` as `0x21`, while the initial power-on / idle captures show `0x20`.
+   - Data bytes `4` and `5` include fixed base values observed in the stock traffic.
+   - The successful `02b` bind capture keeps byte `4` at `0x20` through the first post-bind data packets, while later control captures show `0x21`.
    - Their full meaning is not yet known beyond the confirmed OK-button effect in byte `5`.
    - The OK button's operational purpose is still unknown; it may be a calibration or mode command, but this has not been confirmed.
 
