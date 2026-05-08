@@ -16,6 +16,13 @@
 // sub_protocol: 0=250Kbps, 1=1Mbps, 2=2Mbps. Other values default to 1Mbps.
 // RX_num = address length 3 or 4 or 5. Other values default to 5.
 // option = RF channel number 0..84 and -1 = scan all channels. Other values default to RF channel 0.
+//
+// sub_protocol 4 = NRF (XBM-37 raw NRF24L01 sniffer):
+//   Hardcoded for the XBM-37 protocol: 250Kbps, 5-byte address, DPL/ESB mode.
+//   Bind address: E7:E7:E7:E7:67. XBM-37 bind channels: 0x00, 0x49, 0x34, 0x26, 0x07.
+//   RX_num is ignored (address length fixed to 5).
+//   option = -1 : auto-scan the five XBM-37 channels (0x00/0x49/0x34/0x26/0x07).
+//   option = 0..84 : listen on that specific channel.
 
 #ifdef XN297DUMP_NRF24L01_INO
 
@@ -641,41 +648,35 @@ static uint16_t XN297Dump_callback()
 		}
 		else if(sub_protocol == XN297DUMP_NRF)
 		{
+			// XBM-37 bind/data channels: universal bind-announce on 0x00, then hop 0x49/0x34/0x26/0x07
+			static const uint8_t xbm37_channels[] = {0x00, 0x49, 0x34, 0x26, 0x07};
 			if(phase==0)
 			{
-				address_length=5;
-				memcpy(rx_tx_addr, (uint8_t *)"\xCC\xCC\xCC\xCC\xCC", address_length);	// bind \x7E\xB8\x63\xA9
-				bitrate=XN297DUMP_250K;
-				packet_length=9;
-				hopping_frequency_no=71; //bind 71, normal ??
-				
+				// XBM-37: 250Kbps, 5-byte addresses, DPL (ESB), bind address e7:e7:e7:e7:67
+				address_length = 5;
+				memcpy(rx_tx_addr, (uint8_t *)"\xe7\xe7\xe7\xe7\x67", address_length);
+				bitrate = XN297DUMP_250K;
+				packet_length = 8;	// XBM-37 payload is 8 bytes; DPL value read at runtime
+				hopping_frequency_no = 0;	// index into xbm37_channels when option=-1 (scan)
+
 				NRF24L01_Initialize();
 				NRF24L01_SetTxRxMode(TXRX_OFF);
-				NRF24L01_SetTxRxMode(RX_EN);
-				NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, address_length-2);			// RX/TX address length
-				NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rx_tx_addr, address_length);	// set up RX address
-				NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, packet_length);				// Enable rx pipe 0
-				NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);	//hopping_frequency_no);
+				NRF24L01_WriteReg(NRF24L01_03_SETUP_AW, address_length-2);					// 5-byte addresses
+				NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, rx_tx_addr, address_length);	// bind address
+				NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x01);	// ESB framing on pipe 0 (required for DPL)
+				NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);	// EN_DPL
+				NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x01);	// Dynamic payload length on pipe 0
+				NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, 0x26);	// 250Kbps (RF_DR_LOW=1, RF_DR_HIGH=0), 0dBm
+				// Start on first XBM-37 channel when scanning (option=-1/0xFF), else use specified channel
+				uint8_t start_ch = (option > (int8_t)XN297DUMP_MAX_RF_CHANNEL) ? xbm37_channels[0] : (uint8_t)option;
+				NRF24L01_WriteReg(NRF24L01_05_RF_CH, start_ch);
 				old_option = option;
-				
-				debug("NRF dump, len=%d, rf=%d, address length=%d, bitrate=",packet_length,option,address_length);	//hopping_frequency_no,address_length);
-				switch(bitrate)
-				{
-					case XN297DUMP_250K:
-						NRF24L01_SetBitrate(NRF24L01_BR_250K);
-						debugln("250K");
-						break;
-					case XN297DUMP_2M:
-						NRF24L01_SetBitrate(NRF24L01_BR_2M);
-						debugln("2M");
-						break;
-					default:
-						NRF24L01_SetBitrate(NRF24L01_BR_1M);
-						debugln("1M");
-						break;
-
-				}
-				NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX)); //_BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO) | 
+				NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
+								| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+				NRF24L01_SetTxRxMode(RX_EN);
+				debugln("XBM-37 NRF dump, ch=%d(0x%02X), addr=%02X %02X %02X %02X %02X, bitrate=250K, DPL",
+						start_ch, start_ch,
+						rx_tx_addr[0], rx_tx_addr[1], rx_tx_addr[2], rx_tx_addr[3], rx_tx_addr[4]);
 				phase++;
 				time=0;
 			}
@@ -695,78 +696,47 @@ static uint16_t XN297Dump_callback()
 						time=(timeH<<16)+timeL-time;
 						debug("RX: %5luus ", time>>1);
 						time=(timeH<<16)+timeL;
+						// Read the actual DPL payload width reported by the chip
+						packet_length = NRF24L01_GetDynamicPayloadSize();
+						if(packet_length == 0 || packet_length > XN297DUMP_MAX_PACKET_LEN)
+							packet_length = 8;	// fallback to known XBM-37 payload size
 						NRF24L01_ReadPayload(packet, packet_length);
-						//bool ok=true;
-						uint8_t buffer[40];
-						memcpy(buffer,packet,packet_length);
-						//if(memcmp(&packet_in[0],&packet[0],packet_length))
-						{
-							debug("C: %02X P:", option);
-							for(uint8_t i=0;i<packet_length;i++)
-								debug(" %02X",packet[i]);
-							debugln("");
-							memcpy(packet_in,packet,packet_length);
-						}
-						/*//realign bits
-							for(uint8_t i=0; i<packet_length; i++)
-								buffer[i]=buffer[i+2];
-							//for(uint8_t i=0; i<packet_length; i++)
-							//	buffer[i]=(buffer[i]<<4)+(buffer[i+1]>>4);
-							
-							//check for validity and decode
-							memset(packet_in,0,packet_length);
-							for(uint8_t i=0; i<packet_length-2; i++)
-							{
-								for(uint8_t j=0;j<2;j++)
-								{
-									packet_in[i>>2] >>= 1;
-									if( (buffer[i]&0xC0) == 0xC0 && (buffer[i]&0x30) == 0x00 )
-										packet_in[i>>2] |= 0x80;
-									else if( (buffer[i]&0xC0) == 0x00 && (buffer[i]&0x30) == 0x30 )
-										packet_in[i>>2] |= 0x00;
-									else
-										ok=false;	// error
-									buffer[i] <<= 4;
-								}
-							}
-							if(ok)
-							{
-								debug("P:(%02X,%02X):",packet[0],packet[1]);
-								for(uint8_t i=0;i<packet_length/4;i++)
-									debug(" %02X",packet_in[i]);
-								debugln("");
-								memcpy(packet_in,packet,packet_length);
-							}
-						}*/
-						/*crc=0;
-						for (uint8_t i = 1; i < 12; ++i)
-							crc16_update( packet[i], 8);
-						if(packet[12]==((crc>>8)&0xFF) && packet[13]==(crc&0xFF))
-							if(memcmp(&packet_in[1],&packet[1],packet_length-1))
-							{
-								debug("P:");
-								for(uint8_t i=0;i<packet_length;i++)
-									debug(" %02X",packet[i]);
-								debug(" CRC: %04X",crc);
-								debugln("");
-								debug("P(%02X):",packet[0]);
-								for(uint8_t i=1;i<packet_length-2;i++)
-									debug(" %02X",((bit_reverse(packet[i])<<1)|(bit_reverse(packet[i-1])>>7))&0xFF);
-								debugln("");
-								memcpy(packet_in,packet,packet_length);
-							}*/
+						uint8_t cur_ch = (option > (int8_t)XN297DUMP_MAX_RF_CHANNEL)
+								? xbm37_channels[hopping_frequency_no] : (uint8_t)option;
+						debug("C: %02X P:", cur_ch);
+						for(uint8_t i=0;i<packet_length;i++)
+							debug(" %02X",packet[i]);
+						debugln("");
+						memcpy(packet_in,packet,packet_length);
 					}
 					// restart RX mode
 					NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);			// Clear data ready, data sent, and retransmit
 					NRF24L01_SetTxRxMode(TXRX_OFF);
 					NRF24L01_SetTxRxMode(RX_EN);
 					NRF24L01_FlushRx();
-					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX)); //  _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO) |
+					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
+									| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
 				}
 				XN297Dump_overflow();
-				if(old_option != option)
-				{
-					NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);	//hopping_frequency_no);
+				if(option > (int8_t)XN297DUMP_MAX_RF_CHANNEL)
+				{	// option=-1: auto-scan the five XBM-37 bind/data channels
+					if(bind_counter > XN297DUMP_PERIOD_SCAN)
+					{
+						hopping_frequency_no = (hopping_frequency_no + 1) % (sizeof(xbm37_channels)/sizeof(xbm37_channels[0]));
+						bind_counter = 0;
+						debugln("Channel=%d(0x%02X)", xbm37_channels[hopping_frequency_no], xbm37_channels[hopping_frequency_no]);
+						NRF24L01_WriteReg(NRF24L01_05_RF_CH, xbm37_channels[hopping_frequency_no]);
+						NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
+						NRF24L01_SetTxRxMode(TXRX_OFF);
+						NRF24L01_SetTxRxMode(RX_EN);
+						NRF24L01_FlushRx();
+						NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
+										| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+					}
+				}
+				else if(old_option != option)
+				{	// option changed: switch to the newly selected channel
+					NRF24L01_WriteReg(NRF24L01_05_RF_CH, option);
 					old_option = option;
 				}
 			}
