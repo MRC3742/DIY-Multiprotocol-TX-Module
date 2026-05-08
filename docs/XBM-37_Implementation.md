@@ -147,8 +147,8 @@ The current XBM-37 data packet implementation uses:
 [1] rudder
 [2] aileron
 [3] elevator
-[4] fixed base byte
-[5] fixed base byte + OK bit
+[4] fixed base byte (observed as `0x21` during control captures)
+[5] fixed base byte (`0x20`) + OK bit
 [6] rate/feature flags
 [7] checksum
 ```
@@ -208,7 +208,8 @@ The following items are **not yet fully confirmed** and should be revisited duri
    - The current implementation follows the captured endpoints and direction assumptions, but live testing may require inversion or endpoint refinement.
 
 3. **Meaning of fixed bytes**
-   - Data bytes `4` and `5` include fixed base values observed in the stock traffic.
+- Data bytes `4` and `5` include fixed base values observed in the stock traffic.
+- Control captures consistently show byte `4` as `0x21`, while the initial power-on / idle captures show `0x20`.
    - Their full meaning is not yet known beyond the confirmed OK-button effect in byte `5`.
    - The OK button's operational purpose is still unknown; it may be a calibration or mode command, but this has not been confirmed.
 
