@@ -235,7 +235,13 @@ static void __attribute__((unused)) FQ777_RF_init()
 	if(sub_protocol == XBM37)
 	{
 		NRF24L01_WriteRegisterMulti(NRF24L01_0A_RX_ADDR_P0, FQ777_bind_addr, 5);
-		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x00);
+		// EN_AA=0x01 (pipe 0 only) is required for hardware DPL to work on nRF24L01+.
+		// With EN_AA=0x00 the chip operates in basic ShockBurst mode and forces
+		// PCF payload_length=0 regardless of DYNPD — the XBM-37 BK2425 receiver
+		// running in DPL mode then sees 0-byte packets and never binds.
+		// SETUP_RETR is already 0x00 (ARC=0, no retransmits) from NRF24L01_Initialize(),
+		// so enabling EN_AA only activates Enhanced ShockBurst; no ACK loop occurs.
+		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x01);
 		NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);
 		NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[0]);
 		NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);
