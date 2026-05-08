@@ -97,7 +97,18 @@ Observed hop sequence:
 49, 34, 26, 07
 ```
 
-The successful `02b` bind capture uses this same 4-channel hop sequence during bind and after bind.
+The successful `02b` bind capture uses this same 4-channel hop sequence — but with one critical detail:
+
+- **Bind packet #1** is sent on channel **0x00** (the universal bind-announce channel that the XBM-37 RX listens on at boot when in bind mode).
+- **Bind packets #2 through #400** then cycle through 0x49 → 0x34 → 0x26 → 0x07, repeating.
+- **Data packets** (after bind) continue cycling from where the bind sequence left off (0x07 → 0x49 → ...).
+
+If the first bind packet is sent on 0x49 instead of 0x00, the receiver never sees the announce packet and bind fails.
+
+Per-packet SPI cycle observed in capture:
+```text
+W_STATUS=0x70 → FLUSH_TX → W_RF_CH → W_TX_PAYLOAD
+```
 
 ### 4.3 Packet Timing
 

@@ -144,10 +144,18 @@ static void __attribute__((unused)) FQ777_send_packet()
 		else
 			packet[7] = FQ777_checksum(packet);
 
-		NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[hopping_frequency_no++]);
-		hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
 		NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
 		NRF24L01_FlushTx();
+		// First bind packet is sent on channel 0x00 (the universal bind announce channel
+		// the XBM-37 RX listens on when booting into bind mode).  All subsequent bind
+		// and data packets hop through the 4-channel sequence.
+		if (IS_BIND_IN_PROGRESS && bind_counter == XBM37_BIND_COUNT)
+			NRF24L01_WriteReg(NRF24L01_05_RF_CH, 0x00);
+		else
+		{
+			NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[hopping_frequency_no++]);
+			hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
+		}
 		NRF24L01_WritePayload(packet, FQ777_PACKET_SIZE);
 		return;
 	}
