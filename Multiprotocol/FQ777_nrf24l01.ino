@@ -28,7 +28,12 @@
 #define XBM37_PACKET4_BASE		0x20
 #define XBM37_PACKET5_BASE		0x20
 #define XBM37_PACKET5_OK		0x80
-#define XBM37_RF_SETUP			0x26
+// RF_SETUP for nRF24L01+: RF_DR_HIGH=1 (bit0, 2Mbps), RF_PWR=0b11 (bits[2:1], 0dBm).
+// The SV7241A/BK2425 TX uses RF_SETUP=0x26 (bit5=RF_DR=1→2Mbps, bits[2:1]=11→0dBm).
+// On nRF24L01+ bit5 is CONT_WAVE (continuous carrier), NOT RF_DR, so 0x26 must NOT
+// be written directly — 0x26 on nRF24L01+ enables CONT_WAVE and prevents all TX.
+// Translated intent: 2Mbps = RF_DR_HIGH=1 (bit0), 0dBm = RF_PWR=11 (bits[2:1]) → 0x07.
+#define XBM37_RF_SETUP			0x07
 
 enum {
 	FQ777_FLAG_RETURN     = 0x40,  // 0x40 when not off, !0x40 when one key return
