@@ -246,8 +246,11 @@ static void __attribute__((unused)) FQ777_RF_init()
 		// running in DPL mode then sees 0-byte packets and never binds.
 		// SETUP_RETR is already 0x00 (ARC=0, no retransmits) from NRF24L01_Initialize(),
 		// so enabling EN_AA only activates Enhanced ShockBurst; no ACK loop occurs.
+		// nRF24L01+ also requires pipe 0 enabled for DPL/PCF length; keep RX_PW_P0
+		// at 8 bytes as a fixed-length fallback if DPL is not active.
 		NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x01);
-		NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x00);
+		NRF24L01_WriteReg(NRF24L01_02_EN_RXADDR, 0x01);
+		NRF24L01_WriteReg(NRF24L01_11_RX_PW_P0, FQ777_PACKET_SIZE);
 		NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[0]);
 		NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);
 		NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x01);
