@@ -86,7 +86,7 @@ Observed characteristics from the captures:
 - **RF IC family:** nRF24L01+ compatible
 - **Payload length:** 8 bytes
 - **Dynamic payload enabled**
-- **Bitrate:** 250kbps
+- **Bitrate:** 2Mbps (SV7241A/BK2425 RF_SETUP=0x26 bit5=RF_DR=1; nRF24L01+ uses RF_SETUP=0x07 bit0=RF_DR_HIGH=1)
 - **Auto-ack:** disabled
 
 ### 4.2 Hop Sequence
