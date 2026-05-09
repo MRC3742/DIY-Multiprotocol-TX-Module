@@ -420,6 +420,7 @@
 	#undef	Q303_CCNRF_INO
 	#undef	Q90C_CCNRF_INO
 	#undef	REDPINE_CC2500_INO
+	#undef	NCC1701_NRF24L01_INO
 #endif
 
 #ifdef MULTI_SURFACE
