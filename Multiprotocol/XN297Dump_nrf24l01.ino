@@ -666,14 +666,12 @@ static uint16_t XN297Dump_callback()
 				NRF24L01_WriteReg(NRF24L01_01_EN_AA, 0x01);	// ESB framing on pipe 0 (required for DPL)
 				NRF24L01_WriteReg(NRF24L01_1D_FEATURE, 0x04);	// EN_DPL
 				NRF24L01_WriteReg(NRF24L01_1C_DYNPD, 0x01);	// Dynamic payload length on pipe 0
-				NRF24L01_WriteReg(NRF24L01_06_RF_SETUP, 0x26);	// 250Kbps (RF_DR_LOW=1, RF_DR_HIGH=0), 0dBm
+				NRF24L01_SetBitrate(NRF24L01_BR_250K);			// 250Kbps; also keeps rf_setup variable in sync
 				// Start on first XBM-37 channel when scanning (option=-1/0xFF), else use specified channel
 				uint8_t start_ch = (option > (int8_t)XN297DUMP_MAX_RF_CHANNEL) ? xbm37_channels[0] : (uint8_t)option;
 				NRF24L01_WriteReg(NRF24L01_05_RF_CH, start_ch);
 				old_option = option;
-				NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
-								| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
-				NRF24L01_SetTxRxMode(RX_EN);
+				NRF24L01_SetTxRxMode(RX_EN);				// sets CONFIG=RX, CE high (redundant CONFIG write removed)
 				debugln("XBM-37 NRF dump, ch=%d(0x%02X), addr=%02X %02X %02X %02X %02X, bitrate=250K, DPL",
 						start_ch, start_ch,
 						rx_tx_addr[0], rx_tx_addr[1], rx_tx_addr[2], rx_tx_addr[3], rx_tx_addr[4]);
@@ -684,38 +682,35 @@ static uint16_t XN297Dump_callback()
 			{
 				if( NRF24L01_ReadReg(NRF24L01_07_STATUS) & _BV(NRF24L01_07_RX_DR))
 				{ // RX fifo data ready
-					if(NRF24L01_ReadReg(NRF24L01_09_CD))
-					{
+					// No CD check: in ESB/DPL mode RX_DR already implies address+CRC match;
+					// RPD is unreliable here (cleared by CE-low in TXRX_OFF) and would suppress valid packets.
+					XN297Dump_overflow();
+					uint16_t timeL=TCNT1;
+					if(TIMER2_BASE->SR & TIMER_SR_UIF)
+					{//timer just rolled over...
 						XN297Dump_overflow();
-						uint16_t timeL=TCNT1;
-						if(TIMER2_BASE->SR & TIMER_SR_UIF)
-						{//timer just rolled over...
-							XN297Dump_overflow();
-							timeL=0;
-						}
-						time=(timeH<<16)+timeL-time;
-						debug("RX: %5luus ", time>>1);
-						time=(timeH<<16)+timeL;
-						// Read the actual DPL payload width reported by the chip
-						packet_length = NRF24L01_GetDynamicPayloadSize();
-						if(packet_length == 0 || packet_length > XN297DUMP_MAX_PACKET_LEN)
-							packet_length = 8;	// fallback to known XBM-37 payload size
-						NRF24L01_ReadPayload(packet, packet_length);
-						uint8_t cur_ch = (option > (int8_t)XN297DUMP_MAX_RF_CHANNEL)
-								? xbm37_channels[hopping_frequency_no] : (uint8_t)option;
-						debug("C: %02X P:", cur_ch);
-						for(uint8_t i=0;i<packet_length;i++)
-							debug(" %02X",packet[i]);
-						debugln("");
-						memcpy(packet_in,packet,packet_length);
+						timeL=0;
 					}
-					// restart RX mode
-					NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);			// Clear data ready, data sent, and retransmit
+					time=(timeH<<16)+timeL-time;
+					debug("RX: %5luus ", time>>1);
+					time=(timeH<<16)+timeL;
+					// Read the actual DPL payload width reported by the chip
+					packet_length = NRF24L01_GetDynamicPayloadSize();
+					if(packet_length == 0 || packet_length > XN297DUMP_MAX_PACKET_LEN)
+						packet_length = 8;	// fallback to known XBM-37 payload size
+					NRF24L01_ReadPayload(packet, packet_length);
+					uint8_t cur_ch = (option > (int8_t)XN297DUMP_MAX_RF_CHANNEL)
+							? xbm37_channels[hopping_frequency_no] : (uint8_t)option;
+					debug("C: %02X P:", cur_ch);
+					for(uint8_t i=0;i<packet_length;i++)
+						debug(" %02X",packet[i]);
+					debugln("");
+					memcpy(packet_in,packet,packet_length);
+					// restart RX mode: flush before RX_EN so no in-flight packet is discarded;
+					// SetTxRxMode(RX_EN) also clears STATUS flags, so no separate STATUS write needed.
 					NRF24L01_SetTxRxMode(TXRX_OFF);
-					NRF24L01_SetTxRxMode(RX_EN);
 					NRF24L01_FlushRx();
-					NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
-									| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+					NRF24L01_SetTxRxMode(RX_EN);
 				}
 				XN297Dump_overflow();
 				if(option > (int8_t)XN297DUMP_MAX_RF_CHANNEL)
@@ -726,12 +721,9 @@ static uint16_t XN297Dump_callback()
 						bind_counter = 0;
 						debugln("Channel=%d(0x%02X)", xbm37_channels[hopping_frequency_no], xbm37_channels[hopping_frequency_no]);
 						NRF24L01_WriteReg(NRF24L01_05_RF_CH, xbm37_channels[hopping_frequency_no]);
-						NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
 						NRF24L01_SetTxRxMode(TXRX_OFF);
-						NRF24L01_SetTxRxMode(RX_EN);
 						NRF24L01_FlushRx();
-						NRF24L01_WriteReg(NRF24L01_00_CONFIG, _BV(NRF24L01_00_EN_CRC) | _BV(NRF24L01_00_CRCO)
-										| _BV(NRF24L01_00_PWR_UP) | _BV(NRF24L01_00_PRIM_RX));
+						NRF24L01_SetTxRxMode(RX_EN);	// clears STATUS flags internally
 					}
 				}
 				else if(old_option != option)
