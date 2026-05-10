@@ -89,6 +89,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 	{
 		// 4,5,6 = address fields
 		// last field is checksum of address fields
+		// XBM-37 first test bind constants
 		packet_ori[0] = 0x20;
 		packet_ori[1] = 0x14;
 		packet_ori[2] = 0x07;
@@ -181,6 +182,7 @@ void FQ777_init(void)
 	BIND_IN_PROGRESS;	// autobind protocol
 	bind_counter = FQ777_BIND_COUNT;
 	packet_count=0;
+	// XBM-37 first test hop sequence
 	hopping_frequency[0] = 0x49;
 	hopping_frequency[1] = 0x34;
 	hopping_frequency[2] = 0x26;

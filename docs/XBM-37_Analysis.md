@@ -632,8 +632,7 @@ a compatible on-air signal.
 ### 10.1 First test
 
 For a minimum-change first bind/flight test, the existing `FQ777` protocol implementation was
-modified in-place in `/home/runner/work/DIY-Multiprotocol-TX-Module/DIY-Multiprotocol-TX-Module/Multiprotocol/FQ777_nrf24l01.ino`
-without adding a new sub-protocol.
+modified in-place in `Multiprotocol/FQ777_nrf24l01.ino` without adding a new sub-protocol.
 
 #### Code changes made for this first test
 
