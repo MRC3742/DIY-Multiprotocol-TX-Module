@@ -90,9 +90,9 @@ static void __attribute__((unused)) FQ777_send_packet()
 		// 4,5,6 = address fields
 		// last field is checksum of address fields
 		packet_ori[0] = 0x20;
-		packet_ori[1] = 0x15;
-		packet_ori[2] = 0x05;
-		packet_ori[3] = 0x06;
+		packet_ori[1] = 0x14;
+		packet_ori[2] = 0x07;
+		packet_ori[3] = 0x03;
 		packet_ori[4] = rx_tx_addr[0];
 		packet_ori[5] = rx_tx_addr[1];
 		packet_ori[6] = rx_tx_addr[2];
@@ -119,10 +119,10 @@ static void __attribute__((unused)) FQ777_send_packet()
 			else // roll
 				trim_val = 0x60;
 
-		packet_ori[0] = convert_channel_16b_limit(THROTTLE,0,0x64);
-		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0x64);
-		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0x64);
-		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0x64);
+		packet_ori[0] = convert_channel_16b_limit(THROTTLE,0,0xE1);
+		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
+		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
+		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
 		packet_ori[4] = trim_val; // calculated above
 		packet_ori[5] = GET_FLAG(CH5_SW, FQ777_FLAG_FLIP)
 				  | GET_FLAG(CH7_SW, FQ777_FLAG_HEADLESS)
@@ -181,9 +181,9 @@ void FQ777_init(void)
 	BIND_IN_PROGRESS;	// autobind protocol
 	bind_counter = FQ777_BIND_COUNT;
 	packet_count=0;
-	hopping_frequency[0] = 0x4D;
-	hopping_frequency[1] = 0x43;
-	hopping_frequency[2] = 0x27;
+	hopping_frequency[0] = 0x49;
+	hopping_frequency[1] = 0x34;
+	hopping_frequency[2] = 0x26;
 	hopping_frequency[3] = 0x07;
 	hopping_frequency_no=0;
 	rx_tx_addr[2] = 0x00;

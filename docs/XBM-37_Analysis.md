@@ -627,6 +627,86 @@ the SV7241A Enhanced ShockBurst encoding. When implementing with nRF24L01+, the 
 payload into the 12-byte packed representation that nRF24L01+ transmits at 250 kbps to produce
 a compatible on-air signal.
 
+## 10. Testing
+
+### 10.1 First test
+
+For a minimum-change first bind/flight test, the existing `FQ777` protocol implementation was
+modified in-place in `/home/runner/work/DIY-Multiprotocol-TX-Module/DIY-Multiprotocol-TX-Module/Multiprotocol/FQ777_nrf24l01.ino`
+without adding a new sub-protocol.
+
+#### Code changes made for this first test
+
+The requested minimal changes were applied while leaving `FQ777_BIND_COUNT` at `1000` and
+leaving the rest of the FQ777 logic unchanged:
+
+1. **Bind packet constants changed to XBM-37 values**
+   - `B1: 0x15 -> 0x14`
+   - `B2: 0x05 -> 0x07`
+   - `B3: 0x06 -> 0x03`
+
+2. **Hop channels changed to XBM-37 values**
+   - `4D 43 27 07 -> 49 34 26 07`
+
+3. **Basic control range changed to XBM-37 range**
+   - throttle/rudder/elevator/aileron output range:
+   - `0x00-0x64 -> 0x00-0xE1`
+
+#### What this first test should answer
+
+This test is intended to check whether the XBM-37 receiver will bind and accept the four basic
+flight channels using only the major over-the-air differences already proven in the capture
+analysis, while keeping the surrounding FQ777 implementation intact.
+
+#### If this first test does not bind or does not control correctly, the next differences to try are:
+
+1. **First bind packet on channel 0x00**
+   - The captured XBM-37 transmitter sends the first bind packet on `0x00`, then hops on
+     `49/34/26/07`.
+   - Current FQ777 logic still starts bind hopping immediately on the four hop channels.
+   - This is the most important remaining bind-path difference.
+
+2. **Reduce bind count from 1000 to 400**
+   - The real XBM-37 transmitter sends exactly `400` bind packets before switching to the data
+     address.
+   - Leaving `1000` for this first test is useful for a minimal experiment, but it remains a known
+     mismatch.
+
+3. **Normal data packet layout still differs significantly from FQ777**
+   - Real XBM-37 data packets are:
+     - `B0 = throttle`
+     - `B1 = rudder`
+     - `B2 = aileron`
+     - `B3 = elevator`
+     - `B4/B5/B6 = state and feature flags`
+   - Current FQ777 still sends its original byte meanings:
+     - `B2 = elevator`
+     - `B3 = aileron`
+     - `B4 = rotating trim byte`
+     - `B5 = FQ777-specific flags`
+     - `B6 = 0x00`
+   - Even if bind succeeds, this difference may prevent correct channel response.
+
+4. **Armed/disarmed state byte may be required**
+   - XBM-37 captures show `B4 = 0x20` or `0x21` instead of the rotating FQ777 trim byte.
+   - The receiver may require the correct `B4` state semantics before motors or control are accepted.
+
+5. **XBM-37 feature-bit mapping differs from FQ777**
+   - XBM-37 uses:
+     - `B5 bit7 = OK`
+     - `B6 bits[1:0] = rate`
+     - `B6 bit2 = LED off`
+     - `B6 bit4 = headless`
+     - `B6 bit5 = video`
+     - `B6 bit6 = picture`
+     - `B6 bit7 = flip`
+   - Current FQ777 flag mapping is different, so auxiliary functions will not match yet.
+
+6. **Possible channel order adjustment**
+   - The real XBM-37 packet order for the two right-stick axes is `aileron` then `elevator`.
+   - Current FQ777 code still emits `elevator` then `aileron`.
+   - For this first test only the requested range change was made, so incorrect axis mapping remains possible.
+
 ---
 
 *Analysis completed using Python scripts against the raw CSV captures. All packet checksums,
