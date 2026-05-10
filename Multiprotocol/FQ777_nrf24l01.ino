@@ -24,12 +24,12 @@
 #define FQ777_BIND_COUNT		1000
 #define FQ777_NUM_RF_CHANNELS	4
 #define XBM37_PACKET_PERIOD		2070
-#define XBM37_PACKET_PERIOD_P1	922
-#define XBM37_PACKET_PERIOD_P2	1097
-#define XBM37_PACKET_PERIOD_P401	17361
-#define XBM37_PACKET_PERIOD_P402	918
-#define XBM37_PACKET_PERIOD_P403	916
-#define XBM37_PACKET_PERIOD_P404	1491
+#define XBM37_PACKET_PERIOD_AFTER_P1	922
+#define XBM37_PACKET_PERIOD_AFTER_P2	1097
+#define XBM37_PACKET_PERIOD_AFTER_P400	17361
+#define XBM37_PACKET_PERIOD_AFTER_P401	918
+#define XBM37_PACKET_PERIOD_AFTER_P402	916
+#define XBM37_PACKET_PERIOD_AFTER_P403	1491
 #define XBM37_BIND_COUNT		400
 #define XBM37_PACKET4_BASE		0x20
 #define XBM37_PACKET5_BASE		0x20
@@ -295,12 +295,12 @@ uint16_t FQ777_callback()
 		// then settle at ~2070us.
 		switch (xbm37_packet_counter)
 		{
-			case 1:   packet_period = XBM37_PACKET_PERIOD_P1; break;
-			case 2:   packet_period = XBM37_PACKET_PERIOD_P2; break;
-			case 400: packet_period = XBM37_PACKET_PERIOD_P401; break;
-			case 401: packet_period = XBM37_PACKET_PERIOD_P402; break;
-			case 402: packet_period = XBM37_PACKET_PERIOD_P403; break;
-			case 403: packet_period = XBM37_PACKET_PERIOD_P404; break;
+			case 1:   packet_period = XBM37_PACKET_PERIOD_AFTER_P1; break;
+			case 2:   packet_period = XBM37_PACKET_PERIOD_AFTER_P2; break;
+			case 400: packet_period = XBM37_PACKET_PERIOD_AFTER_P400; break;
+			case 401: packet_period = XBM37_PACKET_PERIOD_AFTER_P401; break;
+			case 402: packet_period = XBM37_PACKET_PERIOD_AFTER_P402; break;
+			case 403: packet_period = XBM37_PACKET_PERIOD_AFTER_P403; break;
 			default:  packet_period = XBM37_PACKET_PERIOD; break;
 		}
 		return packet_period;

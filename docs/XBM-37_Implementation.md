@@ -21,7 +21,7 @@ The reverse engineering work used the capture files in:
 - `Captures_XBM-37/02b-XBM-37_Quad_TX-PowerOn-withRX-Bind.csv`
 - `Captures_XBM-37/03b-XBM-37_Quad_Aileron-Center-Left-Center-Right-Center.csv`
 - `Captures_XBM-37/04b-XBM-37_Quad_Elevator-Center-Back-Center-Forward-Center.csv`
-- `Captures_XBM-37/05b-XBM-37_Quad_Throtle-Low-High-Low.csv`
+- `Captures_XBM-37/05b-XBM-37_Quad_Throtle-Low-High-Low.csv` *(filename includes original transmitter-capture typo; this is the throttle sweep capture)*
 - `Captures_XBM-37/06b-XBM-37_Quad_Rudder-Center-Left-Center-Right-Center.csv`
 - `Captures_XBM-37/07b-XBM-37_Quad_RateModeSwitch-1-2-3.csv`
 - `Captures_XBM-37/08b-XBM-37_Quad_FlipSwitch-PushButton_Off-On.csv`
