@@ -118,6 +118,19 @@ Observed packet cadence is approximately:
 ~2070µs
 ```
 
+Deep comparison of `02a` (digital CE/SCK/CSN) and `02b` (decoded SPI) from the same bind capture shows this timing is intentionally non-uniform at startup and at bind transition:
+
+- Packet #1 → #2: ~922µs
+- Packet #2 → #3: ~1097µs
+- Packet #3 onward (bind steady state): ~2070µs
+- Packet #400 (last bind) → #401 (first data): ~17361µs pause
+- Packet #401 → #402: ~918µs
+- Packet #402 → #403: ~916µs
+- Packet #403 → #404: ~1491µs
+- Packet #404 onward (data steady state): ~2070µs
+
+CE pulses in the digital capture also align with this sequence, with most packet transmit windows holding CE high for roughly ~1.17ms before returning low for the inter-packet gap.
+
 ### 4.4 Bind Addressing
 
 The captured stock transmitter used:

@@ -24,6 +24,12 @@
 #define FQ777_BIND_COUNT		1000
 #define FQ777_NUM_RF_CHANNELS	4
 #define XBM37_PACKET_PERIOD		2070
+#define XBM37_PACKET_PERIOD_P1	922
+#define XBM37_PACKET_PERIOD_P2	1097
+#define XBM37_PACKET_PERIOD_P401	17361
+#define XBM37_PACKET_PERIOD_P402	918
+#define XBM37_PACKET_PERIOD_P403	916
+#define XBM37_PACKET_PERIOD_P404	1491
 #define XBM37_BIND_COUNT		400
 #define XBM37_PACKET4_BASE		0x20
 #define XBM37_PACKET5_BASE		0x20
@@ -54,6 +60,7 @@ enum {
 
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
+static uint16_t xbm37_packet_counter;
 
 static uint8_t __attribute__((unused)) FQ777_checksum(uint8_t *payload)
 {
@@ -268,7 +275,9 @@ uint16_t FQ777_callback()
 	#endif
 	if(sub_protocol == XBM37)
 	{
+		uint16_t packet_period = XBM37_PACKET_PERIOD;
 		FQ777_send_packet();
+		xbm37_packet_counter++;
 		if(bind_counter)
 		{
 			bind_counter--;
@@ -278,7 +287,23 @@ uint16_t FQ777_callback()
 				BIND_DONE;
 			}
 		}
-		return XBM37_PACKET_PERIOD;
+		// 02a/02b bind captures show non-uniform timing around startup and
+		// bind->data transition. Reproduce those inter-packet gaps explicitly:
+		//   p1->p2: 922us, p2->p3: 1097us,
+		//   p400->p401: 17361us, p401->p402: 918us,
+		//   p402->p403: 916us, p403->p404: 1491us,
+		// then settle at ~2070us.
+		switch (xbm37_packet_counter)
+		{
+			case 1:   packet_period = XBM37_PACKET_PERIOD_P1; break;
+			case 2:   packet_period = XBM37_PACKET_PERIOD_P2; break;
+			case 400: packet_period = XBM37_PACKET_PERIOD_P401; break;
+			case 401: packet_period = XBM37_PACKET_PERIOD_P402; break;
+			case 402: packet_period = XBM37_PACKET_PERIOD_P403; break;
+			case 403: packet_period = XBM37_PACKET_PERIOD_P404; break;
+			default:  packet_period = XBM37_PACKET_PERIOD; break;
+		}
+		return packet_period;
 	}
 	if(bind_counter)
 	{
@@ -298,6 +323,7 @@ void FQ777_init(void)
 	BIND_IN_PROGRESS;	// autobind protocol
 	packet_count=0;
 	hopping_frequency_no=0;
+	xbm37_packet_counter=0;
 	if(sub_protocol == XBM37)
 	{
 		bind_counter = XBM37_BIND_COUNT;
