@@ -31,6 +31,17 @@ enum {
 	FQ777_FLAG_FLIP       = 0x80,
 };
 
+#define XBM37_B5_BASE_STATE		0x20
+#define XBM37_B5_OK			0x80
+#define XBM37_B6_RATE_LOW		0x00
+#define XBM37_B6_RATE_MID		0x01
+#define XBM37_B6_RATE_HIGH		0x02
+#define XBM37_B6_LED_OFF		0x04
+#define XBM37_B6_HEADLESS		0x10
+#define XBM37_B6_VIDEO			0x20
+#define XBM37_B6_PICTURE		0x40
+#define XBM37_B6_FLIP			0x80
+
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
 
@@ -119,20 +130,20 @@ static void __attribute__((unused)) FQ777_send_packet()
 		// Test #3: migrate B5/B6 semantics to observed XBM-37 layout.
 		uint8_t rate_mode;
 		if (CH11_SW)
-			rate_mode = 0x02;				// high rate
+			rate_mode = XBM37_B6_RATE_HIGH;		// high rate
 		else if (Channel_data[CH11] < CHANNEL_MIN_COMMAND)
-			rate_mode = 0x00;				// low rate
+			rate_mode = XBM37_B6_RATE_LOW;		// low rate
 		else
-			rate_mode = 0x01;				// medium rate
+			rate_mode = XBM37_B6_RATE_MID;		// medium rate
 
-		packet_ori[5] = 0x20				// base state bit
-			      | GET_FLAG(CH10_SW, 0x80);	// OK button
+		packet_ori[5] = XBM37_B5_BASE_STATE		// base state bit
+			      | GET_FLAG(CH10_SW, XBM37_B5_OK);	// OK button
 		packet_ori[6] = rate_mode			// bits[1:0] = rate
-			      | GET_FLAG(!CH6_SW, 0x04)	// bit2 = LED off
-			      | GET_FLAG(CH7_SW, 0x10)	// bit4 = headless
-			      | GET_FLAG(CH8_SW, 0x20)	// bit5 = video
-			      | GET_FLAG(CH9_SW, 0x40)	// bit6 = picture
-			      | GET_FLAG(CH5_SW, 0x80);	// bit7 = flip
+			      | GET_FLAG(!CH6_SW, XBM37_B6_LED_OFF)	// bit2 = LED off
+			      | GET_FLAG(CH7_SW, XBM37_B6_HEADLESS)	// bit4 = headless
+			      | GET_FLAG(CH8_SW, XBM37_B6_VIDEO)	// bit5 = video
+			      | GET_FLAG(CH9_SW, XBM37_B6_PICTURE)	// bit6 = picture
+			      | GET_FLAG(CH5_SW, XBM37_B6_FLIP);	// bit7 = flip
 		// calculate checksum
 		uint8_t checksum = 0;
 		for (int i = 0; i < 7; ++i)
