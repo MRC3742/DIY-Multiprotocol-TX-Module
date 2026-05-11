@@ -44,7 +44,7 @@ enum {
 #define XBM37_B6_PICTURE		0x40
 #define XBM37_B6_FLIP			0x80
 #define XBM37_BIND_OPEN_CHANNEL		0x00
-#define XBM37_ARM_HOLD_PACKETS		200	// 200 * 2ms = ~400ms
+#define XBM37_ARM_HOLD_PACKETS		200	// 200 * 2ms = 400ms
 #define XBM37_THROTTLE_LOW_ENDPOINT	0xE1
 #define XBM37_THROTTLE_HIGH_ENDPOINT	0x00
 #define XBM37_THROTTLE_LOW_THRESHOLD	0xD0
@@ -140,11 +140,16 @@ static void __attribute__((unused)) FQ777_send_packet()
 		packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		if (!xbm37_armed)
 		{
+			// Threshold is intentionally below low endpoint (0xE1) for startup jitter margin.
 			if (throttle >= XBM37_THROTTLE_LOW_THRESHOLD)
 			{
 				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
+				{
 					xbm37_low_throttle_count++;
-				if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
+					if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
+						xbm37_armed = 1;
+				}
+				else
 					xbm37_armed = 1;
 			}
 			else
