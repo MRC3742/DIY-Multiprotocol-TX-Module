@@ -128,17 +128,18 @@ static void __attribute__((unused)) FQ777_send_packet()
 		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
 		packet_ori[4] = 0x21; // XBM-37 test #2: fixed armed state byte
 		// Test #3: migrate B5/B6 semantics to observed XBM-37 layout.
-		uint8_t rate_mode;
+		uint8_t rate_bits;
+		// CH11 three-position interpretation: low (<CHANNEL_MIN_COMMAND), mid, high (CH11_SW).
 		if (CH11_SW)
-			rate_mode = XBM37_B6_RATE_HIGH;		// high rate
+			rate_bits = XBM37_B6_RATE_HIGH;		// high rate
 		else if (Channel_data[CH11] < CHANNEL_MIN_COMMAND)
-			rate_mode = XBM37_B6_RATE_LOW;		// low rate
+			rate_bits = XBM37_B6_RATE_LOW;		// low rate
 		else
-			rate_mode = XBM37_B6_RATE_MID;		// medium rate
+			rate_bits = XBM37_B6_RATE_MID;		// medium rate
 
 		packet_ori[5] = XBM37_B5_BASE_STATE		// base state bit
 			      | GET_FLAG(CH10_SW, XBM37_B5_OK);	// OK button
-		packet_ori[6] = rate_mode			// bits[1:0] = rate
+		packet_ori[6] = rate_bits			// bits[1:0] = rate
 			      | GET_FLAG(!CH6_SW, XBM37_B6_LED_OFF)	// bit2 = LED off
 			      | GET_FLAG(CH7_SW, XBM37_B6_HEADLESS)	// bit4 = headless
 			      | GET_FLAG(CH8_SW, XBM37_B6_VIDEO)	// bit5 = video

@@ -761,7 +761,7 @@ semantics with the observed XBM-37 mapping.
 
 1. **B5 remapped to XBM-37 state + OK bit**
    - `B5` now sends:
-     - base `0x20` state bit
+     - base `0x20` baseline bit (bit5 always set in observed normal packets)
      - `bit7 (0x80)` for OK button
    - Implemented as:
      - `B5 = 0x20 | GET_FLAG(CH10_SW, 0x80)`
