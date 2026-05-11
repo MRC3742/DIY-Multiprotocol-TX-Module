@@ -33,6 +33,8 @@ enum {
 
 #define XBM37_B5_BASE_STATE		0x20
 #define XBM37_B5_OK			0x80
+#define XBM37_B4_DISARMED		0x20
+#define XBM37_B4_ARMED			0x21
 #define XBM37_B6_RATE_LOW		0x00
 #define XBM37_B6_RATE_MID		0x01
 #define XBM37_B6_RATE_HIGH		0x02
@@ -41,9 +43,15 @@ enum {
 #define XBM37_B6_VIDEO			0x20
 #define XBM37_B6_PICTURE		0x40
 #define XBM37_B6_FLIP			0x80
+#define XBM37_BIND_OPEN_CHANNEL		0x00
+#define XBM37_ARM_HOLD_PACKETS		200	// 200 * 2ms = ~400ms
+#define XBM37_THROTTLE_LOW_THR		0xD0
 
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
+static uint16_t xbm37_low_throttle_count;
+static uint8_t xbm37_armed;
+static uint8_t xbm37_first_bind_open_sent;
 
 static void __attribute__((unused)) ssv_pack_dpl(uint8_t addr[], uint8_t pid, uint8_t* len, uint8_t* payload, uint8_t* packed_payload)
 {
@@ -120,13 +128,24 @@ static void __attribute__((unused)) FQ777_send_packet()
 		//7 checksum - add values in other fields 
 
 		
-		packet_ori[0] = convert_channel_16b_limit(THROTTLE,0,0xE1);
+		uint8_t throttle = convert_channel_16b_limit(THROTTLE,0xE1,0);
+		packet_ori[0] = throttle;
 		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
-		// Test #3 still keeps legacy FQ777 axis byte order (B2=elevator, B3=aileron).
-		// XBM-37 axis swap is deferred and may be needed if control response is wrong.
-		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
-		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
-		packet_ori[4] = 0x21; // XBM-37 test #2: fixed armed state byte
+		packet_ori[2] = convert_channel_16b_limit(AILERON,0,0xE1);
+		packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
+		if (!xbm37_armed)
+		{
+			if (throttle >= XBM37_THROTTLE_LOW_THR)
+			{
+				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
+					xbm37_low_throttle_count++;
+				if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
+					xbm37_armed = 1;
+			}
+			else
+				xbm37_low_throttle_count = 0;
+		}
+		packet_ori[4] = xbm37_armed ? XBM37_B4_ARMED : XBM37_B4_DISARMED;
 		// Test #3: migrate B5/B6 semantics to observed XBM-37 layout.
 		uint8_t rate_bits;
 		// CH11 three-position interpretation: low (<CHANNEL_MIN_COMMAND), mid, high (CH11_SW).
@@ -156,9 +175,27 @@ static void __attribute__((unused)) FQ777_send_packet()
 
 	ssv_pack_dpl( IS_BIND_IN_PROGRESS ? FQ777_bind_addr : rx_tx_addr, hopping_frequency_no, &packet_len, packet_ori, packet);
 	
+	uint8_t rf_ch;
+	if (IS_BIND_IN_PROGRESS)
+	{
+		if (!xbm37_first_bind_open_sent)
+		{
+			rf_ch = XBM37_BIND_OPEN_CHANNEL;
+			xbm37_first_bind_open_sent = 1;
+		}
+		else
+		{
+			rf_ch = hopping_frequency[hopping_frequency_no++];
+			hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
+		}
+	}
+	else
+	{
+		rf_ch = hopping_frequency[hopping_frequency_no++];
+		hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
+	}
 	NRF24L01_WriteReg(NRF24L01_00_CONFIG,_BV(NRF24L01_00_PWR_UP));
-	NRF24L01_WriteReg(NRF24L01_05_RF_CH, hopping_frequency[hopping_frequency_no++]);
-	hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
+	NRF24L01_WriteReg(NRF24L01_05_RF_CH, rf_ch);
 	NRF24L01_WriteReg(NRF24L01_07_STATUS, 0x70);
 	NRF24L01_FlushTx();
 	NRF24L01_WritePayload(packet, packet_len);
@@ -197,6 +234,9 @@ void FQ777_init(void)
 	BIND_IN_PROGRESS;	// autobind protocol
 	bind_counter = FQ777_BIND_COUNT;
 	packet_count=0;
+	xbm37_armed = 0;
+	xbm37_low_throttle_count = 0;
+	xbm37_first_bind_open_sent = 0;
 	// XBM-37 first test hop sequence
 	hopping_frequency[0] = 0x49;
 	hopping_frequency[1] = 0x34;

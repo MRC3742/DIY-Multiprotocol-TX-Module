@@ -24,6 +24,7 @@
    - [10.2 Test #2](#102-test-2)
    - [10.3 Test #3](#103-test-3)
    - [10.4 Test #4 Analysis and Review (No Build)](#104-test-4-analysis-and-review-no-build)
+   - [10.5 Test #5](#105-test-5)
 
 ---
 
@@ -367,12 +368,12 @@ to be encoded in the normal 8-byte payload data structure.
 
 | Payload | Meaning |
 |---------|---------|
-| `E1 70 70 70 20 20 00 71` | Throttle max, all sticks center, motors disarmed, LED on |
+| `E1 70 70 70 20 20 00 71` | Throttle endpoint `0xE1` (observed as low in 05b capture sequence), all sticks center, motors disarmed, LED on |
 | `82 70 70 70 21 20 00 13` | Throttle ~mid, all sticks center, motors armed |
-| `00 70 70 70 21 20 00 91` | Throttle min, all sticks center, motors armed |
-| `E1 70 00 70 21 20 00 02` | Throttle max, aileron full left, motors armed |
-| `E1 70 E1 70 21 20 00 E3` | Throttle max, aileron full right, motors armed |
-| `E1 70 70 00 21 20 00 02` | Throttle max, elevator full forward, motors armed |
+| `00 70 70 70 21 20 00 91` | Throttle endpoint `0x00` (observed as high in 05b capture sequence), all sticks center, motors armed |
+| `E1 70 00 70 21 20 00 02` | Throttle endpoint `0xE1`, aileron full left, motors armed |
+| `E1 70 E1 70 21 20 00 E3` | Throttle endpoint `0xE1`, aileron full right, motors armed |
+| `E1 70 70 00 21 20 00 02` | Throttle endpoint `0xE1`, elevator full forward, motors armed |
 | `82 70 70 70 21 20 80 93` | Throttle mid, flip command active |
 | `82 70 70 70 21 20 10 23` | Throttle mid, headless mode active |
 | `82 70 70 70 21 20 01 14` | Throttle mid, rate mode 2 |
@@ -391,7 +392,7 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 
 - **Affected byte:** B2  
 - Range observed: `0x00` (full left) → `0x70` (center) → `0xE1` (full right)  
-- B0=0xE1 (throttle at max during this capture), B4=0x21 (armed)
+- B0=0xE1 (throttle endpoint value present during this capture), B4=0x21 (armed)
 
 ### 04b – Elevator (Pitch)
 
@@ -401,7 +402,9 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 ### 05b – Throttle
 
 - **Affected byte:** B0  
-- Range observed: `0x00` (min/low) → `0x70` (center/hover) → `0xE1` (max/high)  
+- Range observed: `0x00` ↔ `0x70` ↔ `0xE1` (full span observed)  
+- Recheck of `05b` sequence (`Low-High-Low`) indicates endpoint usage is `0xE1 -> 0x00 -> 0xE1`,
+  so `0xE1` is the practical low-throttle endpoint and `0x00` the high-throttle endpoint for this TX.
 - Non-return throttle (stick does not spring back to center)
 
 ### 06b – Rudder (Yaw)
@@ -822,14 +825,11 @@ Result carried into this review:
    - The “OK centers trims” hypothesis is plausible from UI perspective but is not supported by the
      currently captured packet deltas.
 
-3. **Throttle low/high mapping decision for next arming test**
-   - Keep the previously established byte mapping from Section 6.2:
-     - `B0=0x00` = low throttle
-     - `B0=0xE1` = high throttle
-   - The `05b` file name and capture timing alone should not be treated as the authoritative low/high
-     byte-direction source; the packet-byte mapping remains `0x00 -> 0x70 -> 0xE1` for
-     low/center/high.
-   - For implementation decisions, treat low-throttle detection as `B0` at/near the `0x00` endpoint.
+3. **Throttle low/high mapping recheck**
+   - Recheck of `05b-XBM-37_Quad_Throttle-Low-High-Low.csv` confirms the dominant endpoint sequence is
+     `0xE1 -> 0x00 -> 0xE1`.
+   - For Test #5 implementation, low-throttle gating is therefore treated as `B0` near the `0xE1`
+     endpoint, and high throttle near the `0x00` endpoint.
 
 #### Suggested next changes if throttle/motor arming still fails after Test #3
 
@@ -849,6 +849,50 @@ Result carried into this review:
 4. **Check for button edge/toggle semantics where required**
    - If feature bits are accepted but arming is blocked, emulate per-button event style
      (momentary edge vs. level) for control bytes as observed in capture transitions.
+
+### 10.5 Test #5
+
+Result carried into this test:
+- Bind still completed (solid LEDs), CH6 LEDs and CH7 headless were working, but motors still did not
+  start from throttle.
+
+#### Code changes made for Test #5
+
+To apply the requested Section 10.4 suggested changes **#1, #2, and #3** (and intentionally not
+apply #4), `Multiprotocol/FQ777_nrf24l01.ino` was updated as follows:
+
+1. **Implemented throttle-gated arming transition (`B4: 0x20 -> 0x21`)**
+   - Added explicit arming state tracking:
+     - Start data packets in disarmed state (`B4=0x20`).
+     - Transition to armed state (`B4=0x21`) only after sustained low-throttle detection.
+   - Added a concrete hold-time gate:
+     - low-throttle hold window = ~`400 ms` (`200` packets at `2 ms` packet period).
+
+2. **Implemented exact bind-open first channel behavior**
+   - First bind packet now transmits on RF channel `0x00` exactly once.
+   - Remaining bind packets then hop on `49/34/26/07`.
+
+3. **Applied full XBM-37 right-stick order**
+   - Data byte order changed to:
+     - `B2 = aileron`
+     - `B3 = elevator`
+
+4. **Low-throttle interpretation rechecked and aligned for arming logic**
+   - Using `05b` review (`0xE1 -> 0x00 -> 0xE1`), Test #5 arming gate uses `B0` near `0xE1` as
+     low-throttle condition.
+
+#### If Test #5 is still not successful, suggested next changes
+
+1. **Evaluate the deferred Section 10.4 change #4 (button/event edge semantics)**
+   - Keep current level-bit mapping for baseline, then selectively convert only the controls that
+     need edge/toggle packet behavior.
+
+2. **Add temporary arming-state telemetry/debug instrumentation for bench validation**
+   - Log or expose internal arming state transition points (`disarmed -> armed`) and detected
+     throttle endpoint values during startup.
+
+3. **Fine-tune low-throttle gate threshold/window if transition never occurs on hardware**
+   - Keep endpoint direction (`E1` low) but tune threshold margin and/or hold time window.
 
 ---
 
