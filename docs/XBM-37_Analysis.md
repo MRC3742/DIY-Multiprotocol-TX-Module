@@ -668,8 +668,8 @@ analysis, while keeping the surrounding FQ777 implementation intact.
 2. **Reduce bind count from 1000 to 400**
    - The real XBM-37 transmitter sends exactly `400` bind packets before switching to the data
      address.
-   - Leaving `1000` for this first test is useful for a minimal experiment, but it remains a known
-     mismatch.
+   - For Test #1, leaving `1000` was useful for a minimal experiment, but it was a known mismatch.
+   - Test #2 updates the implementation to `400`.
 
 3. **Normal data packet layout still differs significantly from FQ777**
    - Real XBM-37 data packets are:
