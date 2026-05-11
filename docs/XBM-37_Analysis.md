@@ -23,7 +23,7 @@
    - [10.1 First test](#101-first-test)
    - [10.2 Test #2](#102-test-2)
    - [10.3 Test #3](#103-test-3)
-   - [10.4 Test #4 Analysis and Review - No Build](#104-test-4-analysis-and-review---no-build)
+   - [10.4 Test #4 Analysis and Review (No Build)](#104-test-4-analysis-and-review-no-build)
 
 ---
 
@@ -799,7 +799,7 @@ semantics with the observed XBM-37 mapping.
    - If features react incorrectly, migrate selected bits (OK/video/picture/flip) to packetized
      press/toggle behavior matching capture timing patterns.
 
-### 10.4 Test #4 Analysis and Review - No Build
+### 10.4 Test #4 Analysis and Review (No Build)
 
 Result carried into this review:
 - Bind still completes quickly (RX LEDs go solid).
@@ -822,18 +822,22 @@ Result carried into this review:
    - The “OK centers trims” hypothesis is plausible from UI perspective but is not supported by the
      currently captured packet deltas.
 
-3. **05b throttle capture confirms low-throttle encoded value**
-   - Re-review of `05b-XBM-37_Quad_Throttle-Low-High-Low.csv` confirms the transmitted throttle byte
-     (`B0`) follows `0xE1 -> 0x00 -> 0xE1` over the capture phases.
-   - This indicates low throttle is encoded as `0xE1` and high throttle as `0x00` for this protocol.
-   - That matches current conversion direction already used in the implementation.
+3. **05b throttle capture review and low-throttle value decision**
+   - Keep the previously established byte mapping from Section 6.2:
+     - `B0=0x00` = low throttle
+     - `B0=0xE1` = high throttle
+   - The `05b` file name and capture timing alone should not be treated as the authoritative low/high
+     byte-direction source; the packet-byte mapping remains `0x00 -> 0x70 -> 0xE1` for
+     low/center/high.
+   - For implementation decisions, treat low-throttle detection as `B0` at/near the `0x00` endpoint.
 
 #### Suggested next changes if throttle/motor arming still fails after Test #3
 
 1. **Implement explicit throttle-gated `B4` transition**
    - Start data phase with `B4=0x20`, then switch to `B4=0x21` only after sustained low-throttle
      detection (`B0` at low-end encoding).
-   - Keep a short hold time at low throttle before asserting armed state.
+   - Keep a concrete hold time at low throttle before asserting armed state (recommended initial
+     test window: `300-500 ms`).
 
 2. **Align bind-open channel behavior exactly**
    - Ensure the first bind packet is always sent on channel `0x00` before hopping on
