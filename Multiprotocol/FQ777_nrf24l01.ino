@@ -49,6 +49,7 @@ enum {
 
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
+// XBM-37-specific state while prototyping protocol alignment inside the FQ777 path.
 static uint16_t xbm37_low_throttle_count;
 static uint8_t xbm37_armed;
 static uint8_t xbm37_first_bind_open_sent;
@@ -137,9 +138,8 @@ static void __attribute__((unused)) FQ777_send_packet()
 		{
 			if (throttle >= XBM37_THROTTLE_LOW_THR)
 			{
-				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
-					xbm37_low_throttle_count++;
-				if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
+				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS
+				    && ++xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
 					xbm37_armed = 1;
 			}
 			else
@@ -176,18 +176,10 @@ static void __attribute__((unused)) FQ777_send_packet()
 	ssv_pack_dpl( IS_BIND_IN_PROGRESS ? FQ777_bind_addr : rx_tx_addr, hopping_frequency_no, &packet_len, packet_ori, packet);
 	
 	uint8_t rf_ch;
-	if (IS_BIND_IN_PROGRESS)
+	if (IS_BIND_IN_PROGRESS && !xbm37_first_bind_open_sent)
 	{
-		if (!xbm37_first_bind_open_sent)
-		{
-			rf_ch = XBM37_BIND_OPEN_CHANNEL;
-			xbm37_first_bind_open_sent = 1;
-		}
-		else
-		{
-			rf_ch = hopping_frequency[hopping_frequency_no++];
-			hopping_frequency_no %= FQ777_NUM_RF_CHANNELS;
-		}
+		rf_ch = XBM37_BIND_OPEN_CHANNEL;
+		xbm37_first_bind_open_sent = 1;
 	}
 	else
 	{
