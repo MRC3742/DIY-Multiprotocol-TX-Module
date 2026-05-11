@@ -360,9 +360,15 @@ Normal state: `B6 = 0x00` (rate 1, LED on, no special modes)
 
 ### 6.6 Return-to-Home (RTH)
 
-The **RTH switch (file 12b)** produces **no change** in the 8-byte payload. Both the RTH-off
-and RTH-on states show identical payload: `E1 70 70 70 20 20 00 71`. RTH does not appear
-to be encoded in the normal 8-byte payload data structure.
+Updated analysis of **file 12b** (RTH OFF in first half, ON in second half):
+
+- Decoded payload remains `E1 70 70 70 20 20 00 71` across the full capture.
+- `B0` stays fixed at `0xE1` in this export (no throttle sweep present in captured packets).
+- No persistent RTH-state bit transition is observed in `B4/B5/B6` in this file.
+
+This indicates no sustained RTH payload-state encoding was captured in this specific export;
+RTH behavior may be condition-gated and/or represented by transient events outside the steady
+8-byte state seen here.
 
 ### 6.7 Example Payloads
 
@@ -445,9 +451,11 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 
 ### 12b – Return to Home Switch
 
-- **No payload change detected** — both RTH-off and RTH-on produce identical payload  
-  `E1 70 70 70 20 20 00 71`  
-- RTH is not encoded in the 8-byte data payload
+- **Capture split tested:** first half RTH OFF, second half RTH ON.
+- **Observed payload in both halves:** `E1 70 70 70 20 20 00 71`
+  - `B0=0xE1`, `B1/B2/B3=0x70`, `B4=0x20`, `B5=0x20`, `B6=0x00`
+- **Per-byte delta across halves:** none in `B0..B7` for this export.
+- Interpretation for this file: no persistent RTH-state bit is present in the steady 8-byte payload.
 
 ### 13b – LED Lights Switch
 
