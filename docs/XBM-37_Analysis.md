@@ -19,6 +19,11 @@
 7. [Per-Channel Control Analysis (03b – 14b)](#7-per-channel-control-analysis-03b--14b)
 8. [RF Timing Summary](#8-rf-timing-summary)
 9. [MPM Implementation Notes](#9-mpm-implementation-notes)
+10. [Testing](#10-testing)
+   - [10.1 First test](#101-first-test)
+   - [10.2 Test #2](#102-test-2)
+   - [10.3 Test #3](#103-test-3)
+   - [10.4 Test #4 Analysis and Review - No Build](#104-test-4-analysis-and-review---no-build)
 
 ---
 
@@ -793,6 +798,53 @@ semantics with the observed XBM-37 mapping.
 4. **Adjust button/event behavior from level bits to edge/toggle semantics where needed**
    - If features react incorrectly, migrate selected bits (OK/video/picture/flip) to packetized
      press/toggle behavior matching capture timing patterns.
+
+### 10.4 Test #4 Analysis and Review - No Build
+
+Result carried into this review:
+- Bind still completes quickly (RX LEDs go solid).
+- CH6 now toggles LED lights off/on.
+- CH7 now toggles headless mode (fast LED flash pattern).
+- Throttle still does not start motors.
+
+#### Review findings
+
+1. **B4 is still most consistent with arming-state signaling, not rotating trims**
+   - In analyzed XBM-37 normal packets, `B4` behavior is stable at `0x20`/`0x21` and does not show
+     the FQ777 rotating trim-byte pattern.
+   - FQ777’s rotating trim semantics are protocol-specific legacy behavior and should not be assumed
+     for XBM-37.
+   - Current evidence still supports `B4=0x20` (idle/disarmed) and `B4=0x21` (armed-state packets).
+
+2. **OK button mapping is not tied to B4 in captures**
+   - In capture review, OK button activity appears on `B5 bit7` (`0x20 -> 0xA0`) while `B4` remains
+     in its normal state value.
+   - The “OK centers trims” hypothesis is plausible from UI perspective but is not supported by the
+     currently captured packet deltas.
+
+3. **05b throttle capture confirms low-throttle encoded value**
+   - Re-review of `05b-XBM-37_Quad_Throttle-Low-High-Low.csv` confirms the transmitted throttle byte
+     (`B0`) follows `0xE1 -> 0x00 -> 0xE1` over the capture phases.
+   - This indicates low throttle is encoded as `0xE1` and high throttle as `0x00` for this protocol.
+   - That matches current conversion direction already used in the implementation.
+
+#### Suggested next changes if throttle/motor arming still fails after Test #3
+
+1. **Implement explicit throttle-gated `B4` transition**
+   - Start data phase with `B4=0x20`, then switch to `B4=0x21` only after sustained low-throttle
+     detection (`B0` at low-end encoding).
+   - Keep a short hold time at low throttle before asserting armed state.
+
+2. **Align bind-open channel behavior exactly**
+   - Ensure the first bind packet is always sent on channel `0x00` before hopping on
+     `49/34/26/07` (if not already active in the test branch used on hardware).
+
+3. **Apply full XBM-37 right-stick order**
+   - Change data ordering to `B2=aileron`, `B3=elevator` to match capture-defined packet layout.
+
+4. **Check for button edge/toggle semantics where required**
+   - If feature bits are accepted but arming is blocked, emulate per-button event style
+     (momentary edge vs. level) for control bytes as observed in capture transitions.
 
 ---
 
