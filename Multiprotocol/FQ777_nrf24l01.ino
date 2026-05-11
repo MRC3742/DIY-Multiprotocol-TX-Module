@@ -21,7 +21,7 @@
 #define FQ777_INITIAL_WAIT		500
 #define FQ777_PACKET_PERIOD		2000
 #define FQ777_PACKET_SIZE		8
-#define FQ777_BIND_COUNT		1000
+#define FQ777_BIND_COUNT		400
 #define FQ777_NUM_RF_CHANNELS	4
 
 enum {
@@ -109,22 +109,11 @@ static void __attribute__((unused)) FQ777_send_packet()
 		//7 checksum - add values in other fields 
 
 		
-		// Trims are usually done through the radio configuration but leaving the code here just in case...
-		uint8_t trim_mod  = packet_count % 144;
-		uint8_t trim_val  = 0;
-		if (36 <= trim_mod && trim_mod < 72) // yaw
-			trim_val  = 0x20; // don't modify yaw trim
-		else
-			if (108 < trim_mod && trim_mod) // pitch
-				trim_val = 0xA0;
-			else // roll
-				trim_val = 0x60;
-
 		packet_ori[0] = convert_channel_16b_limit(THROTTLE,0,0xE1);
 		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
 		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
-		packet_ori[4] = trim_val; // calculated above
+		packet_ori[4] = 0x21; // XBM-37 test #2: fixed armed state byte
 		packet_ori[5] = GET_FLAG(CH5_SW, FQ777_FLAG_FLIP)
 				  | GET_FLAG(CH7_SW, FQ777_FLAG_HEADLESS)
 				  | GET_FLAG(!CH6_SW, FQ777_FLAG_RETURN)

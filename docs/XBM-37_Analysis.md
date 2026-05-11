@@ -706,6 +706,48 @@ analysis, while keeping the surrounding FQ777 implementation intact.
    - Current FQ777 code still emits `elevator` then `aileron`.
    - For this first test only the requested range change was made, so incorrect axis mapping remains possible.
 
+### 10.2 Test # 2
+
+Result carried into this test:
+- Test #1 successfully completed bind (RX LEDs changed from flashing to solid), but motors did not
+  arm/run from throttle.
+
+#### Code changes made for Test #2
+
+For a minimum-change second test, the existing `FQ777` path in
+`Multiprotocol/FQ777_nrf24l01.ino` was updated in-place:
+
+1. **Bind count reduced to analyzed value**
+   - `FQ777_BIND_COUNT: 1000 -> 400`
+
+2. **Post-bind byte B4 changed from rotating trim to fixed armed state**
+   - Previous Test #1 behavior used the original FQ777 rotating trim pattern on `B4`.
+   - Test #2 now sets `B4 = 0x21` on every data packet.
+   - Reason for choosing `0x21`: capture analysis indicates `0x21` is the armed-state value
+     (while `0x20` corresponds to disarmed/idle state).
+
+All other FQ777 logic remains unchanged for this focused test.
+
+#### If Test #2 is still not successful, suggested next changes
+
+1. **Implement throttle-gated arming transition (`0x20 -> 0x21`)**
+   - Original TX behavior appears to be: bind at any throttle, then arm only after throttle reaches
+     minimum.
+   - Next step: start data phase at `B4=0x20`, switch to `B4=0x21` once a low-throttle condition is
+     observed.
+
+2. **Send first bind packet on channel `0x00`**
+   - Captures indicate the first bind packet is on `0x00` before hopping on `49/34/26/07`.
+   - Current code still starts hopping immediately, which can still block proper post-bind behavior.
+
+3. **Replace remaining FQ777 data-byte semantics with XBM-37 mapping**
+   - `B5/B6` flags and feature bits still follow FQ777 behavior.
+   - If arming still fails, migrate `B5/B6` to the observed XBM-37 bit mapping.
+
+4. **Swap right-stick axis order if control responses are incorrect**
+   - XBM-37 uses `B2=aileron`, `B3=elevator`, while current code still emits the FQ777 order.
+   - If movement appears swapped or unstable, this should be updated next.
+
 ---
 
 *Analysis completed using Python scripts against the raw CSV captures. All packet checksums,
