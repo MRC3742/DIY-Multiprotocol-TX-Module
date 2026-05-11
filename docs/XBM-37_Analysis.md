@@ -706,7 +706,7 @@ analysis, while keeping the surrounding FQ777 implementation intact.
    - Current FQ777 code still emits `elevator` then `aileron`.
    - For this first test only the requested range change was made, so incorrect axis mapping remains possible.
 
-### 10.2 Test # 2
+### 10.2 Test #2
 
 Result carried into this test:
 - Test #1 successfully completed bind (RX LEDs changed from flashing to solid), but motors did not

@@ -111,7 +111,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 		
 		packet_ori[0] = convert_channel_16b_limit(THROTTLE,0,0xE1);
 		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
-		// Test #2 keeps legacy FQ777 axis byte order (B2=elevator, B3=aileron); XBM-37 swap is deferred.
+		// Test #2 keeps legacy FQ777 axis byte order (B2=elevator, B3=aileron); XBM-37 swap is deferred and may be needed if control response is wrong.
 		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
 		packet_ori[4] = 0x21; // XBM-37 test #2: fixed armed state byte
