@@ -48,7 +48,7 @@ All captures are located in `Captures_XBM-37/`. The **"b" files** are SPI-decode
 | `09b-XBM-37_Quad_VideoSwitch-Off-On-Off-On.csv` | SPI | Video record toggle: off → on → off → on | 6,023 | 1,506 | 3.116 s |
 | `10b-XBM-37_Quad_PictureSwitch-PushButton-3X.csv` | SPI | Photo/picture button: pressed 3 times | 6,019 | 1,505 | 3.113 s |
 | `11b-XBM-37_Quad_HeadlessSwitch-PushButton-Off-On.csv` | SPI | Headless mode button: off → on | 6,022 | 1,506 | 3.116 s |
-| `12b-XBM-37_Quad_ReturnToHomeSwitch-PushButton-Off-On.csv` | SPI | RTH button: off → on | 6,019 | 1,505 | 3.113 s |
+| `12b-XBM-37_Quad_ReturnToHomeSwitch-PushButton-Off-On.csv` | SPI | RTH button: off → on | 6,034 | 1,508 | 3.127 s |
 | `13b-XBM-37_Quad_LED-LightsSwitch-PushButton-On-Off.csv` | SPI | LED lights toggle: on → off | 6,019 | 1,505 | 3.113 s |
 | `14b-XBM-37_Quad_OK-Switch-PushButton-Off-On.csv` | SPI | OK button: off → on | 6,027 | 1,507 | 3.120 s |
 
@@ -362,13 +362,14 @@ Normal state: `B6 = 0x00` (rate 1, LED on, no special modes)
 
 Updated analysis of **file 12b** (RTH OFF in first half, ON in second half):
 
-- Decoded payload remains `E1 70 70 70 20 20 00 71` across the full capture.
-- `B0` stays fixed at `0xE1` in this export (no throttle sweep present in captured packets).
-- No persistent RTH-state bit transition is observed in `B4/B5/B6` in this file.
+- RTH-OFF payload is steady at `7E 70 70 70 20 20 00 0E`.
+- After the OFF→ON transition, the payload changes to `7E 70 70 70 20 20 08 16`.
+- While RTH remains active, occasional packets show `7F 70 70 70 20 20 08 17`, which is
+  consistent with a +1 change in `B0` and matching checksum update.
+- The persistent functional change in this capture is therefore `B6: 0x00 -> 0x08`
+  (bit3 asserted when RTH is ON).
 
-This indicates no sustained RTH payload-state encoding was captured in this specific export;
-RTH behavior may be condition-gated and/or represented by transient events outside the steady
-8-byte state seen here.
+In this updated export, RTH is represented in the steady 8-byte payload by `B6 bit3`.
 
 ### 6.7 Example Payloads
 
@@ -452,10 +453,13 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 ### 12b – Return to Home Switch
 
 - **Capture split tested:** first half RTH OFF, second half RTH ON.
-- **Observed payload in both halves:** `E1 70 70 70 20 20 00 71`
-  - `B0=0xE1`, `B1/B2/B3=0x70`, `B4=0x20`, `B5=0x20`, `B6=0x00`
-- **Per-byte delta across halves:** none in `B0..B7` for this export.
-- Interpretation for this file: no persistent RTH-state bit is present in the steady 8-byte payload.
+- **RTH OFF payload:** `7E 70 70 70 20 20 00 0E`
+- **RTH ON payload:** `7E 70 70 70 20 20 08 16`
+- **Primary byte change:** `B6: 0x00 -> 0x08`
+  - `B6 bit3` is asserted when RTH is active in this capture
+- **Minor secondary variation while ON:** `B0` occasionally increments `0x7E -> 0x7F`,
+  producing checksum `0x16 -> 0x17`
+- All other payload bytes remain unchanged across the OFF→ON transition in this file.
 
 ### 13b – LED Lights Switch
 
