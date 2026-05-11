@@ -45,11 +45,14 @@ enum {
 #define XBM37_B6_FLIP			0x80
 #define XBM37_BIND_OPEN_CHANNEL		0x00
 #define XBM37_ARM_HOLD_PACKETS		200	// 200 * 2ms = ~400ms
-#define XBM37_THROTTLE_LOW_THR		0xD0
+#define XBM37_THROTTLE_LOW_ENDPOINT	0xE1
+#define XBM37_THROTTLE_HIGH_ENDPOINT	0x00
+#define XBM37_THROTTLE_LOW_THRESHOLD	0xD0
 
 const uint8_t ssv_xor[] = {0x80,0x44,0x64,0x75,0x6C,0x71,0x2A,0x36,0x7C,0xF1,0x6E,0x52,0x9,0x9D,0x1F,0x78,0x3F,0xE1,0xEE,0x16,0x6D,0xE8,0x73,0x9,0x15,0xD7,0x92,0xE7,0x3,0xBA};
 uint8_t FQ777_bind_addr []   = {0xe7,0xe7,0xe7,0xe7,0x67};
 // XBM-37-specific state while prototyping protocol alignment inside the FQ777 path.
+// Initialized in FQ777_init(), then used through bind/data callbacks for arming gating.
 static uint16_t xbm37_low_throttle_count;
 static uint8_t xbm37_armed;
 static uint8_t xbm37_first_bind_open_sent;
@@ -130,14 +133,14 @@ static void __attribute__((unused)) FQ777_send_packet()
 
 		
 		// XBM-37 throttle endpoint direction from 05b capture: 0xE1=low, 0x00=high.
-		uint8_t throttle = convert_channel_16b_limit(THROTTLE,0xE1,0);
+		uint8_t throttle = convert_channel_16b_limit(THROTTLE, XBM37_THROTTLE_LOW_ENDPOINT, XBM37_THROTTLE_HIGH_ENDPOINT);
 		packet_ori[0] = throttle;
 		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
 		packet_ori[2] = convert_channel_16b_limit(AILERON,0,0xE1);
 		packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		if (!xbm37_armed)
 		{
-			if (throttle >= XBM37_THROTTLE_LOW_THR)
+			if (throttle >= XBM37_THROTTLE_LOW_THRESHOLD)
 			{
 				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
 					xbm37_low_throttle_count++;
