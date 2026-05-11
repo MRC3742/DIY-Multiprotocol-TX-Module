@@ -748,6 +748,52 @@ All other FQ777 logic remains unchanged for this focused test.
    - XBM-37 uses `B2=aileron`, `B3=elevator`, while current code still emits the FQ777 order.
    - If movement appears swapped or unstable, this should be updated next.
 
+### 10.3 Test #3
+
+Result carried into this test:
+- Test #2 still bound quickly (solid LEDs) but throttle still did not control motors.
+
+#### Code changes made for Test #3
+
+To follow the next suggested step, the existing `FQ777` implementation in
+`Multiprotocol/FQ777_nrf24l01.ino` was updated to replace remaining FQ777 `B5/B6` data-byte
+semantics with the observed XBM-37 mapping.
+
+1. **B5 remapped to XBM-37 state + OK bit**
+   - `B5` now sends:
+     - base `0x20` state bit
+     - `bit7 (0x80)` for OK button
+   - Implemented as:
+     - `B5 = 0x20 | GET_FLAG(CH10_SW, 0x80)`
+
+2. **B6 remapped to XBM-37 feature/rate bits**
+   - `bits[1:0]` = rate mode (from CH11 three-position logic)
+   - `bit2 (0x04)` = LED off (`!CH6_SW`)
+   - `bit4 (0x10)` = headless (`CH7_SW`)
+   - `bit5 (0x20)` = video (`CH8_SW`)
+   - `bit6 (0x40)` = picture (`CH9_SW`)
+   - `bit7 (0x80)` = flip (`CH5_SW`)
+
+3. **Unchanged from Test #2**
+   - Bind count remains `400`.
+   - `B4` remains fixed at `0x21` (armed-state test behavior).
+   - `B2/B3` order is still legacy FQ777 (`B2=elevator`, `B3=aileron`) for this test.
+
+#### If Test #3 is still not successful, suggested next changes
+
+1. **Implement throttle-gated arming transition (`B4: 0x20 -> 0x21`)**
+   - Mirror original TX behavior: bind at any throttle, arm only after throttle reaches minimum.
+
+2. **Send the first bind packet on RF channel `0x00`**
+   - Captures show first bind frame on `0x00`, then hop sequence `49/34/26/07`.
+
+3. **Swap right-stick axis order to full XBM-37 order**
+   - Change to `B2=aileron`, `B3=elevator` if control response remains wrong.
+
+4. **Adjust button/event behavior from level bits to edge/toggle semantics where needed**
+   - If features react incorrectly, migrate selected bits (OK/video/picture/flip) to packetized
+     press/toggle behavior matching capture timing patterns.
+
 ---
 
 *Analysis completed using Python scripts against the raw CSV captures. All packet checksums,

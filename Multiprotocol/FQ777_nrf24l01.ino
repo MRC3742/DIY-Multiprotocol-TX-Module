@@ -116,11 +116,23 @@ static void __attribute__((unused)) FQ777_send_packet()
 		packet_ori[2] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		packet_ori[3] = convert_channel_16b_limit(AILERON,0,0xE1);
 		packet_ori[4] = 0x21; // XBM-37 test #2: fixed armed state byte
-		packet_ori[5] = GET_FLAG(CH5_SW, FQ777_FLAG_FLIP)
-				  | GET_FLAG(CH7_SW, FQ777_FLAG_HEADLESS)
-				  | GET_FLAG(!CH6_SW, FQ777_FLAG_RETURN)
-				  | GET_FLAG(CH8_SW,FQ777_FLAG_EXPERT);
-		packet_ori[6] = 0x00;
+		// Test #3: migrate B5/B6 semantics to observed XBM-37 layout.
+		uint8_t rate_mode;
+		if (CH11_SW)
+			rate_mode = 0x02;				// high rate
+		else if (Channel_data[CH11] < CHANNEL_MIN_COMMAND)
+			rate_mode = 0x00;				// low rate
+		else
+			rate_mode = 0x01;				// medium rate
+
+		packet_ori[5] = 0x20				// base state bit
+			      | GET_FLAG(CH10_SW, 0x80);	// OK button
+		packet_ori[6] = rate_mode			// bits[1:0] = rate
+			      | GET_FLAG(!CH6_SW, 0x04)	// bit2 = LED off
+			      | GET_FLAG(CH7_SW, 0x10)	// bit4 = headless
+			      | GET_FLAG(CH8_SW, 0x20)	// bit5 = video
+			      | GET_FLAG(CH9_SW, 0x40)	// bit6 = picture
+			      | GET_FLAG(CH5_SW, 0x80);	// bit7 = flip
 		// calculate checksum
 		uint8_t checksum = 0;
 		for (int i = 0; i < 7; ++i)
