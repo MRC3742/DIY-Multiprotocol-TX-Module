@@ -822,7 +822,7 @@ Result carried into this review:
    - The “OK centers trims” hypothesis is plausible from UI perspective but is not supported by the
      currently captured packet deltas.
 
-3. **05b throttle capture review and low-throttle value decision**
+3. **Throttle low/high mapping decision for next arming test**
    - Keep the previously established byte mapping from Section 6.2:
      - `B0=0x00` = low throttle
      - `B0=0xE1` = high throttle
