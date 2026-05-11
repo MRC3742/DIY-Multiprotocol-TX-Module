@@ -129,6 +129,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 		//7 checksum - add values in other fields 
 
 		
+		// XBM-37 throttle endpoint direction from 05b capture: 0xE1=low, 0x00=high.
 		uint8_t throttle = convert_channel_16b_limit(THROTTLE,0xE1,0);
 		packet_ori[0] = throttle;
 		packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);
@@ -138,8 +139,9 @@ static void __attribute__((unused)) FQ777_send_packet()
 		{
 			if (throttle >= XBM37_THROTTLE_LOW_THR)
 			{
-				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS
-				    && ++xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
+				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
+					xbm37_low_throttle_count++;
+				if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
 					xbm37_armed = 1;
 			}
 			else
