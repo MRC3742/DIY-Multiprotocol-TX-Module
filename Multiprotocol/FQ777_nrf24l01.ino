@@ -140,7 +140,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 		packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0,0xE1);
 		if (!xbm37_armed)
 		{
-			// Threshold is intentionally below low endpoint (0xE1) for startup jitter margin.
+			// Threshold is intentionally numerically lower than low endpoint (0xE1) for jitter margin.
 			if (throttle >= XBM37_THROTTLE_LOW_THRESHOLD)
 			{
 				if (xbm37_low_throttle_count < XBM37_ARM_HOLD_PACKETS)
@@ -149,8 +149,6 @@ static void __attribute__((unused)) FQ777_send_packet()
 					if (xbm37_low_throttle_count >= XBM37_ARM_HOLD_PACKETS)
 						xbm37_armed = 1;
 				}
-				else
-					xbm37_armed = 1;
 			}
 			else
 				xbm37_low_throttle_count = 0;
