@@ -19,12 +19,6 @@
 7. [Per-Channel Control Analysis (03b – 14b)](#7-per-channel-control-analysis-03b--14b)
 8. [RF Timing Summary](#8-rf-timing-summary)
 9. [MPM Implementation Notes](#9-mpm-implementation-notes)
-10. [Testing](#10-testing)
-   - [10.1 First test](#101-first-test)
-   - [10.2 Test #2](#102-test-2)
-   - [10.3 Test #3](#103-test-3)
-   - [10.4 Test #4 Analysis and Review (No Build)](#104-test-4-analysis-and-review-no-build)
-   - [10.5 Test #5](#105-test-5)
 
 ---
 
@@ -319,29 +313,31 @@ All 8-byte checksum values have been verified against this formula across all ca
 
 | Byte | Channel | Min | Center | Max | Notes |
 |------|---------|-----|--------|-----|-------|
-| B0 | Throttle | `0x00` | `0x70` | `0xE1` | Non-return throttle |
+| B0 | Throttle | `0xE1` | `0x70` | `0x00` | Non-return throttle |
 | B1 | Rudder (Yaw) | `0x00` | `0x70` | `0xE1` | |
-| B2 | Aileron (Roll) | `0x00` | `0x70` | `0xE1` | |
-| B3 | Elevator (Pitch) | `0x00` | `0x70` | `0xE1` | |
+| B2 | Aileron (Roll) | `0xE1` | `0x70` | `0x00` | |
+| B3 | Elevator (Pitch) | `0xE1` | `0x70` | `0x00` | |
 
 All analog channels use the same range: **0x00 – 0xE1** (0 – 225 decimal) with center at
 **0x70** (112 decimal).
+- Throttle, Aileron, and Elevator use reversed state (0xE1...0x70...0x00).
 
 ### 6.3 Flags Byte 1 (B4)
 
-| Value | Meaning |
-|-------|---------|
-| `0x20` | Motors disarmed / idle (bit5=1, bit0=0) |
-| `0x21` | Motors armed / in flight (bit5=1, bit0=1) |
-
-Bit5 appears always set. Bit0 indicates the armed/flying state.
+| Value | Meaning | Description |
+|-------|---------|-------------|
+| `0x20` | **Trim Elevator Center** | Resets at TX start |
+| `0x21 up to 0x40` | Trim elevator **forward** | 32 Clicks to max |
+| `0x1F downto 0x01` | Trim elevator **back** | 31 Clicks to max |
 
 ### 6.4 Flags Byte 2 (B5)
 
-| Bit | Mask | Name | Description |
-|-----|------|------|-------------|
-| 7 | `0x80` | OK | OK button pressed (B5 = `0x20` → `0xA0`) |
-| 5 | `0x20` | — | Always set (baseline = 0x20) |
+| Value | Meaning | Description |
+|-----|------|-------------|
+| `0x20` | **Trim Aileron Center** | Resets at TX start |
+| `0x21 up to 0x40` | Trim aileron **left** | 32 Clicks to max |
+| `0x1F down to 0x01` | Trim aileron **right** | 31 Clicks to max |
+| `0x80` | OK button | OK pressed (`0x20` → `0xA0`) |
 
 Normal state: `B5 = 0x20`; OK button active: `B5 = 0xA0`
 
@@ -364,29 +360,27 @@ Updated analysis of **file 12b** (RTH OFF in first half, ON in second half):
 
 - RTH-OFF payload is steady at `7E 70 70 70 20 20 00 0E`.
 - After the OFF→ON transition, the payload changes to `7E 70 70 70 20 20 08 16`.
-- While RTH remains active, occasional packets show `7F 70 70 70 20 20 08 17`, which is
-  consistent with a +1 change in `B0` and matching checksum update.
-- The persistent functional change in this capture is therefore `B6: 0x00 -> 0x08`
+- The persistent functional change in this capture is `B6: 0x00 -> 0x08`
   (bit3 asserted when RTH is ON).
 
-In this updated export, RTH is represented in the steady 8-byte payload by `B6 bit3`.
+In this export, RTH is represented in the steady 8-byte payload by `B6 bit3`.
 
 ### 6.7 Example Payloads
 
 | Payload | Meaning |
 |---------|---------|
-| `E1 70 70 70 20 20 00 71` | Throttle endpoint `0xE1` (observed as low in 05b capture sequence), all sticks center, motors disarmed, LED on |
-| `82 70 70 70 21 20 00 13` | Throttle ~mid, all sticks center, motors armed |
-| `00 70 70 70 21 20 00 91` | Throttle endpoint `0x00` (observed as high in 05b capture sequence), all sticks center, motors armed |
-| `E1 70 00 70 21 20 00 02` | Throttle endpoint `0xE1`, aileron full left, motors armed |
-| `E1 70 E1 70 21 20 00 E3` | Throttle endpoint `0xE1`, aileron full right, motors armed |
-| `E1 70 70 00 21 20 00 02` | Throttle endpoint `0xE1`, elevator full forward, motors armed |
-| `82 70 70 70 21 20 80 93` | Throttle mid, flip command active |
-| `82 70 70 70 21 20 10 23` | Throttle mid, headless mode active |
-| `82 70 70 70 21 20 01 14` | Throttle mid, rate mode 2 |
-| `82 70 70 70 21 20 02 15` | Throttle mid, rate mode 3 |
-| `E1 70 70 70 20 A0 00 F1` | Throttle max, OK button pressed |
-| `E1 70 70 70 20 20 04 75` | Throttle max, LED lights OFF |
+| `E1 70 70 70 20 20 00 71` | Throttle low `0xE1`, all sticks center `0x70`, LED on, no special modes `0x00` |
+| `82 70 70 70 20 20 00 12` | Throttle ~mid `0x82`, all sticks center, LED on, no special modes |
+| `00 70 70 70 20 20 00 90` | Throttle max `0x00`, all sticks center, LED on, no special modes |
+| `E1 70 00 70 20 20 00 01` | Throttle low, aileron full right `0x00`, LED on, no special modes |
+| `E1 70 E1 70 20 20 00 E2` | Throttle low, aileron full left `0xE1`, LED on, no special modes |
+| `E1 70 70 00 20 20 00 01` | Throttle low, elevator full back `0x00`,LED on, no special modes |
+| `82 70 70 70 20 20 80 92` | Throttle ~mid, all sticks center, flip command active `0x80` |
+| `82 70 70 70 20 20 10 22` | Throttle ~mid, all sticks center, headless mode active `0x10` |
+| `82 70 70 70 20 20 01 13` | Throttle ~mid, all sticks center, rate mode 2 `0x01` |
+| `82 70 70 70 20 20 02 14` | Throttle ~mid, all sticks center, rate mode 3 `0x02` |
+| `00 70 70 70 20 A0 00 F1` | Throttle max, all sticks center, OK button pressed `0xA0` |
+| `00 70 70 70 20 20 04 75` | Throttle max, all sticks center, LED lights OFF `0x04` |
 
 ---
 
@@ -398,28 +392,25 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 ### 03b – Aileron (Roll)
 
 - **Affected byte:** B2  
-- Range observed: `0x00` (full left) → `0x70` (center) → `0xE1` (full right)  
-- B0=0xE1 (throttle endpoint value present during this capture), B4=0x21 (armed)
+- Range observed: `0xE1` (full left) → `0x70` (center) → `0x00` (full right)  
 
 ### 04b – Elevator (Pitch)
 
 - **Affected byte:** B3  
-- Range observed: `0x00` (full forward) → `0x70` (center) → `0xE1` (full back)
+- Range observed: `0x00` (full back) → `0x70` (center) → `0xE1` (full forward)
 
 ### 05b – Throttle
 
 - **Affected byte:** B0  
-- Range observed: `0x00` ↔ `0x70` ↔ `0xE1` (full span observed)  
-- Recheck of `05b` sequence (`Low-High-Low`) indicates endpoint usage is `0xE1 -> 0x00 -> 0xE1`,
-  so `0xE1` is the practical low-throttle endpoint and `0x00` the high-throttle endpoint for this TX.
+- Range observed: `0xE1` (low minimum) ↔ `0x70` (center) ↔ `0x00` (full maximum)  
 - Non-return throttle (stick does not spring back to center)
 
 ### 06b – Rudder (Yaw)
 
 - **Affected byte:** B1  
-- Range observed: `0x00` (one endpoint) → `0x70` (center) → `0xE1` (other endpoint)  
+- Range observed: `0x00` (full left) → `0x70` (center) → `0xE1` (full right)  
 - Note: B0 (throttle) also varies in this capture because left stick controls both
-  throttle (up/down) and rudder (left/right) on a Mode 2 transmitter
+  throttle (up/down) and rudder (left/right) Mode 2 transmitter
 
 ### 07b – Rate Mode Switch
 
@@ -533,29 +524,23 @@ RX_DR (bit6) is **never set** in any STATUS byte — confirming no data is ever 
 
 The XBM-37 protocol is closely related to FQ777 but has the following differences:
 
-| Property | FQ777 | XBM-37 |
-|----------|-------|---------|
-| Bind count | 1,000 | **400** |
-| Bind packet B1 | `0x15` | `0x14` |
-| Bind packet B2 | `0x05` | `0x07` |
-| Bind packet B3 | `0x06` | `0x03` |
-| Hop channels | `4D 43 27 07` | **`49 34 26 07`** |
-| Data range | 0x00–0x64 | **0x00–0xE1** |
-| Bind address | `E7 E7 E7 E7 67` | `E7 E7 E7 E7 67` (same) |
-| Checksum method | Sum B0–B6 | Sum B0–B6 (same) |
-| Bind checksum | Sum B4–B6 | Sum B4–B6 (same) |
-| ssv_pack_dpl encoding | Yes | Yes (same) |
-| Air bitrate (nRF24L01+) | 250 kbps | 250 kbps (same) |
+| Property | FQ777 | XBM-37 | Comment|
+|----------|-------|---------|---------|
+| Bind count | 1,000 | **400** | works with either |
+| Bind packet B1 | `0x15` | `0x14` | different |
+| Bind packet B2 | `0x05` | `0x07` | different |
+| Bind packet B3 | `0x06` | `0x03` | different |
+| Hop channels | `4D 43 27 07` | **`49 34 26 07`** | different |
+| Data range | 0x00–0x64 | **0x00–0xE1** | different |
+| Bind address | `E7 E7 E7 E7 67` | `E7 E7 E7 E7 67` | (same) |
+| Checksum method | Sum B0–B6 | Sum B0–B6 | (same) |
+| Bind checksum | Sum B4–B6 | Sum B4–B6 | (same) |
+| ssv_pack_dpl encoding | Yes | Yes | (same) |
+| Air bitrate (nRF24L01+) | 250 kbps | 250 kbps | (same) |
 
 ### 9.2 Required Implementation Constants
 
 ```c
-#define XBM37_INITIAL_WAIT      500     // ms startup wait
-#define XBM37_PACKET_PERIOD    2000     // µs between packets
-#define XBM37_PACKET_SIZE         8     // bytes (pre-pack)
-#define XBM37_BIND_COUNT        400     // bind packets
-#define XBM37_NUM_RF_CHANNELS     4
-
 static const uint8_t XBM37_bind_addr[] = {0xE7, 0xE7, 0xE7, 0xE7, 0x67};
 static const uint8_t XBM37_hop_channels[] = {0x49, 0x34, 0x26, 0x07};
 ```
@@ -577,14 +562,14 @@ packet[7] = packet[4] + packet[5] + packet[6];
 ### 9.4 Data Packet Builder
 
 ```c
-packet[0] = convert_channel_16b_limit(THROTTLE, 0x00, 0xE1);
+packet[0] = convert_channel_16b_limit(THROTTLE, 0xE1, 0x00);
 packet[1] = convert_channel_16b_limit(RUDDER,   0x00, 0xE1);
-packet[2] = convert_channel_16b_limit(AILERON,  0x00, 0xE1);
-packet[3] = convert_channel_16b_limit(ELEVATOR, 0x00, 0xE1);
-packet[4] = 0x21;   // armed state (or 0x20 = disarmed)
-packet[5] = 0x20
-          | GET_FLAG(CH_OK, 0x80);           // OK button
-packet[6] = (rate_mode & 0x03)              // bits[1:0] = rate (0/1/2)
+packet[2] = convert_channel_16b_limit(AILERON,  0xE1, 0x00);
+packet[3] = convert_channel_16b_limit(ELEVATOR, 0xE1, 0x00);
+packet[4] = ((convert_channel_8b(CH13) * 63) / 255) + 1;                  // ele trim (01..20..40)
+packet[5] = 64 - (((uint32_t)convert_channel_8b(CH14) * 63 + 127) / 255); // ail trim (40..20..01)
+packet[5] |= GET_FLAG(OK_SW, 0x80);          // OK button
+packet[6] = (rate_mode & 0x03)               // bits[1:0] = rate (0/1/2)
           | GET_FLAG(!LED_SW, 0x04)          // bit2=1 = LED off
           | GET_FLAG(HEADLESS_SW, 0x10)      // bit4 = headless
           | GET_FLAG(VIDEO_SW, 0x20)         // bit5 = video
@@ -594,22 +579,7 @@ packet[7] = 0;
 for (uint8_t i = 0; i < 7; i++) packet[7] += packet[i];  // checksum
 ```
 
-### 9.5 Bind Channel Sequence
-
-The first bind packet **must** be sent on ch=0x00, then continue cycling:
-
-```c
-// First bind packet: use channel 0x00
-// Subsequent bind packets: cycle through XBM37_hop_channels[]
-if (IS_BIND_IN_PROGRESS && bind_counter == XBM37_BIND_COUNT) {
-    NRF24L01_WriteReg(NRF24L01_05_RF_CH, 0x00);   // first packet: ch 0
-} else {
-    NRF24L01_WriteReg(NRF24L01_05_RF_CH, XBM37_hop_channels[hop_idx]);
-    hop_idx = (hop_idx + 1) % XBM37_NUM_RF_CHANNELS;
-}
-```
-
-### 9.6 Address Management
+### 9.5 Address Management
 
 ```c
 // TX init:
@@ -625,7 +595,7 @@ NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, XBM37_bind_addr, 5);
 NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, rx_tx_addr, 5);
 ```
 
-### 9.7 RF Init
+### 9.6 RF Init
 
 ```c
 void XBM37_RF_init() {
@@ -639,272 +609,13 @@ void XBM37_RF_init() {
 }
 ```
 
-### 9.8 Air Encoding
+### 9.7 Air Encoding
 
 Because both the XBM-37 TX and RX use SV7241A (a BK2425 derivative), the air packet format is
 the SV7241A Enhanced ShockBurst encoding. When implementing with nRF24L01+, the same
 `ssv_pack_dpl()` function used in the FQ777 protocol must be applied to convert the raw 8-byte
 payload into the 12-byte packed representation that nRF24L01+ transmits at 250 kbps to produce
 a compatible on-air signal.
-
-## 10. Testing
-
-### 10.1 First test
-
-For a minimum-change first bind/flight test, the existing `FQ777` protocol implementation was
-modified in-place in `Multiprotocol/FQ777_nrf24l01.ino` without adding a new sub-protocol.
-
-#### Code changes made for this first test
-
-The requested minimal changes were applied while leaving `FQ777_BIND_COUNT` at `1000` and
-leaving the rest of the FQ777 logic unchanged:
-
-1. **Bind packet constants changed to XBM-37 values**
-   - `B1: 0x15 -> 0x14`
-   - `B2: 0x05 -> 0x07`
-   - `B3: 0x06 -> 0x03`
-
-2. **Hop channels changed to XBM-37 values**
-   - `4D 43 27 07 -> 49 34 26 07`
-
-3. **Basic control range changed to XBM-37 range**
-   - throttle/rudder/elevator/aileron output range:
-   - `0x00-0x64 -> 0x00-0xE1`
-
-#### What this first test should answer
-
-This test is intended to check whether the XBM-37 receiver will bind and accept the four basic
-flight channels using only the major over-the-air differences already proven in the capture
-analysis, while keeping the surrounding FQ777 implementation intact.
-
-#### If this first test does not bind or does not control correctly, the next differences to try are:
-
-1. **First bind packet on channel 0x00**
-   - The captured XBM-37 transmitter sends the first bind packet on `0x00`, then hops on
-     `49/34/26/07`.
-   - Current FQ777 logic still starts bind hopping immediately on the four hop channels.
-   - This is the most important remaining bind-path difference.
-
-2. **Reduce bind count from 1000 to 400**
-   - The real XBM-37 transmitter sends exactly `400` bind packets before switching to the data
-     address.
-   - For Test #1, leaving `1000` was useful for a minimal experiment, but it was a known mismatch.
-   - Test #2 updates the implementation to `400`.
-
-3. **Normal data packet layout still differs significantly from FQ777**
-   - Real XBM-37 data packets are:
-     - `B0 = throttle`
-     - `B1 = rudder`
-     - `B2 = aileron`
-     - `B3 = elevator`
-     - `B4/B5/B6 = state and feature flags`
-   - Current FQ777 still sends its original byte meanings:
-     - `B2 = elevator`
-     - `B3 = aileron`
-     - `B4 = rotating trim byte`
-     - `B5 = FQ777-specific flags`
-     - `B6 = 0x00`
-   - Even if bind succeeds, this difference may prevent correct channel response.
-
-4. **Armed/disarmed state byte may be required**
-   - XBM-37 captures show `B4 = 0x20` or `0x21` instead of the rotating FQ777 trim byte.
-   - The receiver may require the correct `B4` state semantics before motors or control are accepted.
-
-5. **XBM-37 feature-bit mapping differs from FQ777**
-   - XBM-37 uses:
-     - `B5 bit7 = OK`
-     - `B6 bits[1:0] = rate`
-     - `B6 bit2 = LED off`
-     - `B6 bit4 = headless`
-     - `B6 bit5 = video`
-     - `B6 bit6 = picture`
-     - `B6 bit7 = flip`
-   - Current FQ777 flag mapping is different, so auxiliary functions will not match yet.
-
-6. **Possible channel order adjustment**
-   - The real XBM-37 packet order for the two right-stick axes is `aileron` then `elevator`.
-   - Current FQ777 code still emits `elevator` then `aileron`.
-   - For this first test only the requested range change was made, so incorrect axis mapping remains possible.
-
-### 10.2 Test #2
-
-Result carried into this test:
-- Test #1 successfully completed bind (RX LEDs changed from flashing to solid), but motors did not
-  arm/run from throttle.
-
-#### Code changes made for Test #2
-
-For a minimum-change second test, the existing `FQ777` path in
-`Multiprotocol/FQ777_nrf24l01.ino` was updated in-place:
-
-1. **Bind count reduced to analyzed value**
-   - `FQ777_BIND_COUNT: 1000 -> 400`
-
-2. **Post-bind byte B4 changed from rotating trim to fixed armed state**
-   - Previous Test #1 behavior used the original FQ777 rotating trim pattern on `B4`.
-   - Test #2 now sets `B4 = 0x21` on every data packet.
-   - Reason for choosing `0x21`: capture analysis indicates `0x21` is the armed-state value
-     (while `0x20` corresponds to disarmed/idle state).
-
-All other FQ777 logic remains unchanged for this focused test.
-
-#### If Test #2 is still not successful, suggested next changes
-
-1. **Implement throttle-gated arming transition (`0x20 -> 0x21`)**
-   - Original TX behavior appears to be: bind at any throttle, then arm only after throttle reaches
-     minimum.
-   - Next step: start data phase at `B4=0x20`, switch to `B4=0x21` once a low-throttle condition is
-     observed.
-
-2. **Send first bind packet on channel `0x00`**
-   - Captures indicate the first bind packet is on `0x00` before hopping on `49/34/26/07`.
-   - Current code still starts hopping immediately, which can still block proper post-bind behavior.
-
-3. **Replace remaining FQ777 data-byte semantics with XBM-37 mapping**
-   - `B5/B6` flags and feature bits still follow FQ777 behavior.
-   - If arming still fails, migrate `B5/B6` to the observed XBM-37 bit mapping.
-
-4. **Swap right-stick axis order if control responses are incorrect**
-   - XBM-37 uses `B2=aileron`, `B3=elevator`, while current code still emits the FQ777 order.
-   - If movement appears swapped or unstable, this should be updated next.
-
-### 10.3 Test #3
-
-Result carried into this test:
-- Test #2 still bound quickly (solid LEDs) but throttle still did not control motors.
-
-#### Code changes made for Test #3
-
-To follow the next suggested step, the existing `FQ777` implementation in
-`Multiprotocol/FQ777_nrf24l01.ino` was updated to replace remaining FQ777 `B5/B6` data-byte
-semantics with the observed XBM-37 mapping.
-
-1. **B5 remapped to XBM-37 state + OK bit**
-   - `B5` now sends:
-     - base `0x20` baseline bit (bit5 always set in observed normal packets)
-     - `bit7 (0x80)` for OK button
-   - Implemented as:
-     - `B5 = 0x20 | GET_FLAG(CH10_SW, 0x80)`
-
-2. **B6 remapped to XBM-37 feature/rate bits**
-   - `bits[1:0]` = rate mode (from CH11 three-position logic)
-   - `bit2 (0x04)` = LED off (`!CH6_SW`)
-   - `bit4 (0x10)` = headless (`CH7_SW`)
-   - `bit5 (0x20)` = video (`CH8_SW`)
-   - `bit6 (0x40)` = picture (`CH9_SW`)
-   - `bit7 (0x80)` = flip (`CH5_SW`)
-
-3. **Unchanged from Test #2**
-   - Bind count remains `400`.
-   - `B4` remains fixed at `0x21` (armed-state test behavior).
-   - `B2/B3` order is still legacy FQ777 (`B2=elevator`, `B3=aileron`) for this test.
-
-#### If Test #3 is still not successful, suggested next changes
-
-1. **Implement throttle-gated arming transition (`B4: 0x20 -> 0x21`)**
-   - Mirror original TX behavior: bind at any throttle, arm only after throttle reaches minimum.
-
-2. **Send the first bind packet on RF channel `0x00`**
-   - Captures show first bind frame on `0x00`, then hop sequence `49/34/26/07`.
-
-3. **Swap right-stick axis order to full XBM-37 order**
-   - Change to `B2=aileron`, `B3=elevator` if control response remains wrong.
-
-4. **Adjust button/event behavior from level bits to edge/toggle semantics where needed**
-   - If features react incorrectly, migrate selected bits (OK/video/picture/flip) to packetized
-     press/toggle behavior matching capture timing patterns.
-
-### 10.4 Test #4 Analysis and Review (No Build)
-
-Result carried into this review:
-- Bind still completes quickly (RX LEDs go solid).
-- CH6 now toggles LED lights off/on.
-- CH7 now toggles headless mode (fast LED flash pattern).
-- Throttle still does not start motors.
-
-#### Review findings
-
-1. **B4 is still most consistent with arming-state signaling, not rotating trims**
-   - In analyzed XBM-37 normal packets, `B4` behavior is stable at `0x20`/`0x21` and does not show
-     the FQ777 rotating trim-byte pattern.
-   - FQ777’s rotating trim semantics are protocol-specific legacy behavior and should not be assumed
-     for XBM-37.
-   - Current evidence still supports `B4=0x20` (idle/disarmed) and `B4=0x21` (armed-state packets).
-
-2. **OK button mapping is not tied to B4 in captures**
-   - In capture review, OK button activity appears on `B5 bit7` (`0x20 -> 0xA0`) while `B4` remains
-     in its normal state value.
-   - The “OK centers trims” hypothesis is plausible from UI perspective but is not supported by the
-     currently captured packet deltas.
-
-3. **Throttle low/high mapping recheck**
-   - Recheck of `05b-XBM-37_Quad_Throttle-Low-High-Low.csv` confirms the dominant endpoint sequence is
-     `0xE1 -> 0x00 -> 0xE1`.
-   - For Test #5 implementation, low-throttle gating is therefore treated as `B0` near the `0xE1`
-     endpoint, and high throttle near the `0x00` endpoint.
-
-#### Suggested next changes if throttle/motor arming still fails after Test #3
-
-1. **Implement explicit throttle-gated `B4` transition**
-   - Start data phase with `B4=0x20`, then switch to `B4=0x21` only after sustained low-throttle
-     detection (`B0` at low-end encoding).
-   - Keep a concrete hold time at low throttle before asserting armed state (recommended initial
-     test window: `300-500 ms`).
-
-2. **Align bind-open channel behavior exactly**
-   - Ensure the first bind packet is always sent on channel `0x00` before hopping on
-     `49/34/26/07` (if not already active in the test branch used on hardware).
-
-3. **Apply full XBM-37 right-stick order**
-   - Change data ordering to `B2=aileron`, `B3=elevator` to match capture-defined packet layout.
-
-4. **Check for button edge/toggle semantics where required**
-   - If feature bits are accepted but arming is blocked, emulate per-button event style
-     (momentary edge vs. level) for control bytes as observed in capture transitions.
-
-### 10.5 Test #5
-
-Result carried into this test:
-- Bind still completed (solid LEDs), CH6 LEDs and CH7 headless were working, but motors still did not
-  start from throttle.
-
-#### Code changes made for Test #5
-
-To apply the requested Section 10.4 suggested changes **#1, #2, and #3** (and intentionally not
-apply #4), `Multiprotocol/FQ777_nrf24l01.ino` was updated as follows:
-
-1. **Implemented throttle-gated arming transition (`B4: 0x20 -> 0x21`)**
-   - Added explicit arming state tracking:
-     - Start data packets in disarmed state (`B4=0x20`).
-     - Transition to armed state (`B4=0x21`) only after sustained low-throttle detection.
-   - Added a concrete hold-time gate:
-     - low-throttle hold window = ~`400 ms` (`200` packets at `2 ms` packet period).
-
-2. **Implemented exact bind-open first channel behavior**
-   - First bind packet now transmits on RF channel `0x00` exactly once.
-   - Remaining bind packets then hop on `49/34/26/07`.
-
-3. **Applied full XBM-37 right-stick order**
-   - Data byte order changed to:
-     - `B2 = aileron`
-     - `B3 = elevator`
-
-4. **Low-throttle interpretation rechecked and aligned for arming logic**
-   - Using `05b` review (`0xE1 -> 0x00 -> 0xE1`), Test #5 arming gate uses `B0` near `0xE1` as
-     low-throttle condition.
-
-#### If Test #5 is still not successful, suggested next changes
-
-1. **Evaluate the deferred Section 10.4 change #4 (button/event edge semantics)**
-   - Keep current level-bit mapping for baseline, then selectively convert only the controls that
-     need edge/toggle packet behavior.
-
-2. **Add temporary arming-state telemetry/debug instrumentation for bench validation**
-   - Log or expose internal arming state transition points (`disarmed -> armed`) and detected
-     throttle endpoint values during startup.
-
-3. **Fine-tune low-throttle gate threshold/window if transition never occurs on hardware**
-   - Keep endpoint direction (`E1` low) but tune threshold margin and/or hold time window.
 
 ---
 

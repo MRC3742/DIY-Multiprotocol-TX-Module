@@ -315,6 +315,11 @@ enum FY326
 	FY326	= 0,
 	FY319	= 1,
 };
+enum FQ777
+{
+	FQ777	= 0,
+	XBM37	= 1,
+};
 enum WK2x01
 {
 	WK2801	= 0,
@@ -1108,6 +1113,9 @@ Serial: 100000 Baud 8e2      _ xxxx xxxx p --
 		sub_protocol==FY326
 			FY326		0
 			FY319		1
+		sub_protocol==FQ777
+			FQ777		0
+			XBM37		1
 		sub_protocol==WK2x01
 			WK2801		0
 			WK2401		1
