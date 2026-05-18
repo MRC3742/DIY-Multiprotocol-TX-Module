@@ -16,7 +16,7 @@
 4. [Bind Sequence – Deep Analysis (02a + 02b)](#4-bind-sequence--deep-analysis-02a--02b)
 5. [Bind vs No-RX Comparison (01b vs 02b)](#5-bind-vs-no-rx-comparison-01b-vs-02b)
 6. [Normal Data Packet Format](#6-normal-data-packet-format)
-7. [Per-Channel Control Analysis (03b – 14b)](#7-per-channel-control-analysis-03b--14b)
+7. [Per-Channel Control Analysis (03b – 24b)](#7-per-channel-control-analysis-03b--24b)
 8. [RF Timing Summary](#8-rf-timing-summary)
 9. [MPM Implementation Notes](#9-mpm-implementation-notes)
 
@@ -45,10 +45,15 @@ All captures are located in `Captures_XBM-37/`. The **"b" files** are SPI-decode
 | `12b-XBM-37_Quad_ReturnToHomeSwitch-PushButton-Off-On.csv` | SPI | RTH button: off → on | 6,034 | 1,508 | 3.127 s |
 | `13b-XBM-37_Quad_LED-LightsSwitch-PushButton-On-Off.csv` | SPI | LED lights toggle: on → off | 6,019 | 1,505 | 3.113 s |
 | `14b-XBM-37_Quad_OK-Switch-PushButton-Off-On.csv` | SPI | OK button: off → on | 6,027 | 1,507 | 3.120 s |
+| `20b-XBM-37_Quad_Elevator-Trim-Center-Forward-Max_32-Clicks.csv` | SPI | Elevator trim: center → forward max (32 clicks) | 38,683 | 9,671 | 20.004 s |
+| `21b-XBM-37_Quad_Elevator-Trim-Center-Back-Max_31-Clicks.csv` | SPI | Elevator trim: center → back max (31 clicks) | 33,215 | 8,304 | 17.191 s |
+| `22b-XBM-37_Quad_Aileron-Trim-Center-Left-Max_32-Clicks.csv` | SPI | Aileron trim: center → left max (32 clicks) | 32,315 | 8,079 | 16.730 s |
+| `23b-XBM-37_Quad_Aileron-Trim-Center-Right-Max_31-Clicks.csv` | SPI | Aileron trim: center → right max (31 clicks) | 28,495 | 7,124 | 14.756 s |
+| `24b-XBM-37_Quad_Ail-Trim-Forward-Max_Ele-Trim-Right-Max_Push-OK-Button-2X.csv` | SPI | Elevator trim at forward max, aileron trim at right max, OK button pressed 2× | 29,275 | 7,319 | 15.176 s |
 
 ### Notes
 - The "b" SPI files each contain one SPI byte per row. Multiple rows sharing the same `Packet ID` belong to one CSN-low SPI transaction.
-- Files 03b–14b were all captured in **normal (post-bind) flight mode**. The TX had previously
+- Files 03b–24b were all captured in **normal (post-bind) flight mode**. The TX had previously
   completed a successful bind.
 - File 01b and 02b are functionally **identical** captures (confirmed by direct payload comparison)
   except for a tiny time offset (~7 µs between corresponding packets). This confirms the TX
@@ -339,7 +344,8 @@ All analog channels use the same range: **0x00 – 0xE1** (0 – 225 decimal) wi
 | `0x1F down to 0x01` | Trim aileron **right** | 31 Clicks to max |
 | `0x80` | OK button | OK pressed (`0x20` → `0xA0`) |
 
-Normal state: `B5 = 0x20`; OK button active: `B5 = 0xA0`
+`B5 bit7` is an OR mask on top of trim value (`B5_with_OK = B5_trim | 0x80`), e.g.
+center `0x20 -> 0xA0`, right-max `0x01 -> 0x81`.
 
 ### 6.5 Flags Byte 3 (B6)
 
@@ -347,6 +353,7 @@ Normal state: `B5 = 0x20`; OK button active: `B5 = 0xA0`
 |------|------|------|-------------|
 | [1:0] | `0x03` | Rate mode | `0x00`=rate 1 (slow), `0x01`=rate 2, `0x02`=rate 3 (fast) |
 | 2 | `0x04` | LED off | `0`=LED lights ON, `1`=LED lights OFF |
+| 3 | `0x08` | RTH | `1`=return-to-home active |
 | 4 | `0x10` | Headless | `1`=headless mode active |
 | 5 | `0x20` | Video | `1`=video recording active |
 | 6 | `0x40` | Picture | `1`=photo capture triggered |
@@ -384,7 +391,7 @@ In this export, RTH is represented in the steady 8-byte payload by `B6 bit3`.
 
 ---
 
-## 7. Per-Channel Control Analysis (03b – 14b)
+## 7. Per-Channel Control Analysis (03b – 24b)
 
 All control captures were taken in post-bind normal mode. Hopping channels confirmed active:
 `0x07, 0x49, 0x34, 0x26` (cyclic). Average packet interval: **~2.07 ms** across all files.
@@ -464,6 +471,44 @@ All control captures were taken in post-bind normal mode. Hopping channels confi
 - **Affected byte:** B5 bit7  
 - `B5 = 0x20`: OK button not pressed  
 - `B5 = 0xA0`: OK button pressed (0x20 | 0x80)
+
+### 20b – Elevator Trim Center → Forward Max (32 clicks)
+
+- **Affected byte:** B4 (elevator trim)
+- Observed progression: `0x20 -> ... -> 0x40`
+- Endpoint in this capture: `B4 = 0x40` (forward max)
+- `B5` remains `0x20`; `B6` remains `0x00`
+
+### 21b – Elevator Trim Center → Back Max (31 clicks)
+
+- **Affected byte:** B4 (elevator trim)
+- Observed progression: `0x20 -> ... -> 0x01`
+- Endpoint in this capture: `B4 = 0x01` (back max)
+- `B5` remains `0x20`; `B6` remains `0x00`
+
+### 22b – Aileron Trim Center → Left Max (32 clicks)
+
+- **Affected byte:** B5 (aileron trim)
+- Observed progression: `0x20 -> ... -> 0x40`
+- Endpoint in this capture: `B5 = 0x40` (left max)
+- `B4` remains `0x20`; `B6` remains `0x00`
+
+### 23b – Aileron Trim Center → Right Max (31 clicks)
+
+- **Affected byte:** B5 (aileron trim)
+- Observed progression: `0x20 -> ... -> 0x01`
+- Endpoint in this capture: `B5 = 0x01` (right max)
+- `B4` remains `0x20`; `B6` remains `0x00`
+
+### 24b – Trim Endpoints + OK Button (2 presses)
+
+- Fixed trim baseline in this capture:
+  - `B4 = 0x40` (elevator forward max)
+  - `B5 trim = 0x01` (aileron right max)
+- **OK effect:** `B5 bit7` toggles over trim baseline:
+  - not pressed: `B5 = 0x01`
+  - pressed: `B5 = 0x81` (`0x01 | 0x80`)
+- `B6` remains `0x00` throughout.
 
 ---
 
@@ -570,10 +615,11 @@ packet[4] = ((convert_channel_8b(CH13) * 63) / 255) + 1;                  // ele
 packet[5] = 64 - (((uint32_t)convert_channel_8b(CH14) * 63 + 127) / 255); // ail trim (40..20..01)
 packet[5] |= GET_FLAG(OK_SW, 0x80);          // OK button
 packet[6] = (rate_mode & 0x03)               // bits[1:0] = rate (0/1/2)
-          | GET_FLAG(!LED_SW, 0x04)          // bit2=1 = LED off
-          | GET_FLAG(HEADLESS_SW, 0x10)      // bit4 = headless
-          | GET_FLAG(VIDEO_SW, 0x20)         // bit5 = video
-          | GET_FLAG(PHOTO_SW, 0x40)         // bit6 = picture
+           | GET_FLAG(!LED_SW, 0x04)          // bit2=1 = LED off
+           | GET_FLAG(RTH_SW, 0x08)           // bit3 = RTH
+           | GET_FLAG(HEADLESS_SW, 0x10)      // bit4 = headless
+           | GET_FLAG(VIDEO_SW, 0x20)         // bit5 = video
+           | GET_FLAG(PHOTO_SW, 0x40)         // bit6 = picture
           | GET_FLAG(FLIP_SW, 0x80);         // bit7 = flip
 packet[7] = 0;
 for (uint8_t i = 0; i < 7; i++) packet[7] += packet[i];  // checksum

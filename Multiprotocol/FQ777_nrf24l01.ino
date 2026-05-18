@@ -130,7 +130,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 			packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0xE1,0);	// reverse channel
 			packet_ori[4] = ((convert_channel_8b(CH13) * 63) / 255) + 1;					// ele trim (01..20..40) front ^ plus 0x01, back - minus 0x01 per click
 			packet_ori[5] = 64 - (((uint32_t)convert_channel_8b(CH14) * 63 + 127) / 255);	// ail trim (40..20..01) left <- plus 0x01, right -> minus 0x01 per click
-			packet_ori[5] |= GET_FLAG(CH12_SW, XBM37_B5_OK);			// OK button - not used on this model ??
+			packet_ori[5] |= GET_FLAG(CH12_SW, XBM37_B5_OK);			// bit7 = OK button
 
 			uint8_t rate_bits;
 			if (CH5_SW)
