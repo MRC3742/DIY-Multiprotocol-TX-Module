@@ -667,3 +667,207 @@ a compatible on-air signal.
 
 *Analysis completed using Python scripts against the raw CSV captures. All packet checksums,
 channel sequences, bind counts, and register values verified programmatically.*
+
+---
+
+## 10. Pre-Merge PR Code Review Findings
+
+*This section documents observations and items still needing attention, identified during
+a review of the PR changes before merge. No code was modified during this review.*
+
+---
+
+### 10.1 FQ777_nrf24l01.ino — Bind Count Mismatch
+
+**Issue (informational / low-risk):** `FQ777_BIND_COUNT` is `1000` (line 24), which is the
+value used for **both** sub-protocols.  However, the capture analysis (Section 4.1) confirms
+the XBM-37 TX completes bind in exactly **400** packets.  Using 1000 means the module sends
+600 extra bind packets before switching to data mode.  The analysis notes: *"works with either"*
+because the RX listens on the cycling channels and extracts the TX_ID from any bind packet, so
+over-sending is harmless in practice.
+
+**Suggested future change:** Add an `XBM37_BIND_COUNT = 400` constant (or branch inside
+`FQ777_init`/`FQ777_callback`) so the XBM-37 bind phase matches the ~0.824 s observed timing
+rather than the ~2+ s FQ777 timing.
+
+---
+
+### 10.2 FQ777_nrf24l01.ino — LED Channel Polarity (CH8 vs !CH8)
+
+**Issue (functional):** The analysis documents LED inverted logic (Section 6.5, 13b):
+
+> "LED off" bit (`B6 bit2`) is **1** when lights are OFF and **0** when lights are ON.
+> The default/idle state is LED ON (`0x04` = 0 means lights ON).
+
+The `Protocols_Details.md` XBM-37 section says:
+> "CH6 to CH12 are OFF/-100 and ON/+100 **exception LED is OFF/+100**"
+
+That correctly describes the user-facing channel polarity, but in the implementation:
+
+```c
+| GET_FLAG(CH8_SW, XBM37_B6_LED_OFF)   // bit2 = LED off
+```
+
+`CH8_SW` is a switch (true when channel > +10%).  When `CH8_SW` is true (stick/switch ON/+100%),
+`XBM37_B6_LED_OFF = 0x04` is set, which means the **LED turns off**.  In other words: the
+radio channel ON = LED off, channel OFF = LED on.
+
+This matches the doc's "exception LED is OFF/+100" note, so the polarity in the code is
+**correct as documented**, but the flag comment `// bit2 = LED off` alongside the inverted-sense
+channel could be clearer — it does not say "CH8 = LED OFF command" which might be confusing
+to future maintainers.
+
+**Suggested future change:** Improve the inline comment to read, e.g.:
+```c
+| GET_FLAG(CH8_SW, XBM37_B6_LED_OFF)   // bit2=1 turns LEDs OFF; CH8 ON (+100%) = lights off
+```
+
+---
+
+### 10.3 FQ777_nrf24l01.ino — RF_SETUP Not Explicitly Set for XBM-37
+
+**Observation:** `FQ777_RF_init()` only calls `NRF24L01_Initialize()` and then
+`NRF24L01_SetBitrate(NRF24L01_BR_250K)`.  The analysis (Section 9.6, and the stored RF_SETUP
+memory) specifies that `EN_AA = 0x00` (no auto-ACK) and `EN_RXADDR = 0x00` (TX-only) should
+also be explicitly set, plus `FEATURE = 0x04` and `DYNPD = 0x01`.
+
+In practice `NRF24L01_Initialize()` likely sets safe defaults, but **explicit register writes**
+as documented in Section 9.6 are more robust.  The existing FQ777 implementation has always
+omitted these (relying on `Initialize()` defaults), so this is not a regression — just a
+documented gap vs. the analysis guidance.
+
+**Suggested future change:** If reliability issues arise, add explicit `EN_AA`, `EN_RXADDR`,
+`FEATURE`, and `DYNPD` writes to `FQ777_RF_init()` (or a separate `XBM37_RF_init()` branch)
+as shown in Section 9.6.
+
+---
+
+### 10.4 docs/XBM-37_Analysis.md Section 9.4 — LED Flag Direction
+
+**Issue (doc vs. code discrepancy):** Section 9.4 data-packet-builder pseudocode shows:
+
+```c
+packet[6] = ...
+           | GET_FLAG(!LED_SW, 0x04)   // bit2=1 = LED off
+```
+
+Note the **`!LED_SW`** (negated).  However, the actual code in `FQ777_nrf24l01.ino` uses:
+
+```c
+| GET_FLAG(CH8_SW, XBM37_B6_LED_OFF)  // bit2 = LED off
+```
+
+There is no negation in the code — channel 8 ON means LED off.  The analysis pseudocode uses
+`!LED_SW` (channel switch inverted) which is the opposite polarity of what is implemented.
+
+The documented user channel meaning (`LED is OFF/+100`) plus the actual hardware logic
+(`bit2=1 = lights off`) requires the direct (non-negated) `GET_FLAG(CH8_SW, ...)` form —
+which is what the code does.  The analysis section 9.4 `!LED_SW` pseudocode is therefore
+**incorrect** and should be changed to `LED_SW` (no negation) to match both the code and the
+capture-verified behavior.
+
+**Action needed:** In a future edit pass, update the pseudocode in Section 9.4 from
+`GET_FLAG(!LED_SW, 0x04)` to `GET_FLAG(LED_SW, 0x04)`.
+
+---
+
+### 10.5 Protocols_Details.md — "Receiver Numbers" Sentence
+
+**Issue (accuracy):** The XBM-37 section in `Protocols_Details.md` contains:
+
+> "Receiver numbers (0-63) available for model match, MPM global ID used for unique module
+> identifier."
+
+The XBM-37 protocol as implemented is a **blind-TX autobind** protocol (Section 5 confirms the
+TX never receives ACKs and the bind is one-sided).  The TX uses the MPM-generated `rx_tx_addr`
+bytes as its unique TX_ID — there is no "receiver number" concept in the protocol itself.
+
+This sentence appears to have been copied from another autobind protocol (e.g. Bayang) that
+supports per-receiver slot numbers.  For XBM-37, only the **3-byte TX ID** embedded in the
+bind packet matters, and it is derived from the MPM global ID.
+
+**Action needed:** Remove or rewrite this sentence.  Suggested replacement:
+> "The RX binds to this TX module's unique 3-byte ID (derived from the MPM global ID).
+> Changing the TX module will require re-binding."
+
+---
+
+### 10.6 MultiChan.txt — Channel Order
+
+**Observation:** The `MultiChan.txt` entry for XBM-37:
+```
+23,1,FQ777,XBM37,1,Rate,Flip,HLess,LED,Pict,Video,RTH,OK,ETrim,Atrim
+```
+corresponds to CH5–CH14 as: Rate, Flip, HLess, LED, Pict, Video, RTH, OK, ETrim, Atrim.
+
+Cross-checking against `FQ777_nrf24l01.ino`:
+- CH5 → Rate (3-way: Low/Mid/High) ✓
+- CH6 → Flip (`XBM37_B6_FLIP`) ✓
+- CH7 → Headless (`XBM37_B6_HEADLESS`) ✓
+- CH8 → LED (`XBM37_B6_LED_OFF`) ✓
+- CH9 → Picture (`XBM37_B6_PICTURE`) ✓
+- CH10 → Video (`XBM37_B6_VIDEO`) ✓
+- CH11 → RTH (`XBM37_B6_RTH`) ✓
+- CH12 → OK (`XBM37_B5_OK`) ✓
+- CH13 → ETrim (elevator trim) ✓
+- CH14 → ATrim (aileron trim) ✓
+
+All 10 auxiliary channel assignments match between `MultiChan.txt`, `Protocols_Details.md`,
+and the code.  **No issues found.**
+
+---
+
+### 10.7 Throttle/Stick Reversal — Code vs. Analysis Consistency Check
+
+From Section 6.2 of the analysis:
+
+| Byte | Channel | Min | Max | Notes |
+|------|---------|-----|-----|-------|
+| B0 | Throttle | `0xE1` | `0x00` | reversed |
+| B1 | Rudder | `0x00` | `0xE1` | normal |
+| B2 | Aileron | `0xE1` | `0x00` | reversed |
+| B3 | Elevator | `0xE1` | `0x00` | reversed |
+
+From `FQ777_nrf24l01.ino`:
+```c
+packet_ori[0] = convert_channel_16b_limit(THROTTLE,0xE1,0);   // reversed ✓
+packet_ori[1] = convert_channel_16b_limit(RUDDER,0,0xE1);     // normal ✓
+packet_ori[2] = convert_channel_16b_limit(AILERON,0xE1,0);    // reversed ✓
+packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0xE1,0);   // reversed ✓
+```
+
+All channel polarities match the analysis.  **No issues found.**
+
+---
+
+### 10.8 Enum Naming Conflict
+
+**Issue (minor):** In `Multiprotocol.h`, the enum type name and its first member share the
+same identifier `FQ777`:
+
+```c
+enum FQ777
+{
+    FQ777   = 0,
+    XBM37   = 1,
+};
+```
+
+This compiles in C++ because enum member names and the type tag occupy different namespaces,
+but it is unusual style and could cause confusion in tooling or future maintenance.  The existing
+pattern in `Multiprotocol.h` (e.g. `enum FY326` / `FY326 = 0`) is consistent with this
+approach, so it is not a deviation from the project's existing style.
+
+**No action required** — consistent with project conventions.
+
+---
+
+### 10.9 Version Bump
+
+`VERSION_PATCH_LEVEL` was incremented from `57` to `58` in `Multiprotocol.h`.  This is
+appropriate for a new sub-protocol addition.  **No issues found.**
+
+---
+
+*Review completed 2026-05-21. Items 10.4 and 10.5 require follow-up edits; items 10.1–10.3
+are informational improvement suggestions for future work.*
