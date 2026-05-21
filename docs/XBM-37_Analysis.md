@@ -620,7 +620,7 @@ packet[6] = (rate_mode & 0x03)               // bits[1:0] = rate (0/1/2)
            | GET_FLAG(HEADLESS_SW, 0x10)     // bit4 = headless
            | GET_FLAG(VIDEO_SW, 0x20)        // bit5 = video
            | GET_FLAG(PHOTO_SW, 0x40)        // bit6 = picture
-          | GET_FLAG(FLIP_SW, 0x80);         // bit7 = flip
+           | GET_FLAG(FLIP_SW, 0x80);        // bit7 = flip
 packet[7] = 0;
 for (uint8_t i = 0; i < 7; i++) packet[7] += packet[i];  // checksum
 ```
@@ -629,10 +629,11 @@ for (uint8_t i = 0; i < 7; i++) packet[7] += packet[i];  // checksum
 
 ```c
 // TX init:
-rx_tx_addr[2] = 0x00;
+rx_tx_addr[2] = 0x00; // original hardcoded value now changes for model match capability (see below)
 rx_tx_addr[3] = 0xE7;
 rx_tx_addr[4] = 0x67;
 // rx_tx_addr[0] and [1] are random/unique to the TX
+// rx_tx_addr[2] now varies by changing receiver number (0-63) for model match
 
 // Bind address (used during bind):
 NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, XBM37_bind_addr, 5);
