@@ -130,7 +130,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 			packet_ori[3] = convert_channel_16b_limit(ELEVATOR,0xE1,0);	// reverse channel
 			packet_ori[4] = ((convert_channel_8b(CH13) * 63) / 255) + 1;					// ele trim (01..20..40) front ^ plus 0x01, back - minus 0x01 per click
 			packet_ori[5] = 64 - (((uint32_t)convert_channel_8b(CH14) * 63 + 127) / 255);	// ail trim (40..20..01) left <- plus 0x01, right -> minus 0x01 per click
-			packet_ori[5] |= GET_FLAG(CH12_SW, XBM37_B5_OK);			// bit7 = OK button
+			packet_ori[5] |= GET_FLAG(CH12_SW, XBM37_B5_OK);			// bit7 = OK button ...unknown use for this model?
 
 			uint8_t rate_bits;
 			if (CH5_SW)
@@ -142,7 +142,7 @@ static void __attribute__((unused)) FQ777_send_packet()
 
 			packet_ori[6] = rate_bits						// bits[1:0] = rate
 					| GET_FLAG(CH8_SW, XBM37_B6_LED_OFF)	// bit2 = LED off
-					| GET_FLAG(CH11_SW, XBM37_B6_RTH)		// bit3 = RTH on
+					| GET_FLAG(CH11_SW, XBM37_B6_RTH)		// bit3 = RTH
 					| GET_FLAG(CH7_SW, XBM37_B6_HEADLESS)	// bit4 = headless
 					| GET_FLAG(CH10_SW, XBM37_B6_VIDEO)		// bit5 = video
 					| GET_FLAG(CH9_SW, XBM37_B6_PICTURE)	// bit6 = picture
