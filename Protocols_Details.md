@@ -1985,7 +1985,7 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14
 A|E|T|R|RATE|FLIP|HEADLESS|LED|PICTURE|VIDEO|RTH|OK|ETrim|Atrim
 
  - RATE: -100% Low, 0% Mid, +100% High
- - CH6 to CH12 are OFF/-100 and ON/+100 exception LED is OFF/+100
+ - CH6 to CH12 are OFF/-100 and ON/+100, except LED is OFF/+100
  - Receiver numbers (0-63) available for model match, MPM global ID used for unique module identifier.
  - Changing the TX module or RX number will require re-binding the receiver.
  

@@ -241,7 +241,7 @@ void FQ777_init(void)
 	hopping_frequency[2] = hop_ch[sub_protocol][2];
 	hopping_frequency[3] = 0x07;
 	hopping_frequency_no=0;
-	rx_tx_addr[2] = (sub_protocol == XBM37) ? (RX_num & 0x3F) : 0x00; // XBM-37 uses receiver number (0-63) for model match capability
+	rx_tx_addr[2] = (sub_protocol == XBM37) ? (RX_num & 0x3F) : 0x00; // XBM-37 uses receiver number (64 values: 0-63) for model match capability
 	rx_tx_addr[3] = 0xe7;
 	rx_tx_addr[4] = 0x67;
 	FQ777_RF_init();
