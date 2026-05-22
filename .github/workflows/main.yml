@@ -372,7 +372,7 @@ jobs:
         run: ls -R ./artifacts/
       
       - name: Deploy artifacts to release
-        uses: AButler/upload-release-assets@v3.0
+        uses: AButler/upload-release-assets@v4.0.0
         with:
           files: './artifacts/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
