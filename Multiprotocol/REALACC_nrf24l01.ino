@@ -39,7 +39,7 @@ enum
 	REALACC_WLV8TX_DATA
 };
 
-static uint8_t realacc_phase;
+static uint8_t realacc_phase = REALACC_WLV8TX_BIND_TX;
 static uint8_t realacc_bind_packet[REALACC_BIND_PAYLOAD_SIZE];
 static uint8_t realacc_wlv8tx_xor_data[2];
 static bool realacc_wlv8tx_got_b3;
@@ -148,7 +148,7 @@ static void __attribute__((unused)) REALACC_wlv8tx_process_rx()
 {
 	if(!XN297_IsRX())
 		return;
-	uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
+	uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);	// RX reports up to B4-sized payload
 	if(len != REALACC_WLV8TX_RX_PAYLOAD_SIZE)		// 1 command byte (B3/B5) + 2 XOR bytes
 		return;
 
@@ -232,7 +232,7 @@ void REALACC_init()
 		realacc_wlv8tx_xor_data[1] = 0;
 		realacc_wlv8tx_got_b3 = false;
 		realacc_phase = REALACC_WLV8TX_BIND_TX;
-		memcpy(bind_rx_addr, realacc_bind_packet, sizeof(bind_rx_addr));
+		memcpy(bind_rx_addr, realacc_bind_packet, 4);
 		bind_rx_addr[3] |= 0x80;					// WL-V8Tx listens on TX-ID with bit7 set in 4th byte (index 3)
 		XN297_SetRXAddr(bind_rx_addr, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
 	}
