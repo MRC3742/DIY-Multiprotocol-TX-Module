@@ -56,7 +56,7 @@ static void __attribute__((unused)) REALACC_send_packet()
 	packet[ 8]= 0x20; 							// Trim
 	packet[ 9]= 0x88;							// Change at each power up: C5 A2 77 F0 84 58, fixed for the E017 = 88
 	if(sub_protocol == REALACC_WLV8TX)
-		packet[10] = 0x0C;
+		packet[10] = 0x0C;						// WL-V8Tx flag value
 	else
 		packet[10]= 0x04 							// Flag1: R11=04, E017=0C
 			| 0x02									//   Rate1=0, Rate2=1, Rate3=2
@@ -148,7 +148,7 @@ static void __attribute__((unused)) REALACC_wlv8tx_process_rx()
 	if(!XN297_IsRX())
 		return;
 	uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
-	if(len != 3)
+	if(len != 3)									// B3/B5 + two payload bytes
 		return;
 
 	if(packet_in[0] == 0xB3 && !realacc_wlv8tx_got_b3)
@@ -232,7 +232,7 @@ void REALACC_init()
 		realacc_wlv8tx_got_b3 = false;
 		realacc_phase = REALACC_WLV8TX_BIND_TX;
 		memcpy(bind_rx_addr, realacc_bind_packet, sizeof(bind_rx_addr));
-		bind_rx_addr[3] |= 0x80;
+		bind_rx_addr[3] |= 0x80;					// WL-V8Tx bind RX address variant
 		XN297_SetRXAddr(bind_rx_addr, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
 	}
 	else
