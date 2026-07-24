@@ -192,6 +192,7 @@ const char STR_SUBTYPE_E129[] =       "\x04""E129""C186";
 const char STR_SUBTYPE_FX[] =         "\x05""FX816""FX620""9630\0""Q560\0""QF012""BM26\0""A570\0";
 const char STR_SUBTYPE_SGF22[] =      "\x04""F22\0""F22S""J20\0""CX10";
 const char STR_SUBTYPE_JIABAILE[] =   "\x04""Std\0""Gyro";
+const char STR_SUBTYPE_REALACC[] =    "\x07""R11\0   ""WL-V8Tx";
 #define NO_SUBTYPE		nullptr
 
 #ifdef SEND_CPPM
@@ -463,7 +464,7 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_RLINK,      STR_RLINK,     STR_SUBTYPE_RLINK,     4, OPTION_RFTUNE,  0, 0, SW_CC2500, RLINK_init,      RLINK_callback      },
 	#endif
 	#if defined(REALACC_NRF24L01_INO)
-		{PROTO_REALACC,    STR_REALACC,   NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    REALACC_init,    REALACC_callback    },
+		{PROTO_REALACC,    STR_REALACC,   STR_SUBTYPE_REALACC,   1, OPTION_NONE,    0, 0, SW_NRF,    REALACC_init,    REALACC_callback    },
 	#endif
 	#if defined(REDPINE_CC2500_INO)
 		{PROTO_REDPINE,    STR_REDPINE,   STR_SUBTYPE_REDPINE,   2, OPTION_RFTUNE,  0, 0, SW_CC2500, REDPINE_init,    REDPINE_callback    },
