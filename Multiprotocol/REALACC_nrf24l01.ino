@@ -26,6 +26,9 @@ Multiprotocol is distributed in the hope that it will be useful,
 #define REALACC_BIND_PAYLOAD_SIZE	10
 #define REALACC_WLV8TX_BIND_PAYLOAD_SIZE	12
 #define REALACC_WLV8TX_RX_PAYLOAD_SIZE	3
+#define REALACC_WLV8TX_CMD_B3		0xB3
+#define REALACC_WLV8TX_CMD_B4		0xB4
+#define REALACC_WLV8TX_CMD_B5		0xB5
 #define REALACC_PAYLOAD_SIZE		13
 #define REALACC_BIND_COUNT			50
 #define REALACC_RF_NUM_CHANNELS		5
@@ -39,7 +42,7 @@ enum
 	REALACC_WLV8TX_DATA
 };
 
-static uint8_t realacc_phase = REALACC_WLV8TX_BIND_TX;
+static uint8_t realacc_phase;
 static uint8_t realacc_bind_packet[REALACC_BIND_PAYLOAD_SIZE];
 static uint8_t realacc_wlv8tx_xor_data[2];
 static bool realacc_wlv8tx_got_b3;
@@ -81,7 +84,7 @@ static void __attribute__((unused)) REALACC_send_bind_packet()
 {
 	if(sub_protocol == REALACC_WLV8TX && realacc_wlv8tx_got_b3)
 	{
-		packet[0] = 0xB4;
+		packet[0] = REALACC_WLV8TX_CMD_B4;
 		packet[1] = realacc_wlv8tx_xor_data[0];
 		packet[2] = realacc_wlv8tx_xor_data[1];
 		memcpy(&packet[3], realacc_bind_packet, 4);	// Original TX ID before XOR
@@ -152,7 +155,7 @@ static void __attribute__((unused)) REALACC_wlv8tx_process_rx()
 	if(len != REALACC_WLV8TX_RX_PAYLOAD_SIZE)		// 1 command byte (B3/B5) + 2 XOR bytes
 		return;
 
-	if(packet_in[0] == 0xB3 && !realacc_wlv8tx_got_b3)
+	if(packet_in[0] == REALACC_WLV8TX_CMD_B3 && !realacc_wlv8tx_got_b3)
 	{
 		realacc_wlv8tx_got_b3 = true;
 		realacc_wlv8tx_xor_data[0] = packet_in[1];
@@ -160,7 +163,7 @@ static void __attribute__((unused)) REALACC_wlv8tx_process_rx()
 		rx_tx_addr[2] ^= packet_in[1];
 		rx_tx_addr[3] ^= packet_in[2];
 	}
-	else if(packet_in[0] == 0xB5 && realacc_wlv8tx_got_b3)
+	else if(packet_in[0] == REALACC_WLV8TX_CMD_B5 && realacc_wlv8tx_got_b3)
 	{
 		BIND_DONE;
 		XN297_SetTXAddr(rx_tx_addr, 4);
