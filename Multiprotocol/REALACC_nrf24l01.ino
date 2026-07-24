@@ -25,6 +25,7 @@ Multiprotocol is distributed in the hope that it will be useful,
 #define REALACC_BIND_RF_CHANNEL		80
 #define REALACC_BIND_PAYLOAD_SIZE	10
 #define REALACC_WLV8TX_BIND_PAYLOAD_SIZE	12
+#define REALACC_WLV8TX_RX_PAYLOAD_SIZE	3
 #define REALACC_PAYLOAD_SIZE		13
 #define REALACC_BIND_COUNT			50
 #define REALACC_RF_NUM_CHANNELS		5
@@ -148,7 +149,7 @@ static void __attribute__((unused)) REALACC_wlv8tx_process_rx()
 	if(!XN297_IsRX())
 		return;
 	uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
-	if(len != 3)									// 1 command byte (B3/B5) + 2 XOR bytes
+	if(len != REALACC_WLV8TX_RX_PAYLOAD_SIZE)		// 1 command byte (B3/B5) + 2 XOR bytes
 		return;
 
 	if(packet_in[0] == 0xB3 && !realacc_wlv8tx_got_b3)
@@ -232,7 +233,7 @@ void REALACC_init()
 		realacc_wlv8tx_got_b3 = false;
 		realacc_phase = REALACC_WLV8TX_BIND_TX;
 		memcpy(bind_rx_addr, realacc_bind_packet, sizeof(bind_rx_addr));
-		bind_rx_addr[3] |= 0x80;					// WL-V8Tx listens on TX-ID with bit7 set in byte 4
+		bind_rx_addr[3] |= 0x80;					// WL-V8Tx listens on TX-ID with bit7 set in 4th byte (index 3)
 		XN297_SetRXAddr(bind_rx_addr, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
 	}
 	else
