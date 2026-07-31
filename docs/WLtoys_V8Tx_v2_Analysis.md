@@ -11,6 +11,7 @@
 
 1. [RF Physical Layer](#1-rf-physical-layer)
 2. [Bind Procedure](#2-bind-procedure)
+   - [2.6 B3 → B5 Transition: Time-Based Timer](#26-b3--b5-transition-time-based-timer)
 3. [Normal Operation – RF Channel Hopping](#3-normal-operation--rf-channel-hopping)
 4. [Packet Structure](#4-packet-structure)
 5. [Channel Encoding](#5-channel-encoding)
@@ -74,18 +75,18 @@ The following sequence was captured when the RX was powered on while the TX was 
 | Step | Direction | Address | Payload | Description |
 |------|-----------|---------|---------|-------------|
 | 1 | TX→RX | `4D 41 49 4E` (MAIN) | `B1 32 E9 DE 0A 45 42 38 3C 4A` | TX broadcasts bind request (repeating) |
-| 2 | RX→TX | `32 E9 DE 8A` | `B3 D4 E9` | RX acknowledges TX; `B3` = "waiting for TX confirmation"; `D4 E9` (P[1,2]) = RX-generated XOR mask bytes, each XOR'd with TX ID bytes 3,4 respectively to produce the data-phase TX address |
+| 2 | RX→TX | `32 E9 DE 8A` | `B3 D4 E9` | RX detected TX; `B3` = "bind detected — exchanging XOR mask"; `D4 E9` (P[1,2]) = RX-generated XOR mask bytes, each XOR'd with TX ID bytes 3,4 respectively to produce the data-phase TX address. RX continues sending B3 for approximately 53 ms |
 | 3 | TX→RX | `4D 41 49 4E` (MAIN) | `B4 D4 E9 32 E9 DE 0A 45 42 38 3C 4A` (12 bytes) | TX confirms bind; `B4` = bind confirmation; P[1,2] = B3 XOR bytes `D4 E9` echoed back; P[3..6] = original TX ID `32 E9 DE 0A`; P[7..11] = hop channel table `45 42 38 3C 4A` |
-| 4 | RX→TX | `32 E9 DE 8A` | `B5 D4 E9` | RX confirms bind complete; `B5` = "bind complete" |
+| 4 | RX→TX | `32 E9 DE 8A` | `B5 D4 E9` | RX transitions to B5 state. **B5 is time-triggered** (~87 ms after the first B3 is sent), not dependent on receipt or acknowledgment of a B4 packet. The RX fires its internal timer and transitions to B5 regardless of whether it has received any B4 (see §2.6) |
 | 5 | TX→RX | data addr | 13-byte control packet | Normal operation begins |
 
 **Key bind state bytes (Byte 0 of RX response):**
 
 | Value | Meaning |
 |-------|---------|
-| `0xB3` | RX detected TX, waiting for confirmation |
+| `0xB3` | RX detected TX; sending XOR mask bytes; continues for ~53 ms |
 | `0xB4` | TX has acknowledged RX (embedded in TX→RX packet) |
-| `0xB5` | Bind sequence complete |
+| `0xB5` | RX bind timer expired (~87 ms after first B3); transitioning to normal operation. Time-triggered, not acknowledgment-triggered |
 
 ### 2.4 Derived Addresses (Post-Bind)
 
@@ -117,6 +118,42 @@ data_TX_addr = TX_ID[0], TX_ID[1], (TX_ID[2] ^ B3[1]),   (TX_ID[3] ^ B3[2])
 ```
 
 The B4 confirmation packet preserves the **original TX ID before XOR** in P[3..6], allowing the RX to verify the exchange and reconstruct both addresses. The B3 XOR bytes (`D4 E9`) are echoed back in B4 P[1,2] so both sides agree on the derivation.
+
+---
+
+### 2.6 B3 → B5 Transition: Time-Based Timer
+
+**Capture evidence:** From the `WLtoys_284019A_TX-StartToRx_WorkingChannels_Manual.txt` capture, the following inter-packet intervals were measured between the first observed B3 and the first observed B5 (all values in µs):
+
+```
+First B3 observed
+  → B4 (TX):  5690 µs
+  → B3 (RX):  6489 µs
+  → B4 (TX):  9776 µs
+  → B3 (RX):  2391 µs
+  → B3 (RX):  8116 µs
+  → B4 (TX):  5767 µs
+  → B3 (RX):  2344 µs
+  → B3 (RX):  4069 µs
+  → B3 (RX):  4048 µs
+  → B3 (RX):  4067 µs   ← last B3 observed
+  → B4 (TX):  1740 µs
+  → B4 (TX): 16283 µs   ← gap ≈ 1 × WLV8TX_PACKET_PERIOD; no B3 in this window
+First B5:     6315 µs
+              ──────
+Total:       87,095 µs ≈ 87 ms
+```
+
+**Key findings:**
+
+- The RX sends B3 for approximately **53 ms** (from first to last B3) then stops internally — independently of whether it has received a B4 from the TX.
+- Approximately **34 ms** after the last B3, the first B5 appears on air.
+- Total elapsed time from first B3 to first B5: **~87 ms** (approximately 5.3 × WLV8TX_PACKET_PERIOD).
+- The 16,283 µs gap before the first B5 (≈ one packet period with no B3) confirms the RX had already left the B3 state internally before B5 appeared on air.
+
+**Conclusion:** B5 is **not triggered by the RX accepting or acknowledging a B4 packet from the TX**. It is fired by a fixed timer in the RX firmware, approximately 87 ms after the first B3 transmission, regardless of what the TX does during that window. The TX sending B4 packets is not a prerequisite for B5; it is simply the TX's response to B3 and does not gate the RX's state transition.
+
+**Implication for the module:** The module must receive B3 (to obtain the XOR mask bytes `D4 E9` needed to derive the data-phase address). After that, it should continue to listen for B5 and transition to data phase when B5 is received. The module does not need to confirm that B4 was "accepted" by the RX — the RX will send B5 after its internal timer regardless.
 
 ---
 
@@ -294,8 +331,8 @@ B5 D4 E9
 
 | Status byte | Meaning |
 |-------------|---------|
-| `0xB3` | Waiting for TX acknowledgment (during bind) |
-| `0xB5` | Bound and operating normally |
+| `0xB3` | Bind active — sending XOR mask; continues for ~53 ms after first transmission |
+| `0xB5` | Bind timer expired (~87 ms after first B3); transitioning to / in normal operation. Time-triggered, not acknowledgment-triggered (see §2.6) |
 
 ### 8.2 Telemetry / Extended Packets (6 bytes)
 
@@ -370,21 +407,26 @@ Sending a fixed `0x77` means the car RX always sees the same session ID regardle
 
 ---
 
-### D2 — DATA phase packet period *(Severity: High)*
+### D2 — DATA phase packet period *(Severity: High — **Fixed in wl-284019a**)*
 
-**Code:** The `REALACC_WLV8TX_DATA` branch of `REALACC_callback()` returns `REALACC_PACKET_PERIOD` = **2268 µs** per hop.  
+**Code (original):** The `REALACC_WLV8TX_DATA` branch of `REALACC_callback()` returned `REALACC_PACKET_PERIOD` = **2268 µs** per hop.  
 **Protocol:** The real TX sends one packet per channel dwell time of **~16 279 µs**, cycling through 5 channels for a total frame period of ~81 370 µs.
 
-The module therefore transmits at **~440 Hz** (≈5 channels × 1 / 2268 µs) instead of the correct ~61.5 Hz. While the car RX may tolerate a faster packet rate, the mismatch is 7× and could interfere with RX-side timing logic (failsafe timers, ACK expectations, telemetry windows). A dedicated `WLV8TX_PACKET_PERIOD` constant equal to **16 279 µs** should be used.
+The module would have transmitted at **~440 Hz** (≈5 channels × 1 / 2268 µs) instead of the correct ~61.5 Hz. The mismatch is 7× and could interfere with RX-side timing logic (failsafe timers, ACK expectations, telemetry windows).
+
+**Status:** Already resolved in `wl-284019a`. The constant `WLV8TX_PACKET_PERIOD = 16279` is defined and used in both the `REALACC_WLV8TX_DATA` return path and the bind-completion early-exit path. See F4 in §13.7.
 
 ---
 
-### D3 — Bind RX window too short for B3 / B5 *(Severity: Medium)*
+### D3 — Bind RX window too short for B3 / B5 *(Severity: Medium — Partially improved in wl-284019a)*
 
-**Code:** `REALACC_WLV8TX_STEP_PERIOD = REALACC_PACKET_PERIOD / 2` = **1134 µs** per bind phase. The BIND\_RX\_SETUP phase switches to RX mode then immediately returns 1134 µs; BIND\_RX\_CHECK fires 1134 µs later to poll for the packet.  
+**Code (original):** `REALACC_WLV8TX_STEP_PERIOD = REALACC_PACKET_PERIOD / 2` = **1134 µs** per bind phase.  
+**Code (wl-284019a):** Each bind phase now uses `WLV8TX_PACKET_PERIOD / 3` = **5426 µs**, a ~5× improvement.  
 **Protocol:** The car RX's first B3 response arrives **~10 655 µs** after the TX first broadcasts on channel 80.
 
-Because the module cycles through three 1134 µs phases (≈ 3.4 ms per full TX→RX→check cycle) there are multiple attempts to receive B3, which mitigates the timing mismatch. However each RX window is only 1134 µs wide, and the 130 µs mode settling deficit (see §13.1) consumes roughly 11% of that window on a tolerant chip or causes a complete loss of RX capability on intolerant clones.
+With the updated `/3` slot the module cycles through TX→RX_SETUP→RX_CHECK at ~5426 µs per phase (≈16 278 µs per full cycle), matching the real TX cadence. Multiple cycles provide repeated opportunities to receive B3. The RX sends B3 for approximately **53 ms** before its internal timer expires and it transitions to B5 (see §2.6); across ~3 full cycles during that window there are several chances to receive B3 even if individual windows are partially lost to the 130 µs settling deficit (F1).
+
+**Remaining risk:** Each RX listen window is ~5426 µs. If F1 (the 130 µs delay) is not applied, the mode settling deficit consumes ~2.4% of the window on a tolerant clone or causes complete RX failure on intolerant clones. With F1 applied, the window is sufficient.
 
 ---
 
@@ -467,7 +509,7 @@ Setting CONFIG = 0 places the chip in **full Power Down** (not Standby-I). The N
 | Power Down → Standby-I | 1.5 ms (Tpd2stby, crystal startup) |
 | Standby-I → TX/RX | 130 µs (Tstby2a, PLL lock) |
 
-**Important:** in the WLV8TX bind loop the code does **not** call `TXRX_OFF` between bind phases. The BIND\_TX→BIND\_RX\_SETUP and BIND\_RX\_CHECK→BIND\_TX transitions call `XN297_SetTxRxMode(TX_EN)` or `XN297_SetTxRxMode(RX_EN)` directly, going from Standby-I through CONFIG register change only. `TXRX_OFF` is used at init and at the end of some phases in other sub-protocols. If it is ever interleaved during the WLV8TX bind (e.g. by a protocol switch or future refactor), the 1.5 ms recovery time must be waited for.
+**Important:** in `wl-284019a` the bind loop **does** explicitly call `TXRX_OFF` before every mode switch (both BIND\_TX→BIND\_RX\_SETUP and BIND\_RX\_CHECK→BIND\_TX transitions call `TXRX_OFF` then the target mode). This means every transition goes through full power-down → Standby-I → active mode. The `/3` slot timing (~5426 µs per phase) provides adequate headroom for the 1.5 ms crystal startup, but F7 (updating `cur_mode` on TXRX_OFF) must be applied so the `mode != cur_mode` guard correctly enables the 130 µs delay (F1) on each subsequent active-mode entry.
 
 **Secondary effect:** Because `TXRX_OFF` returns early without executing `cur_mode = mode`, the static `cur_mode` variable retains its previous value. The conditional `if(mode != cur_mode)` that guards the (commented-out) delay will then always evaluate **true** on the next non-OFF call — meaning the delay *would* always fire if it were un-commented, which is correct behaviour but masks the return-without-update bug.
 
@@ -475,38 +517,36 @@ Setting CONFIG = 0 places the chip in **full Power Down** (not Standby-I). The N
 
 ### 13.3 Bind State Machine — Mode Transition Sequence and Timing
 
-The WLV8TX bind callback cycles through three phases, each separated by:
-```
-REALACC_WLV8TX_STEP_PERIOD = REALACC_PACKET_PERIOD / 2 = 2268 / 2 = 1134 µs
-```
+The WLV8TX bind callback cycles through three phases. In `wl-284019a` each phase uses `WLV8TX_PACKET_PERIOD / 3 = 16279 / 3 ≈ 5426 µs` (improved from the original 1134 µs):
 
 ```
-t=0       BIND_TX:        XN297_SetTxRxMode(TX_EN)  → send B1 bind packet
-t=1134µs  BIND_RX_SETUP:  XN297_SetTxRxMode(RX_EN)  → enter listen window
-t=2268µs  BIND_RX_CHECK:  poll XN297_IsRX()          → look for B3 or B5
-t=3402µs  BIND_TX:        XN297_SetTxRxMode(TX_EN)  → next TX cycle
+t=0        BIND_TX:        TXRX_OFF then TX_EN  → send B1/B4 bind packet
+t=5426µs   BIND_RX_SETUP:  TXRX_OFF then RX_EN  → enter listen window
+t=10852µs  BIND_RX_CHECK:  poll XN297_IsRX()     → look for B3 or B5
+t=16278µs  BIND_TX:        TXRX_OFF then TX_EN  → next TX cycle
 ```
 
-**TX → RX transition (t=1134µs):**
+**Note:** `wl-284019a` explicitly calls `TXRX_OFF` before each mode switch (TX_EN or RX_EN). This means every transition goes through full power-down, making F7 (`cur_mode` update on TXRX_OFF) critical so that the `mode != cur_mode` guard correctly fires the 130 µs delay (F1) on the subsequent mode entry.
 
-Inside `XN297_SetTxRxMode(RX_EN)`:
+**TX → RX transition (t=5426µs):**
+
+Inside `XN297_SetTxRxMode(RX_EN)` (after TXRX_OFF clears the chip):
 1. Write NRF24L01_07_STATUS to clear RX_DR/TX_DS/MAX_RT flags
 2. CE ← low  
 3. `NRF24L01_FlushRx()` (SPI: ~2–4 µs)  
 4. Write CONFIG = `PWR_UP | PRIM_RX`  (SPI: ~2 µs)
-5. *(130 µs delay missing)*  
+5. *(130 µs delay — present if F1 applied; missing if not)*  
 6. CE ← high  
 
-Total actual delay between CONFIG write and CE assertion: **≈ 4–8 µs** from SPI transaction latency only. The chip requires 130 µs minimum. On a tolerant clone, the RX mode stabilises in time; on an intolerant clone (e.g. needing 200–300 µs reported for some Si24R1 production runs), the chip does not enter RX mode at all within the 1134 µs window.
+With F1 applied, the chip has the required 130 µs before CE. Without F1, total delay between CONFIG write and CE assertion is ~4–8 µs from SPI latency only. On intolerant clones needing 200–350 µs, the chip does not enter RX mode at all.
 
-**RX → TX transition (t=3402µs, back to BIND_TX):**
+**RX listen window:**
 
-The BIND\_RX\_CHECK phase does not call `XN297_SetTxRxMode`; it only sets `realacc_phase = REALACC_WLV8TX_BIND_TX` and returns. The TX\_EN call happens at the very start of the next callback invocation — approximately 1134 µs later. From the RX CONFIG state (PWR_UP | PRIM_RX) to TX (PWR_UP only), the same CE assertion race applies: PRIM_RX is cleared and CE goes high with no settling delay.
+With the `/3` slot (~5426 µs), the usable listen time (after a correctly timed 130 µs Tstby2a) is approximately **5296 µs** — more than sufficient to receive B3 or B5 packets (~60 µs each at 1 Mbps).
 
-**Net effect on bind reliability:**  
-Each bind cycle performs **two mode transitions without settling delays**. With `STEP_PERIOD = 1134 µs` the usable RX listen window (after the missing 130 µs) is effectively:  
-- Tolerant clone: ~1004 µs (enough for one B3 packet at 1 Mbps, ≈60 µs/packet)  
-- Intolerant clone: 0 µs (chip never enters RX mode; B3 is never seen)
+**Net effect on bind reliability:**
+
+The RX sends B3 for ~53 ms (see §2.6), giving the module approximately 3 full bind cycles (~16 278 µs each) to receive at least one B3. If F1 and F7 are applied, each RX window is fully functional and B3 should be received reliably. Without F1+F7, each RX window is zero-duration on intolerant clones.
 
 ---
 
@@ -532,7 +572,7 @@ This flush is redundant because `XN297_SetTxRxMode(TX_EN)` already called `NRF24
 
 #### RX FIFO — Flush on Mode Entry (Correct)
 
-`XN297_SetTxRxMode(RX_EN)` calls `NRF24L01_FlushRx()` before writing CONFIG, ensuring the RX FIFO is empty at the start of each listen window. This is correct behaviour and prevents stale packets from a prior window from appearing as valid B3/B5 responses.
+`XN297_SetTxRxMode(RX_EN)` calls `NRF24L01_FlushRx()` before writing CONFIG, ensuring the RX FIFO is empty at the start of each listen window. This is correct behaviour and prevents stale packets from a prior window from appearing as valid B3 or B5 responses. Note: B5 is time-triggered by the RX (~87 ms after first B3, see §2.6); flushing the RX FIFO on each entry does not affect the RX's internal state machine.
 
 #### STATUS Register — No Explicit Clear on Bind Retry
 
@@ -560,15 +600,15 @@ Several factors make newer/cheaper NRF24L01 clones more susceptible to the timin
 
 ### 13.7 Summary of Recommended Fixes
 
-| # | File / Location | Fix | Impact |
-|---|---|---|---|
-| F1 | `XN297_EMU.ino` line 183 | Un-comment `delayMicroseconds(130)` in `XN297_SetTxRxMode` | Restores mandatory PLL settling before CE; fixes clone incompatibility |
-| F2 | `REALACC_nrf24l01.ino` | Increase `REALACC_INITIAL_WAIT` from 500 µs to ≥ 2000 µs | Ensures crystal startup from power-down before first TX |
-| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (Session ID) from values established during the bind XOR exchange (e.g., `realacc_wlv8tx_xor_data[0]` or a byte of the post-XOR `rx_tx_addr`) rather than hardcoding `0x77` | Produces a session-unique value matching real TX behaviour; same value applied on all hop channels; likely required for data phase acceptance |
-| F4 | `REALACC_nrf24l01.ino` | Define and use `WLV8TX_PACKET_PERIOD = 16279` in `REALACC_WLV8TX_DATA` phase | Corrects data rate from ~440 Hz to ~61.5 Hz |
-| F5 | `REALACC_nrf24l01.ino` | Implement alternating `0x80` direction flag for ST Trim (P[8]) | Fixes ST Trim direction encoding |
-| F6 | `REALACC_nrf24l01.ino` | Add `NRF24L01_Reset()` call after N failed bind cycles | Recovers clone chips from locked-up state |
-| F7 | `XN297_EMU.ino` | Update `cur_mode` before the early return in the `TXRX_OFF` branch | Fixes the static `cur_mode` not tracking power-down state |
+| # | File / Location | Fix | Impact | Status |
+|---|---|---|---|---|
+| F1 | `XN297_EMU.ino` line 183 | Un-comment `delayMicroseconds(130)` in `XN297_SetTxRxMode` | Restores mandatory PLL settling before CE; fixes clone incompatibility | Applied locally — testing in progress |
+| F2 | `REALACC_nrf24l01.ino` | Increase `REALACC_INITIAL_WAIT` from 500 µs to ≥ 2000 µs | Ensures crystal startup from power-down before first TX | Applied locally — testing in progress |
+| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (Session ID) from values established during the bind XOR exchange (e.g., `realacc_wlv8tx_xor_data[0]` or a byte of the post-XOR `rx_tx_addr`) rather than hardcoding `0x77` | Produces a session-unique value matching real TX behaviour; same value applied on all hop channels; likely required for data phase acceptance | Pending |
+| F4 | `REALACC_nrf24l01.ino` | Define and use `WLV8TX_PACKET_PERIOD = 16279` in `REALACC_WLV8TX_DATA` phase | Corrects data rate from ~440 Hz to ~61.5 Hz | **Already implemented in wl-284019a** — `#define WLV8TX_PACKET_PERIOD 16279` is present and used throughout the bind and data phases |
+| F5 | `REALACC_nrf24l01.ino` | Implement alternating `0x80` direction flag for ST Trim (P[8]) | Fixes ST Trim direction encoding | Pending |
+| F6 | `REALACC_nrf24l01.ino` | Add `NRF24L01_Reset()` call after N failed bind cycles | Recovers clone chips from locked-up state | Applied locally — testing in progress |
+| F7 | `XN297_EMU.ino` | Update `cur_mode` before the early return in the `TXRX_OFF` branch | Fixes the static `cur_mode` not tracking power-down state; required for F1 to fire correctly after TXRX_OFF→TX/RX transitions | Applied locally — testing in progress |
 
 > **F1 is the highest-priority fix.** Restoring the 130 µs delay in `XN297_SetTxRxMode` has zero negative impact on tolerant chips and is the single most likely reason bind succeeds on some transmitters (Jumper TX16) but not others (Radiomaster MT12).
 
