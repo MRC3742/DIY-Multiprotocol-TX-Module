@@ -15,7 +15,7 @@
 4. [Packet Structure](#4-packet-structure)
 5. [Channel Encoding](#5-channel-encoding)
 6. [Trim Encoding](#6-trim-encoding)
-7. [Per-Channel ID Byte (P\[9\])](#7-per-channel-id-byte-p9)
+7. [Session ID Byte (P\[9\])](#7-session-id-byte-p9)
 8. [RX Telemetry / Acknowledgment Packets](#8-rx-telemetry--acknowledgment-packets)
 9. [TX Power-Off / RX Failsafe Behaviour](#9-tx-power-off--rx-failsafe-behaviour)
 10. [Summary of Key Values](#10-summary-of-key-values)
@@ -144,7 +144,7 @@ Offset │ Byte  │ Name        │ Range      │ Notes
   [6]  │  20   │ Separator   │ 0x20       │ Constant
   [7]  │ var   │ TH Trim     │ 0x02–0x3D  │ Throttle trim; see §6
   [8]  │ var   │ ST Trim     │ (encoded)  │ Steering trim with direction flag; see §6
-  [9]  │ var   │ CH ID       │ (varies)   │ Per-channel/session byte; see §7
+  [9]  │ var   │ Session ID  │ (varies)   │ Session ID byte (constant per session); see §7
  [10]  │  0C   │ Constant    │ 0x0C       │ Constant
  [11]  │  00   │ Constant    │ 0x00       │ Constant
  [12]  │  00   │ Constant    │ 0x00       │ Constant
@@ -240,9 +240,9 @@ Packet sequence: 20 → 9F → DE → 9D → DC → … → C2 → 81
 
 ---
 
-## 7. Per-Channel ID Byte (P\[9\])
+## 7. Session ID Byte (P\[9\])
 
-Byte P\[9\] changes value on each TX power-on cycle and takes a **different value per RF channel**. Observed values from the captures:
+Byte P\[9\] is a **session ID**: it changes value on each TX power-on cycle but remains **constant across all RF channels within a single session**. Observed values from the captures:
 
 | RF Channel | P\[9\] value | Notes |
 |------------|-------------|-------|
@@ -251,9 +251,9 @@ Byte P\[9\] changes value on each TX power-on cycle and takes a **different valu
 | 69 | `0x25` | Second capture session |
 | (unknown) | `0x89` | First capture (auto-detected, channel unknown at time of log) |
 
-The values on channels 56 (`0xE4`) and 66 (`0xA5`) differ by `0x80` from channel 69 (`0x25`) and 66 (`0xA5`), suggesting the bit 7 of this byte may also encode a **per-channel flag** (similar to the ST Trim pattern). The upper nibble `0xE` vs `0x2` vs `0xA` may encode the channel index or a session token.
+> **Capture artefact note:** During the channel-by-channel captures the TX and RX were powered off and back on for each working-channel section. Each power cycle constitutes a new session, so the different P\[9\] values recorded across channels reflect **different TX sessions**, not a per-channel derivation. Within any single power-on session, P\[9\] holds the same value on every hop channel.
 
-This byte appears to be **derived from the TX's unique ID** and/or **the channel index** within the hopping table.
+This byte appears to be **derived from the TX's unique ID** and/or generated at power-on (e.g., a session token seeded from a hardware counter or address bytes). It does not encode the channel index.
 
 ---
 
@@ -314,7 +314,7 @@ Steering:          P[4], 0x1F (full right) .. 0x80 (center) .. 0xE7 (full left)
 GY Trim:           P[5], 0x02 (min) .. 0x3D (max)
 TH Trim:           P[7], 0x02 (min) .. 0x3D (max)
 ST Trim:           P[8], alternating encoded, center=0x20, ±31 clicks
-CH ID byte:        P[9], channel/session-dependent, changes per TX power cycle
+Session ID byte:   P[9], session-dependent (constant within session), changes per TX power cycle
 Tail:              P[10]=0x0C, P[11]=0x00, P[12]=0x00  (constant)
 ```
 
@@ -324,7 +324,7 @@ Tail:              P[10]=0x0C, P[11]=0x00, P[12]=0x00  (constant)
 
 1. **ST Trim alternating pattern (P\[8\]):** The exact semantics of the alternating `0x80` flag bit are unclear. Is it a direction indicator consumed by the RX, or is it a TX-side artefact of the trim state machine?
 
-2. **P\[9\] derivation:** How exactly is the per-channel ID byte computed from the TX session / ID? Is it a simple XOR/shift of the TX address bytes with the channel index, or a more complex function?
+2. **P\[9\] derivation:** How exactly is the session ID byte computed? Is it derived from the TX address bytes, a hardware-seeded counter, or some other source? Further captures without power-cycling between channels would confirm it is constant per session.
 
 3. **P\[1\] and P\[2\]:** Always `0x80`. Are these truly unused AETR placeholders (the 284019A is a 2-channel car controller), or could they carry additional data in other operating modes (e.g., a different sub-model)?
 
@@ -340,12 +340,12 @@ Tail:              P[10]=0x0C, P[11]=0x00, P[12]=0x00  (constant)
 
 > **Context:** The WLV8TX sub-protocol is implemented inside `Multiprotocol/REALACC_nrf24l01.ino` on branch `wl-284019a`. The following discrepancies were identified by comparing the implementation against the OTA captures documented in §§1–10.
 
-### D1 — Hardcoded CH\_ID byte (P\[9\]) *(Severity: High)*
+### D1 — Hardcoded Session ID byte (P\[9\]) *(Severity: High)*
 
 **Code:** `packet[9] = 0x77;` (hardcoded in `REALACC_send_packet()`)  
-**Protocol:** P[9] is **session- and channel-dependent** (see §7). It changes on every TX power cycle and takes a different value on each of the five hop channels.
+**Protocol:** P[9] is a **session ID byte** (see §7). It changes on every TX power cycle but is **constant across all hop channels within a session**. The per-channel variation that appeared in the original captures was an artefact of cycling the TX/RX off/on between each channel capture, making each capture a new session.
 
-Sending a fixed `0x77` means the car RX always sees the same CH_ID regardless of session or channel. If the RX uses this byte to validate or correlate packets (e.g., as a rolling session token), every control packet will fail that check. This is the most likely cause of the car accepting the bind sequence but ignoring subsequent data packets.
+Sending a fixed `0x77` means the car RX always sees the same session ID regardless of session. If the RX uses this byte to validate or correlate packets (e.g., as a session token established during bind), every control packet will fail that check. This is the most likely cause of the car accepting the bind sequence but ignoring subsequent data packets.
 
 ---
 
@@ -543,7 +543,7 @@ Several factors make newer/cheaper NRF24L01 clones more susceptible to the timin
 |---|---|---|---|
 | F1 | `XN297_EMU.ino` line 183 | Un-comment `delayMicroseconds(130)` in `XN297_SetTxRxMode` | Restores mandatory PLL settling before CE; fixes clone incompatibility |
 | F2 | `REALACC_nrf24l01.ino` | Increase `REALACC_INITIAL_WAIT` from 500 µs to ≥ 2000 µs | Ensures crystal startup from power-down before first TX |
-| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (CH\_ID) from `rx_tx_addr` XOR channel index rather than hardcoding `0x77` | Matches real TX behaviour; likely required for data phase |
+| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (Session ID) from `rx_tx_addr` or a session token set at bind time rather than hardcoding `0x77` | Matches real TX behaviour; same value used on all hop channels; likely required for data phase |
 | F4 | `REALACC_nrf24l01.ino` | Define and use `WLV8TX_PACKET_PERIOD = 16279` in `REALACC_WLV8TX_DATA` phase | Corrects data rate from ~440 Hz to ~61.5 Hz |
 | F5 | `REALACC_nrf24l01.ino` | Implement alternating `0x80` direction flag for ST Trim (P[8]) | Fixes ST Trim direction encoding |
 | F6 | `REALACC_nrf24l01.ino` | Add `NRF24L01_Reset()` call after N failed bind cycles | Recovers clone chips from locked-up state |
