@@ -49,22 +49,23 @@
 | Bind RF channel | **80** (2480 MHz) |
 | Bind address | `4D 41 49 4E` → ASCII **"MAIN"** (constant for all 284019A units) |
 | Bind packet rate | Every **~16.27 ms** (≈ 61.5 Hz) |
-| Bind packet length | 10 bytes |
+| Bind broadcast (B1) length | 10 bytes |
+| Bind confirmation (B4) length | 12 bytes |
 
 ### 2.2 Bind Packet
 
 TX broadcasts the following 10-byte payload to address `MAIN` on channel 80:
 
 ```
-B1  32 E9 DE  0A 45 42 38 3C 4A
-│   └────────┘ └────────────────┘
-│   TX ID[0:2]  TX ID[3] + channel map / extra bytes
+B1  32 E9 DE 0A  45 42 38 3C 4A
+│   └──────────┘ └──────────────┘
+│   TX ID (4 B)  Session hop channels (5 channels)
 └── Bind command (0xB1 = bind request)
 ```
 
-- **Byte 0:** `0xB1` – Bind command / packet type identifier  
-- **Bytes 1–3:** `32 E9 DE` – First 3 bytes of the TX unique identifier  
-- **Bytes 4–9:** `0A 45 42 38 3C 4A` – Additional TX identifier / channel table data
+- **Byte 0:** `0xB1` – Bind command / packet type identifier
+- **Bytes 1–4:** `32 E9 DE 0A` – TX unique identifier (4 bytes). The RX listen address is derived from this by setting bit 7 of byte 4, and the data-phase TX address is computed by XOR'ing bytes 3 and 4 with the RX's B3 response values (see §2.5).
+- **Bytes 5–9:** `45 42 38 3C 4A` – Session hop channel table: the five RF data channels used during normal operation (`0x45`=69, `0x42`=66, `0x38`=56, `0x3C`=60, `0x4A`=74 decimal), matching the hop set confirmed in §3.
 
 ### 2.3 Bind Handshake State Machine
 
@@ -73,8 +74,8 @@ The following sequence was captured when the RX was powered on while the TX was 
 | Step | Direction | Address | Payload | Description |
 |------|-----------|---------|---------|-------------|
 | 1 | TX→RX | `4D 41 49 4E` (MAIN) | `B1 32 E9 DE 0A 45 42 38 3C 4A` | TX broadcasts bind request (repeating) |
-| 2 | RX→TX | `32 E9 DE 8A` | `B3 D4 E9` | RX found TX; `B3` = "waiting for TX ACK" |
-| 3 | TX→RX | `4D 41 49 4E` (MAIN) | `B4 D4 E9 32 E9 DE 0A 45 42 38 3C 4A` (12 bytes) | TX acknowledges RX; `B4` = "TX found RX"; embeds RX info |
+| 2 | RX→TX | `32 E9 DE 8A` | `B3 D4 E9` | RX acknowledges TX; `B3` = "waiting for TX confirmation"; `D4 E9` (P[1,2]) = RX-generated XOR mask bytes, each XOR'd with TX ID bytes 3,4 respectively to produce the data-phase TX address |
+| 3 | TX→RX | `4D 41 49 4E` (MAIN) | `B4 D4 E9 32 E9 DE 0A 45 42 38 3C 4A` (12 bytes) | TX confirms bind; `B4` = bind confirmation; P[1,2] = B3 XOR bytes `D4 E9` echoed back; P[3..6] = original TX ID `32 E9 DE 0A`; P[7..11] = hop channel table `45 42 38 3C 4A` |
 | 4 | RX→TX | `32 E9 DE 8A` | `B5 D4 E9` | RX confirms bind complete; `B5` = "bind complete" |
 | 5 | TX→RX | data addr | 13-byte control packet | Normal operation begins |
 
@@ -92,8 +93,30 @@ After binding, two addresses are used for normal operation:
 
 | Direction | Address | Description |
 |-----------|---------|-------------|
-| TX → RX (control) | `32 E9 0A E3` | 4-byte data address (derived from TX ID) |
-| RX → TX (ACK/telemetry) | `32 E9 DE 8A` | 4-byte RX response address |
+| TX → RX (control) | `32 E9 0A E3` | Data-phase TX address; derived from TX ID by XOR'ing bytes 3,4 with B3 XOR mask (see §2.5) |
+| RX → TX (ACK/telemetry) | `32 E9 DE 8A` | RX response address; derived from TX ID by OR'ing byte 4 with `0x80` (see §2.5) |
+
+---
+
+### 2.5 Address Derivation During Bind
+
+Both data-phase addresses are computed algebraically from the TX ID and the RX's B3 response:
+
+**RX listen / response address** (available immediately; TX ID byte 4 OR'd with `0x80`):
+```
+RX_addr = TX_ID[0], TX_ID[1], TX_ID[2], (TX_ID[3] | 0x80)
+        = 32,       E9,       DE,        (0A | 0x80 = 8A)
+        = 32 E9 DE 8A
+```
+
+**Data-phase TX address** (computed after receiving B3; TX ID bytes 3,4 XOR'd with B3 payload bytes 1,2):
+```
+data_TX_addr = TX_ID[0], TX_ID[1], (TX_ID[2] ^ B3[1]),   (TX_ID[3] ^ B3[2])
+             = 32,       E9,       (DE ^ D4 = 0A),         (0A ^ E9  = E3)
+             = 32 E9 0A E3
+```
+
+The B4 confirmation packet preserves the **original TX ID before XOR** in P[3..6], allowing the RX to verify the exchange and reconstruct both addresses. The B3 XOR bytes (`D4 E9`) are echoed back in B4 P[1,2] so both sides agree on the derivation.
 
 ---
 
@@ -324,15 +347,13 @@ Tail:              P[10]=0x0C, P[11]=0x00, P[12]=0x00  (constant)
 
 1. **ST Trim alternating pattern (P\[8\]):** The exact semantics of the alternating `0x80` flag bit are unclear. Is it a direction indicator consumed by the RX, or is it a TX-side artefact of the trim state machine?
 
-2. **P\[9\] derivation:** How exactly is the session ID byte computed? Is it derived from the TX address bytes, a hardware-seeded counter, or some other source? Further captures without power-cycling between channels would confirm it is constant per session.
+2. **P\[9\] derivation:** How exactly is the session ID byte computed? A strong candidate is one of the XOR bytes from the B3/B4 bind exchange (e.g., `realacc_wlv8tx_xor_data[0]` or a byte of the post-XOR `rx_tx_addr`) since both are session-unique values established at bind time. Capturing P[9] from a session where the bind XOR bytes are also known would confirm or deny this.
 
 3. **P\[1\] and P\[2\]:** Always `0x80`. Are these truly unused AETR placeholders (the 284019A is a 2-channel car controller), or could they carry additional data in other operating modes (e.g., a different sub-model)?
 
-4. **Bind packet bytes 4–9:** The bytes `0A 45 42 38 3C 4A` in the bind payload need further analysis. They may represent a channel hopping table, a TX serial number, or calibration data.
+4. **6-byte RX telemetry packets (`40 83 00 00 00 00`):** Content not decoded. Possible candidates: battery voltage, RSSI, motor current sense.
 
-5. **6-byte RX telemetry packets (`40 83 00 00 00 00`):** Content not decoded. Possible candidates: battery voltage, RSSI, motor current sense.
-
-6. **Failsafe output:** The exact failsafe behaviour of the ESC/motor driver when the RX loses signal for extended periods was not captured.
+5. **Failsafe output:** The exact failsafe behaviour of the ESC/motor driver when the RX loses signal for extended periods was not captured.
 
 ---
 
@@ -343,7 +364,7 @@ Tail:              P[10]=0x0C, P[11]=0x00, P[12]=0x00  (constant)
 ### D1 — Hardcoded Session ID byte (P\[9\]) *(Severity: High)*
 
 **Code:** `packet[9] = 0x77;` (hardcoded in `REALACC_send_packet()`)  
-**Protocol:** P[9] is a **session ID byte** (see §7). It changes on every TX power cycle but is **constant across all hop channels within a session**. The per-channel variation that appeared in the original captures was an artefact of cycling the TX/RX off/on between each channel capture, making each capture a new session.
+**Protocol:** P[9] is a **session ID byte** (see §7). It changes on every TX power cycle but is **constant across all hop channels within a session**. The per-channel variation that appeared in the original captures was an artefact of cycling the TX/RX off/on between each channel capture, making each capture a new session. Now that the bind XOR exchange is understood (§2.5), a strong candidate for P[9]'s derivation is one of the XOR bytes exchanged during bind (e.g., `realacc_wlv8tx_xor_data[0]` or `[1]`) or a byte derived from the post-XOR `rx_tx_addr` — both of which are session-unique values established at bind time.
 
 Sending a fixed `0x77` means the car RX always sees the same session ID regardless of session. If the RX uses this byte to validate or correlate packets (e.g., as a session token established during bind), every control packet will fail that check. This is the most likely cause of the car accepting the bind sequence but ignoring subsequent data packets.
 
@@ -543,7 +564,7 @@ Several factors make newer/cheaper NRF24L01 clones more susceptible to the timin
 |---|---|---|---|
 | F1 | `XN297_EMU.ino` line 183 | Un-comment `delayMicroseconds(130)` in `XN297_SetTxRxMode` | Restores mandatory PLL settling before CE; fixes clone incompatibility |
 | F2 | `REALACC_nrf24l01.ino` | Increase `REALACC_INITIAL_WAIT` from 500 µs to ≥ 2000 µs | Ensures crystal startup from power-down before first TX |
-| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (Session ID) from `rx_tx_addr` or a session token set at bind time rather than hardcoding `0x77` | Matches real TX behaviour; same value used on all hop channels; likely required for data phase |
+| F3 | `REALACC_nrf24l01.ino` | Derive P[9] (Session ID) from values established during the bind XOR exchange (e.g., `realacc_wlv8tx_xor_data[0]` or a byte of the post-XOR `rx_tx_addr`) rather than hardcoding `0x77` | Produces a session-unique value matching real TX behaviour; same value applied on all hop channels; likely required for data phase acceptance |
 | F4 | `REALACC_nrf24l01.ino` | Define and use `WLV8TX_PACKET_PERIOD = 16279` in `REALACC_WLV8TX_DATA` phase | Corrects data rate from ~440 Hz to ~61.5 Hz |
 | F5 | `REALACC_nrf24l01.ino` | Implement alternating `0x80` direction flag for ST Trim (P[8]) | Fixes ST Trim direction encoding |
 | F6 | `REALACC_nrf24l01.ino` | Add `NRF24L01_Reset()` call after N failed bind cycles | Recovers clone chips from locked-up state |
