@@ -35,18 +35,54 @@ Multiprotocol is distributed in the hope that it will be useful,
 #define REALACC_RF_NUM_CHANNELS		5
 #define REALACC_WLV8TX_STEP_PERIOD	(REALACC_PACKET_PERIOD/2)	// TX/RX bind alternation slot
 
+// Fake-RX probe mode: impersonate the car RX to observe what the real MT12 TX does.
+// Useful for debugging bind failures with other people's cars.
+// How to use:
+//   1. Uncomment #define REALACC_WLV8RX_PROBE below, compile and flash.
+//   2. Enable DEBUG_SERIAL on an STM32 board to see the serial output.
+//   3. Select REALACC / WLV8TX on your radio as the model protocol.
+//   4. Power on the Multiprotocol module FIRST (it starts listening for B1).
+//   5. Power on the real MT12 / V8Tx transmitter.
+//   6. Watch the serial output for the full bind exchange.
+//   7. To run the second test, change PROBE_XOR0/1 to 0x55 / 0x55, reflash, repeat.
+//#define REALACC_WLV8RX_PROBE
+#define REALACC_WLV8RX_PROBE_XOR0	0xD4	// XOR byte 0 sent in B3/B5 (change to 0x55 for 2nd test)
+#define REALACC_WLV8RX_PROBE_XOR1	0xE9	// XOR byte 1 sent in B3/B5 (change to 0x55 for 2nd test)
+
 enum
 {
 	REALACC_WLV8TX_BIND_TX = 0,
 	REALACC_WLV8TX_BIND_RX_SETUP,
 	REALACC_WLV8TX_BIND_RX_CHECK,
-	REALACC_WLV8TX_DATA
+	REALACC_WLV8TX_DATA,
+	// Fake-RX probe phases (only active when REALACC_WLV8RX_PROBE is defined)
+	REALACC_WLV8RXPROBE_WAIT_B1,	// =4: RX on "MAIN"/ch80, waiting for B1 from real MT12 TX
+	REALACC_WLV8RXPROBE_SEND_B3,	// =5: TX mode – send 2x B3 with probe XOR bytes
+	REALACC_WLV8RXPROBE_WAIT_B4,	// =6: RX on "MAIN", waiting for B4 from real MT12 TX
+	REALACC_WLV8RXPROBE_SEND_B5,	// =7: TX mode – send 2x B5 with probe XOR bytes
+	REALACC_WLV8RXPROBE_DUMP,		// =8: RX on data channels, log all received packets
 };
 
 static uint8_t realacc_phase;
 static uint8_t realacc_bind_packet[REALACC_BIND_PAYLOAD_SIZE];
 static uint8_t realacc_wlv8tx_xor_data[2];
 static bool realacc_wlv8tx_got_b3;
+
+#ifdef REALACC_WLV8RX_PROBE
+// Busy-wait for the XN297 to finish sending the current packet (max 500 µs).
+// Logs the loop count so the caller can tune the timing delay to reach count=0.
+static void __attribute__((unused)) REALACC_wlv8rx_wait_packet_sent()
+{
+	uint16_t start = (uint16_t)micros(), count = 0;
+	while ((uint16_t)((uint16_t)micros() - (uint16_t)start) < 500)
+	{
+		if (XN297_IsPacketSent())
+			break;
+		count++;
+	}
+	debug(" wait=%d", count);
+}
+#endif
 
 static void __attribute__((unused)) REALACC_send_packet()
 {
@@ -180,6 +216,135 @@ uint16_t REALACC_callback()
 	XN297_SetPower();
 	if(sub_protocol == REALACC_WLV8TX)
 	{
+#ifdef REALACC_WLV8RX_PROBE
+		// ---- Fake-RX probe state machine ----
+		// Impersonates the car RX to observe what the real MT12 TX does at each
+		// stage.  All bind packets (B1/B3/B4/B5) stay on channel 80 ("MAIN").
+		// B3 and B5 are sent from address (TX-ID | 0x80 in byte[3]) because that
+		// is the address multi listens on when acting as the TX – i.e. the address
+		// the real car RX uses as its TX address.  B4 is sent by the MT12 TX to
+		// the "MAIN" address (same as B1).
+		uint8_t probe_addr[4];
+		if(realacc_phase == REALACC_WLV8RXPROBE_WAIT_B1)
+		{
+			if(XN297_IsRX())
+			{
+				uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_BIND_PAYLOAD_SIZE);
+				if(len == REALACC_BIND_PAYLOAD_SIZE && (packet_in[0] == 0xB1 || packet_in[0] == 0xB0))
+				{
+					memcpy(rx_id, &packet_in[1], 4);					// Capture real TX-ID
+					memcpy(hopping_frequency, &packet_in[5], 5);		// Capture RF channels
+					debug("B1 rx: cmd=%02X ID=%02X %02X %02X %02X CH=", packet_in[0], rx_id[0], rx_id[1], rx_id[2], rx_id[3]);
+					for(uint8_t i = 0; i < REALACC_RF_NUM_CHANNELS; i++) debug("%02X ", hopping_frequency[i]);
+					debugln("");
+					// MT12 TX listens for B3/B5 at (TX-ID with bit7 set in byte[3])
+					memcpy(probe_addr, rx_id, 4);
+					probe_addr[3] |= REALACC_WLV8TX_RX_ADDR_FLAG;
+					XN297_SetTXAddr(probe_addr, 4);
+					realacc_phase = REALACC_WLV8RXPROBE_SEND_B3;
+				}
+			}
+			return REALACC_WLV8TX_STEP_PERIOD;
+		}
+
+		if(realacc_phase == REALACC_WLV8RXPROBE_SEND_B3)
+		{
+			XN297_SetTxRxMode(TXRX_OFF);
+			XN297_SetTxRxMode(TX_EN);
+			for(uint8_t i = 0; i < 2; i++)
+			{
+				packet[0] = REALACC_WLV8TX_CMD_B3;
+				packet[1] = REALACC_WLV8RX_PROBE_XOR0;
+				packet[2] = REALACC_WLV8RX_PROBE_XOR1;
+				XN297_WriteEnhancedPayload(packet, REALACC_WLV8TX_RX_PAYLOAD_SIZE, 1);
+				debug("TX B3#%d: %02X %02X %02X", i + 1, packet[0], packet[1], packet[2]);
+				REALACC_wlv8rx_wait_packet_sent();
+				debugln("");
+			}
+			// Switch to RX and wait for B4 (MT12 TX sends B4 addressed to "MAIN")
+			XN297_SetRXAddr((uint8_t *)"MAIN", REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
+			XN297_SetTxRxMode(TXRX_OFF);
+			XN297_SetTxRxMode(RX_EN);
+			bind_counter = 100;								// ~113 ms timeout before giving up
+			realacc_phase = REALACC_WLV8RXPROBE_WAIT_B4;
+			return REALACC_WLV8TX_STEP_PERIOD;
+		}
+
+		if(realacc_phase == REALACC_WLV8RXPROBE_WAIT_B4)
+		{
+			if(XN297_IsRX())
+			{
+				uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
+				if(len == REALACC_WLV8TX_BIND_PAYLOAD_SIZE && packet_in[0] == REALACC_WLV8TX_CMD_B4)
+				{
+					debug("B4 rx:");
+					for(uint8_t i = 0; i < REALACC_WLV8TX_BIND_PAYLOAD_SIZE; i++) debug(" %02X", packet_in[i]);
+					debugln("");
+					// Restore TX addr for sending B5
+					memcpy(probe_addr, rx_id, 4);
+					probe_addr[3] |= REALACC_WLV8TX_RX_ADDR_FLAG;
+					XN297_SetTXAddr(probe_addr, 4);
+					realacc_phase = REALACC_WLV8RXPROBE_SEND_B5;
+					return REALACC_WLV8TX_STEP_PERIOD;
+				}
+			}
+			if(--bind_counter == 0)
+			{
+				debugln("B4 timeout – restarting from B1");
+				XN297_SetRXAddr((uint8_t *)"MAIN", REALACC_BIND_PAYLOAD_SIZE);
+				XN297_SetTxRxMode(TXRX_OFF);
+				XN297_SetTxRxMode(RX_EN);
+				realacc_phase = REALACC_WLV8RXPROBE_WAIT_B1;
+			}
+			return REALACC_WLV8TX_STEP_PERIOD;
+		}
+
+		if(realacc_phase == REALACC_WLV8RXPROBE_SEND_B5)
+		{
+			XN297_SetTxRxMode(TXRX_OFF);
+			XN297_SetTxRxMode(TX_EN);
+			for(uint8_t i = 0; i < 2; i++)
+			{
+				packet[0] = REALACC_WLV8TX_CMD_B5;
+				packet[1] = REALACC_WLV8RX_PROBE_XOR0;
+				packet[2] = REALACC_WLV8RX_PROBE_XOR1;
+				XN297_WriteEnhancedPayload(packet, REALACC_WLV8TX_RX_PAYLOAD_SIZE, 1);
+				debug("TX B5#%d: %02X %02X %02X", i + 1, packet[0], packet[1], packet[2]);
+				REALACC_wlv8rx_wait_packet_sent();
+				debugln("");
+			}
+			// Dump mode: hop the data channels and log whatever the MT12 TX sends
+			XN297_SetRXAddr(rx_id, REALACC_PAYLOAD_SIZE);
+			hopping_frequency_no = 0;
+			XN297_Hopping(hopping_frequency_no);
+			XN297_SetTxRxMode(TXRX_OFF);
+			XN297_SetTxRxMode(RX_EN);
+			bind_counter = 10;								// hop channel every 10 callbacks
+			debugln("Dump: watching data packets on hopping channels...");
+			realacc_phase = REALACC_WLV8RXPROBE_DUMP;
+			return REALACC_PACKET_PERIOD;
+		}
+
+		if(realacc_phase == REALACC_WLV8RXPROBE_DUMP)
+		{
+			if(XN297_IsRX())
+			{
+				uint8_t len = XN297_ReadEnhancedPayload(packet_in, REALACC_PAYLOAD_SIZE);
+				debug("ch%02X:", hopping_frequency[hopping_frequency_no]);
+				for(uint8_t i = 0; i < len; i++) debug(" %02X", packet_in[i]);
+				debugln("");
+				XN297_SetTxRxMode(RX_EN);					// Re-arm receiver
+			}
+			if(--bind_counter == 0)
+			{
+				bind_counter = 10;
+				hopping_frequency_no = (hopping_frequency_no + 1) % REALACC_RF_NUM_CHANNELS;
+				XN297_Hopping(hopping_frequency_no);
+			}
+			return REALACC_PACKET_PERIOD;
+		}
+#endif // REALACC_WLV8RX_PROBE
+
 		if(realacc_phase == REALACC_WLV8TX_DATA)
 		{
 			XN297_SetTxRxMode(TX_EN);
@@ -235,10 +400,19 @@ void REALACC_init()
 		realacc_wlv8tx_xor_data[0] = 0;
 		realacc_wlv8tx_xor_data[1] = 0;
 		realacc_wlv8tx_got_b3 = false;
+#ifdef REALACC_WLV8RX_PROBE
+		// Probe mode: start as a passive receiver waiting for B1 from the real MT12 TX.
+		// The radio is already configured for ch 80 and "MAIN" address by REALACC_RF_init.
+		XN297_SetRXAddr((uint8_t *)"MAIN", REALACC_BIND_PAYLOAD_SIZE);
+		XN297_SetTxRxMode(RX_EN);
+		realacc_phase = REALACC_WLV8RXPROBE_WAIT_B1;
+		debugln("WLV8RX Probe: XOR=%02X %02X – power on the MT12 TX now", REALACC_WLV8RX_PROBE_XOR0, REALACC_WLV8RX_PROBE_XOR1);
+#else
 		realacc_phase = REALACC_WLV8TX_BIND_TX;
 		memcpy(bind_rx_addr, realacc_bind_packet, 4);
 		bind_rx_addr[3] |= REALACC_WLV8TX_RX_ADDR_FLAG;	// WL-V8Tx listens on TX-ID with bit7 set in 4th byte (index 3)
 		XN297_SetRXAddr(bind_rx_addr, REALACC_WLV8TX_BIND_PAYLOAD_SIZE);
+#endif
 	}
 	else
 		bind_counter=REALACC_BIND_COUNT;
