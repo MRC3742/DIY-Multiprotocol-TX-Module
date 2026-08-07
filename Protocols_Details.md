@@ -1579,15 +1579,18 @@ Please save radio-profile with a new name without setting reset-button in RF8. T
 Find the [Reset21] section and change Input=INT:-1 to Input=INT:9 
 
 ### Sub_protocol SLT6TX - *7*
-Models: Blade Revolution 90 FP helicopter (SLT6 transmitter)
+Models using SLT6 transmitter: Revolution 90 FP heli, HobbyZone Apprentice STOL S 700mm, and others.
+* The complex triple layer output of this sub protocol requires the use of the NRF24L01 chip. Changing the freq tune to any value other than the default "0", upon module restart, will change to the CC2500 module (if installed) and cause intermittent, jerky servo movements.
 
 CH1|CH2|CH3|CH4|CH5|CH6
 ---|---|---|---|---|---
 A|E|T|R|FMODE|PANIC
 
-FMODE: flight mode switch (3-position)
+FMODE: flight mode switch (3-positions available)
+* Revolution 90 FP: (only 2-positions needed) -100% or 0%=stab with alt hold, +100%=stabilized mode
 
-PANIC: panic/recovery button
+PANIC: panic/recovery button, -100%=down (on), +100%=up (off)
+* Revolution 90 FP: Panic not used for this model
 
 ## V911S - *46*
 
