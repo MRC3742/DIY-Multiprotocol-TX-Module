@@ -315,11 +315,6 @@ enum FY326
 	FY326	= 0,
 	FY319	= 1,
 };
-enum FQ777
-{
-	FQ777	= 0,
-	XBM37	= 1,
-};
 enum WK2x01
 {
 	WK2801	= 0,
