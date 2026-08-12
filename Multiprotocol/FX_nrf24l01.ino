@@ -332,7 +332,7 @@ uint16_t FX_callback()
 							packet_period = FX620_PACKET_PERIOD;
 						}
 						else if(sub_protocol >= FX9630)
-						{ // FX9630 & FX_Q560 & FX_QF012
+						{ // FX9630 & FX_Q560 & FX_QF012 & FX_A570
 							XN297_SetTXAddr(rx_tx_addr, 4);
 	#ifdef FX_HUB_TELEMETRY
 							XN297_SetRXAddr(rx_tx_addr, FX_QF012_RX_PAYLOAD_SIZE);

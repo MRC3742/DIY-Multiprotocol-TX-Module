@@ -789,7 +789,10 @@ A|E|T|R|RATE|FLIP|HEADLESS|LED
 
 # CC2500 RF Module
 
-## Ares - *108*
+## ARES - *108*
+Models: ARES RTF Park Flyer Aircraft.
+
+### Sub_protocol 6HPA_Tx - *0*
 Models: ARES Gamma 370, P-51D Mustang 350, RTF models with 6HPA-Tx and AZS12006-Rx (6 channel).
 
 Autobind protocol:
@@ -1483,6 +1486,8 @@ VTX+: -100%->+100% channel+
 
 ## SLT - *11*
 Autobind protocol
+* All SLT subprotococols are operating at a transmission of 250kbps which will originally default to the NRF24L01 module. This sometimes doesn't work well with every NRF24L01, as there are a few reports of hardware issues with the authenticity and accuracy of components.
+* If option (freq tune) is changed from the default "0", then upon module restart the CC2500 module (if installed) will be used instead. Any value other than "0" will also [freq fine tune](/docs/Frequency_Tuning.md) the CC2500 chip.
 
 ### Sub_protocol V1 - *0*
 

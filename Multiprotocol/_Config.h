@@ -224,6 +224,7 @@
 #define	SKYARTEC_CC2500_INO
 #define	REDPINE_CC2500_INO
 #define	RLINK_CC2500_INO
+#define	ARES_CC2500_INO
 
 //The protocols below need a NRF24L01 to be installed
 #define	ASSAN_NRF24L01_INO

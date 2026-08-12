@@ -17,9 +17,9 @@
 // Version
 //******************
 #define VERSION_MAJOR		1
-#define VERSION_MINOR		3
+#define VERSION_MINOR		9
 #define VERSION_REVISION	4
-#define VERSION_PATCH_LEVEL	63
+#define VERSION_PATCH_LEVEL	60
 
 #define MODE_SERIAL 0
 
@@ -315,6 +315,11 @@ enum FY326
 	FY326	= 0,
 	FY319	= 1,
 };
+enum FQ777
+{
+	FQ777	= 0,
+	XBM37	= 1,
+};
 enum WK2x01
 {
 	WK2801	= 0,
@@ -356,6 +361,10 @@ enum HITEC
 	OPT_FW	= 0,
 	OPT_HUB	= 1,
 	MINIMA	= 2,
+};
+enum ARES
+{
+	ARES_6HPA_Tx	= 0,
 };
 enum E01X
 {
@@ -1118,6 +1127,9 @@ Serial: 100000 Baud 8e2      _ xxxx xxxx p --
 		sub_protocol==FY326
 			FY326		0
 			FY319		1
+		sub_protocol==FQ777
+			FQ777		0
+			XBM37		1
 		sub_protocol==WK2x01
 			WK2801		0
 			WK2401		1
