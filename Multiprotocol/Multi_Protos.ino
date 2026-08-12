@@ -236,7 +236,7 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_CONFIG,     STR_CONFIG,    NO_SUBTYPE,            0, OPTION_NONE,    0, 0, 0,         CONFIG_init,     CONFIG_callback     },
 	#endif
 	#if defined(ARES_CC2500_INO)
-		{PROTO_ARES,       STR_ARES,      NO_SUBTYPE,            0, OPTION_RFTUNE,  0, 0, SW_CC2500, ARES_init,       ARES_callback       },
+		{PROTO_ARES,       STR_ARES,      STR_SUBTYPE_ARES,      1, OPTION_RFTUNE,  0, 0, SW_CC2500, ARES_init,       ARES_callback       },
 	#endif
 	#if defined(CG022_LT8910_INO)
 		{PROTO_AOSENMA,    STR_AOSENMA,   STR_SUBTYPE_AOSENMA,   1, OPTION_NONE,    0, 0, 0,         CG022_init,      CG022_callback      },
