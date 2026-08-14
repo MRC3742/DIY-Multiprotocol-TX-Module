@@ -86,11 +86,13 @@
 55,1,FrSkyRX,CloneTX,0
 55,2,FrSkyRX,EraseTX,0
 55,3,FrSkyRX,CPPM,0,CH5,CH6,CH7,CH8,CH9,CH10,CH11,CH12,CH13,CH14,CH15,CH16
-58,0,FX,816,1
-58,1,FX,620,1
+58,0,FX,FX816,1
+58,1,FX,FX620,1
 58,2,FX,9630,1,Rate,Gyro,TrimR,TrimA,TrimE
 58,3,FX,Q560,1,FLIP,Gyro,LEDs
 58,4,FX,QF012,1,FLIP,Gyro,Invert,Reset
+58,5,FX,BM26,1,FLIP,Gyro,LEDs,LED,CALIB
+58,6,FX,A570,1,STOP,Rate,Color,LED,TrimR,TrimA,TrimE
 20,0,FY326,FY326,1,Flip,RTH,HLess,Expert,Calib
 20,1,FY326,FY319,1,Flip,RTH,HLess,Expert,Calib
 23,0,FQ777,124,1,Flip,RTH,HLess,Expert
@@ -111,7 +113,7 @@
 26,1,Hontai,JJRCX1,1,Flip,Arm,Pict,Video,HLess,RTH,Calib
 26,2,Hontai,X5C1,1,Flip,Arm,Pict,Video,HLess,RTH,Calib
 26,3,Hontai,FQ777_951,1,Flip,Arm,Pict,Video,HLess,RTH,Calib
-26,4,Hontai,XKK170,1,Rate,Emerg,TakLan,Calib,TrimA,TrimE
+26,4,Hontai,XKK170,1,Rate,Emerg,TakLan,Calib,TrimA,TrimE,Optic
 57,0,HoTT,Sync,0,CH5,CH6,CH7,CH8,CH9,CH10,CH11,CH12,CH13,CH14,CH15,CH16
 57,1,HoTT,No_Sync,0,CH5,CH6,CH7,CH8,CH9,CH10,CH11,CH12,CH13,CH14,CH15,CH16
 2,0,Hubsan,H107,1,Flip,Light,Pict,Video,HLess
@@ -120,7 +122,7 @@
 22,0,J6Pro,Std,0,CH5,CH6,CH7,CH8,CH9,CH10,CH11,CH12
 71,0,JJRC345,JJRC345,1,Flip,HLess,RTH,LED,UNK1,UNK2,UNK3
 71,1,JJRC345,SkyTmblr,1,Flip,HLess,RTH,LED,UNK1,UNK2,UNK3
-49,0,KF606,KF606,1,Trim
+49,0,KF606,KF606,1,Trim,LED
 49,1,KF606,MIG320,1,Trim,LED
 49,2,KF606,ZCZ50,1,Trim,UNK
 9,0,KN,WLToys,0,DRate,THold,IdleUp,Gyro,Ttrim,Atrim,Etrim,Rtrim,Hover
@@ -161,9 +163,11 @@
 72,0,Q90C,Std,0,FMode,VTX+
 74,0,RadioLink,Surface,0,CH5,CH6,CH7,CH8,FS_CH1,FS_CH2,FS_CH3,FS_CH4,FS_CH5,FS_CH6,FS_CH7,FS_CH8
 74,1,RadioLink,Air,0,CH5,CH6,CH7,CH8,FS_CH1,FS_CH2,FS_CH3,FS_CH4,FS_CH5,FS_CH6,FS_CH7,FS_CH8
-74,2,RadioLink,DumboRC,0,CH5,CH6,CH7,CH8,FS_CH1,FS_CH2,FS_CH3,FS_CH4,FS_CH5,FS_CH6,FS_CH7,FS_CH8
+74,2,RadioLink,DumboRC,0,CH5,CH6,CH7,CH8GY,CH9,CH10,n-a,n-a,n-a,n-a,n-a,n-a
 74,3,RadioLink,RC4G,0,CH5,FS_CH1,FS_CH2,FS_CH3,FS_CH4
-76,0,Realacc,Std,1,Flip,Light,Calib,HLess,RTH,ThCut,Rotat
+74,4,RadioLink,Dumbo_P,0,CH5,CH6,CH7,CH8GY,CH9,CH10,n-a,n-a,n-a,n-a,n-a,n-a
+76,0,Realacc,R11,1,Flip,Light,Calib,HLess,RTH,ThCut,Rotat
+76,1,Realacc,WLV8TX,0,ST_Tr
 50,0,Redpine,Fast,0,sCH5,sCH6,sCH7,sCH8,sCH9,sCH10,sCH11,sCH12,sCH13,sCH14,sCH15,sCH16
 50,1,Redpine,Slow,0,sCH5,sCH6,sCH7,sCH8,sCH9,sCH10,sCH11,sCH12,sCH13,sCH14,sCH15,sCH16
 21,0,Futaba,SFHSS,0,CH5,CH6,CH7,CH8
@@ -198,8 +202,8 @@
 62,0,XK,X450,1,FMode,TakeOf,Emerg,3D_6G,Pict,Video
 62,1,XK,X420,1,FMode,TakeOf,Emerg,3D_6G,Pict,Video,Flip,Light
 62,2,XK,Cars,0,FMode,TakeOf,Emerg,3D_6G,Pict,Video,Flip,Light
-99,0,XK2,X4,0,Rate,Mode,Hover,Light
-99,1,XK2,P10,0,Rate,Mode,Hover,Light
+99,0,XK2,X4,0,Rate,Mode,Hover,Light,Stunt
+99,1,XK2,P10,0,Rate,Mode,Hover,Light,Stunt
 8,0,YD717,Std,1,Flip,Light,Pict,Video,HLess
 8,1,YD717,SkyWlkr,1,Flip,Light,Pict,Video,HLess
 8,2,YD717,Simax4,1,Flip,Light,Pict,Video,HLess
@@ -237,4 +241,5 @@
 104,0,KAMTOM,Std,0,ST_Tr,TH_Tr,TH_DR
 105,0,Shenqi2,Std,1
 106,0,WL91x,Std,0
+107,0,WPL,Std,0,Light,TH_DR,ST_DR
 108,0,Ares,6HPA_Tx,0,CH5,CH6

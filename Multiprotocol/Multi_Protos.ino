@@ -141,7 +141,7 @@ const char STR_SUBTYPE_DEVO[] =       "\x04""8ch\0""10ch""12ch""6ch\0""7ch\0";
 const char STR_SUBTYPE_YD717[] =      "\x07""Std\0   ""SkyWlkr""Syma X4""XINXUN\0""NIHUI\0 ";
 const char STR_SUBTYPE_KN[] =         "\x06""WLtoys""FeiLun";
 const char STR_SUBTYPE_SYMAX[] =      "\x03""Std""X5C";
-const char STR_SUBTYPE_SLT[] =        "\x07""V1_6ch\0""V2_8ch\0""Q100\0  ""Q200\0  ""MR100\0 ""V1_4ch\0""RF_SIM\0""SLT6_Tx";
+const char STR_SUBTYPE_SLT[] =        "\x06""V1_6ch""V2_8ch""Q100\0 ""Q200\0 ""MR100\0""V1_4ch""RF_SIM""SLT6TX";
 const char STR_SUBTYPE_CX10[] =       "\x07""Green\0 ""Blue\0  ""DM007\0 ""-\0     ""JC3015a""JC3015b""MK33041";
 const char STR_SUBTYPE_CG023[] =      "\x05""Std\0 ""YD829";
 const char STR_SUBTYPE_BAYANG[] =     "\x07""Std\0   ""H8S3D\0 ""X16 AH\0""IRDrone""DHD D4\0""QX100\0 ";
@@ -149,7 +149,7 @@ const char STR_SUBTYPE_MT99[] =       "\x06""MT99\0 ""H7\0   ""YZ\0   ""LS\0   "
 const char STR_SUBTYPE_MT992[] =      "\x04""PA18""SU35";
 const char STR_SUBTYPE_MJXQ[] =       "\x07""WLH08\0 ""X600\0  ""X800\0  ""H26D\0  ""E010\0  ""H26WH\0 ""Phoenix";
 const char STR_SUBTYPE_FY326[] =      "\x05""Std\0 ""FY319";
-const char STR_SUBTYPE_FQ777[] =      "\x06""124\0  ""XBM-37";
+const char STR_SUBTYPE_FQ777[] =      "\x05""124\0 ""XBM37";
 const char STR_SUBTYPE_HONTAI[] =     "\x06""Std\0  ""JJRCX1""X5C1\0 ""FQ_951""XKK170";
 const char STR_SUBTYPE_AFHDS2A[] =    "\x08""PWM,IBUS""PPM,IBUS""PWM,SBUS""PPM,SBUS""Gyro_Off""Gyro_On\0""G_On_Rev";
 const char STR_SUBTYPE_Q2X2[] =       "\x04""Q222""Q242""Q282";
@@ -182,7 +182,8 @@ const char STR_SUBTYPE_WFLY2[] =      "\x05""RF20x";
 const char STR_SUBTYPE_HOTT[] =       "\x07""Sync\0  ""No_Sync";
 const char STR_SUBTYPE_PELIKAN[] =    "\x05""Pro\0 ""Lite\0""SCX24";
 const char STR_SUBTYPE_V761[] =       "\x05""3ch\0 ""4ch\0 ""TOPRC";
-const char STR_SUBTYPE_RLINK[] =      "\x07""Surface""Air\0   ""DumboRC""RC4G\0  ";
+const char STR_SUBTYPE_RLINK[] =      "\x07""Surface""Air\0   ""DumboRC""RC4G\0  ""Dumbo_P";
+const char STR_SUBTYPE_REALACC[] =    "\x06""R11\0  ""WLV8TX";
 const char STR_SUBTYPE_KYOSHO[] =     "\x04""FHSS""Hype";
 const char STR_SUBTYPE_KYOSHO2[] =    "\x05""KT-17";
 const char STR_SUBTYPE_KYOSHO3[] =    "\x03""ASF";
@@ -191,7 +192,7 @@ const char STR_SUBTYPE_JJRC345[] =    "\x08""JJRC345\0""SkyTmblr";
 const char STR_SUBTYPE_MOULDKG[] =    "\x05""A4444""D4444""A664\0";
 const char STR_SUBTYPE_KF606[] =      "\x06""KF606\0""MIG320""ZCZ50\0";
 const char STR_SUBTYPE_E129[] =       "\x04""E129""C186";
-const char STR_SUBTYPE_FX[] =         "\x05""816\0 ""620\0 ""9630\0""Q560\0""QF012""A570\0";
+const char STR_SUBTYPE_FX[] =         "\x05""FX816""FX620""9630\0""Q560\0""QF012""BM26\0""A570\0";
 const char STR_SUBTYPE_SGF22[] =      "\x04""F22\0""F22S""J20\0""CX10";
 const char STR_SUBTYPE_JIABAILE[] =   "\x04""Std\0""Gyro";
 const char STR_SUBTYPE_ARES[] =       "\x07""6HPA_Tx";
@@ -356,7 +357,7 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_FUTABA,     STR_FUTABA,    STR_SUBTYPE_FUTABA,    1, OPTION_RFTUNE,  1, 1, SW_CC2500, SFHSS_init,      SFHSS_callback      },
 	#endif
 	#if defined(FX_NRF24L01_INO)
-		{PROTO_FX,         STR_FX,        STR_SUBTYPE_FX,        6, OPTION_NONE,    0, 0, SW_NRF,    FX_init,         FX_callback         },
+		{PROTO_FX,         STR_FX,        STR_SUBTYPE_FX,        7, OPTION_NONE,    0, 0, SW_NRF,    FX_init,         FX_callback         },
 	#endif
 	#if defined(FY326_NRF24L01_INO)
 		{PROTO_FY326,      STR_FY326,     STR_SUBTYPE_FY326,     2, OPTION_NONE,    0, 0, SW_NRF,    FY326_init,      FY326_callback      },
@@ -470,10 +471,10 @@ const mm_protocol_definition multi_protocols[] = {
 		{PROTO_Q90C,       STR_Q90C,      NO_SUBTYPE,            0, OPTION_RFTUNE,  0, 0, SW_NRF,    Q90C_init,       Q90C_callback       },
 	#endif
 	#if defined(RLINK_CC2500_INO)
-		{PROTO_RLINK,      STR_RLINK,     STR_SUBTYPE_RLINK,     4, OPTION_RFTUNE,  0, 0, SW_CC2500, RLINK_init,      RLINK_callback      },
+		{PROTO_RLINK,      STR_RLINK,     STR_SUBTYPE_RLINK,     5, OPTION_RFTUNE,  0, 0, SW_CC2500, RLINK_init,      RLINK_callback      },
 	#endif
 	#if defined(REALACC_NRF24L01_INO)
-		{PROTO_REALACC,    STR_REALACC,   NO_SUBTYPE,            0, OPTION_NONE,    0, 0, SW_NRF,    REALACC_init,    REALACC_callback    },
+		{PROTO_REALACC,    STR_REALACC,   STR_SUBTYPE_REALACC,   2, OPTION_NONE,    0, 0, SW_NRF,    REALACC_init,    REALACC_callback    },
 	#endif
 	#if defined(REDPINE_CC2500_INO)
 		{PROTO_REDPINE,    STR_REDPINE,   STR_SUBTYPE_REDPINE,   2, OPTION_RFTUNE,  0, 0, SW_CC2500, REDPINE_init,    REDPINE_callback    },

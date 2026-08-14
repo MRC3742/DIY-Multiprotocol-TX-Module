@@ -82,7 +82,7 @@ enum {
 
 static void __attribute__((unused)) SLT_RF_init()
 {
-	XN297_Configure(XN297_CRCEN, XN297_SCRAMBLED, XN297_250K, option == 0);	// SLT: option==0 uses NRF24L01, option!=0 uses CC2500 with freq tuning
+	NRF250K_Init(option == 0);	// SLT: option==0 uses NRF24L01, option!=0 uses CC2500 with freq tuning
 	NRF250K_SetTXAddr(rx_tx_addr, SLT_TXID_SIZE);
 }
 
@@ -177,8 +177,6 @@ static void __attribute__((unused)) SLT_build_packet()
 	// 8-bit channels
 	packet[5] = convert_channel_8b(CH5);
 	packet[6] = convert_channel_8b(CH6);
-
-	//->V1 stops here
 
 	if(sub_protocol == Q200)
 		packet[6] =  GET_FLAG(CH9_SW , FLAG_Q200_FMODE)
@@ -351,7 +349,7 @@ static uint16_t __attribute__((unused)) SLT6_callback()
 uint16_t SLT_callback()
 {
 	// SLT6 has its own state machine
-	if(sub_protocol == SLT6_Tx)
+	if(sub_protocol == SLT6TX)
 		return SLT6_callback();
 
 	switch (phase)
@@ -453,7 +451,7 @@ void SLT_init()
 	packet_sent = 0;
 	hopping_frequency_no = 0;
 
-	if(sub_protocol == SLT6_Tx)
+	if(sub_protocol == SLT6TX)
 	{
 		hopping_frequency_no = 1;	// SLT6 starts hopping at index 1 (verified from captures)
 		// packet_length not used for SLT6 (lengths vary per sub-cycle)
@@ -535,7 +533,7 @@ void SLT_init()
 	SLT_RF_init();
 	SLT_set_freq();
 
-	if(sub_protocol == SLT6_Tx)
+	if(sub_protocol == SLT6TX)
 		phase = SLT6_BUILD_A;
 	else
 		phase = SLT_BUILD;

@@ -20,7 +20,7 @@
 
 //#define ARES_FORCE_ID
 
-#define ARES_COARSE			0
+#define ARES_COARSE				0
 
 #define ARES_PACKET_LEN			17
 #define ARES_NUM_FREQUENCIES	60

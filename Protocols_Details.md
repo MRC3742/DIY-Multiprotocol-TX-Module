@@ -92,7 +92,7 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [Flysky](Protocols_Details.md#FLYSKY---1)||1|Flysky|V9x9|V6x6|V912|CX20||||A7105|
 [Flysky AFHDS2A](Protocols_Details.md#FLYSKY-AFHDS2A---28)||28|PWM_IBUS|PPM_IBUS|PWM_SBUS|PPM_SBUS|Gyro_Off|Gyro_On|Gyro_On_Rev||A7105|
 [Flysky AFHDS2A RX](Protocols_Details.md#FLYSKY-AFHDS2A-RX---56)||56|Multi|CPPM|||||||A7105|
-[FQ777](Protocols_Details.md#FQ777---23)||23|124|XBM-37|||||||NRF24L01|SSV7241
+[FQ777](Protocols_Details.md#FQ777---23)||23|124|XBM37|||||||NRF24L01|SSV7241
 [FrskyD](Protocols_Details.md#FRSKYD---3)||3|D8|Cloned|||||||CC2500|
 [FrskyL](Protocols_Details.md#FRSKYL---67)||67|LR12|LR12 6CH|||||||CC2500|
 [FrskyR9](Protocols_Details.md#FRSKYR9---65)||65|FrskyR9|R9_915|R9_868||||||SX1276|
@@ -101,7 +101,7 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [FrskyX2](Protocols_Details.md#FRSKYX2---64)||64|CH_16|CH_8|EU_16|EU_8|Cloned|Cloned_8|||CC2500|
 [Frsky_RX](Protocols_Details.md#FRSKY_RX---55)||55|Multi|CloneTX|EraseTX|CPPM|||||CC2500|
 [Futaba/SFHSS](Protocols_Details.md#Futaba---21)||21|SFHSS||||||||CC2500|
-[FX](Protocols_Details.md#FX---58)||28|816|620|9630|Q560|QF012|A570|||NRF24L01|
+[FX](Protocols_Details.md#FX---58)||58|FX816|FX620|9630|Q560|QF012|BM26|A570||NRF24L01|
 [FY326](Protocols_Details.md#FY326---20)||20|FY326|FY319|||||||NRF24L01|
 [GD00X](Protocols_Details.md#GD00X---47)||47|GD_V1*|GD_V2*|||||||NRF24L01|XN297L
 [GW008](Protocols_Details.md#GW008---32)||32|||||||||NRF24L01|XN297
@@ -139,8 +139,8 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [Q2X2](Protocols_Details.md#Q2X2---29)||29|Q222|Q242|Q282||||||NRF24L01|
 [Q303](Protocols_Details.md#Q303---31)||31|Q303|CX35|CX10D|CX10WD|||||NRF24L01|XN297
 [Q90C](Protocols_Details.md#Q90C---72)||72|Q90C*||||||||NRF24L01|XN297
-[RadioLink](Protocols_Details.md#RadioLink---74)||74|Surface|Air|DumboRC|RC4G|||||CC2500|
-[Realacc](Protocols_Details.md#Realacc---76)||76|R11||||||||NRF24L01|
+[RadioLink](Protocols_Details.md#RadioLink---74)||74|Surface|Air|DumboRC|RC4G|Dumbo_P||||CC2500|
+[Realacc](Protocols_Details.md#Realacc---76)||76|R11|WLV8TX|||||||NRF24L01|
 [Redpine](Protocols_Details.md#Redpine---50)||50|FAST|SLOW|||||||NRF24L01|XN297
 [Scanner](Protocols_Details.md#Scanner---54)||54|||||||||CC2500|
 [Scorpio](Protocols_Details.md#Scorpio---94)||94|||||||||CYRF6936|
@@ -148,7 +148,7 @@ CFlie|AIR|38|CFlie||||||||NRF24L01|
 [Shenqi](Protocols_Details.md#Shenqi---19)||19|Shenqi||||||||NRF24L01|LT8900
 [Shenqi2](Protocols_Details.md#Shenqi2---105)||105|Shenqi2||||||||NRF24L01|XN297
 [Skyartec](Protocols_Details.md#Skyartec---68)||68|||||||||CC2500|CC2500
-[SLT](Protocols_Details.md#SLT---11)||11|SLT_V1*|SLT_V2*|Q100*|Q200*|MR100*|V1_4CH*|RF_SIM*|SLT6_Tx*|NRF24L01|CC2500
+[SLT](Protocols_Details.md#SLT---11)||11|SLT_V1|SLT_V2|Q100|Q200|MR100|V1_4CH|RF_SIM|SLT6TX|NRF24L01|CC2500
 [SymaX](Protocols_Details.md#Symax---10)||10|SYMAX|SYMAX5C|||||||NRF24L01|
 [Traxxas](Protocols_Details.md#Traxxas---43)||43|TQ2|TQ1|||||||CYRF6936|
 [V2x2](Protocols_Details.md#V2X2---5)||5|V2x2|JXD506|MR101||||||NRF24L01|
@@ -239,21 +239,21 @@ Option is used to change the servo refresh rate. A value of 0 gives 50Hz (min), 
 ### Sub_protocol PWM_IBUS - *0*
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|CH17
 ---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
-A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14CH15|CH16|LQI
+A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|LQI
 
 RX output will match the Flysky standard AETR.
 
 ### Sub_protocol PPM_IBUS - *1*
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|CH17
 ---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
-A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14CH15|CH16|LQI
+A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|LQI
 
 RX output will match the Flysky standard AETR.
 
 ### Sub_protocol PWM_SBUS - *2*
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|CH17
 ---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---
-A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14CH15|CH16|LQI
+A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16|LQI
 
 RX output will match the Flysky standard AETR.
 
@@ -541,9 +541,9 @@ Extended limits supported
 
 Telemetry enabled for TSSI and plugins
 
-CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|----|CH14
----|---|---|---|---|---|---|---|---|----|----|----|----|----
-A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|----|TH_KILL
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14|CH15|CH16
+---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----
+A|E|T|R|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14/TH_KILL|CH15|CH16
 
 Notes:
  - The "AUTO" sub protocol is recommended to automatically select the best settings for your DSM RX. If the RX doesn't bind or work properly after bind, don't hesitate to test different combinations of sub protocol and number of channels until you have something working.
@@ -553,6 +553,7 @@ Notes:
     - If you want to override the above and get maximum throw either uncomment in _config.h the line #define DSM_MAX_THROW or on OpenTX 2.3.3+ use the "Enable max throw" feature on the GUI (0=No,1=Yes). In this mode to achieve standard throw use a channel weight of 84%.
  - TH_KILL is a feature which is enabled on channel 14 by default (can be disabled/changed) in the _config.h file. Some models (X-Vert, Blade 230S...) require a special position to instant stop the motor(s). If the channel 14 is above -50% the throttle is untouched but if it is between -50% and -100%, the throttle output will be forced between -100% and -150%. For example, a value of -80% applied on channel 14 will instantly kill the motors on the X-Vert.
  - To allow SAFE to be ON with a switch assignment you must remove the bind plug after powering up the RX but before turning on the TX to bind. If you select Autodetect to bind, The MPM will choose DSMX 11ms and Channels 1-7 ( Change to 1-9 if you wish to assign switch above channel 7 ). Then in order to use the manuals diagram of both sticks "Down-Inside" to set a SAFE Select Switch Designation, you must have Throttle and Elevator channels set to Normal direction but the Aileron and Rudder set to Reverse direction. If setting up a new model with all channels set to Normal you can hold both sticks "Down- OUTSIDE" to assign the switch with 5x flips. Tested on a Mode2 radio.
+ - Channels 13/14/15/16 are using XPlus with TH_KILL disabled. They are available when the number of channels selected on the TX is more than 12.
  
 Option=number of channels from 3 to 12. Option|0x80 enables Max Throw. Option|0x40 enables a servo refresh rate of 11ms.
 
@@ -1112,7 +1113,21 @@ Air protocol. TXs: T8FB,T8S. Compatible RXs: R8EF,R8FM,R8SM,R4FG,R4F
 Telemetry: RX_RSSI (for the original value add -256), TX_RSSI, TX_QLY (0..100%)
 
 ### Sub_protocol DumboRC - *2*
-Compatible RXs: X6/X6F/X6FG
+Compatible RXs:
+* X6/X6F/X6FG/X6DC/X6DCG/X10F/X10FG (Other X Series should work as well)
+* P6F/P6FG/P6DC/P6DCG/P6FP/P10F/P10FG (Other P Series should work as well)
+
+For P series specific features, see subprotocol 4 below.
+
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10
+---|---|---|---|---|---|---|---|---|----
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8/Gyro gain|CH9|CH10
+
+Telemetry:
+* RX_RSSI uses the receiver's direct percentage when available
+* TX_RSSI is the module-side received RSSI
+* TX_QLY is 0..100%
+* A2=external battery voltage in 0.1V units (set the ratio to 25.5 and adjust with offset)
 
 ### Sub_protocol RC4G - *3*
 Compatible RXs: R4EH-G(/R4EH-H)
@@ -1124,6 +1139,21 @@ CH1|CH2|CH3|CH4|CH5|FS_CH1|FS_CH2|FS_CH3|FS_CH4
 FS=FailSafe
 
 CH5 is driven by CH3 on the original TX, gyro sensitivity?
+
+### Sub_protocol Dumbo_P - *4*
+Compatible RXs: P6F/P6FG/P6DC/P6DCG/P6FP/P10F/P10FG (Other P Series should work as well)
+
+P series supports configuring receiver from transmitter. Originally, this logic appeared on DumboRC DDF-350 transmitter in 1.1.5 firmware version.
+
+You can adjust these settings by using "DumboRC P Series.lua" script.
+
+Settings include:
+* gyro on/off
+* gyro phase
+* gyro tuning
+* gyro gain channel
+* setting gyro endpoints
+* setting failsafe values
 
 ## Futaba - *21*
 Also called SFHSS depending on radio version.
@@ -1193,9 +1223,9 @@ New generation of GD models
 ### Sub_protocol KF606 - *0*
 Model: KF606
 
-CH1|CH2|CH3|CH4|CH5
----|---|---|---|---
-A||T||TRIM
+CH1|CH2|CH3|CH4|CH5|CH6
+---|---|---|---|---|---
+A||T||TRIM|LED
 
 ### Sub_protocol MIG320 - *1*
 Model: Zhiyang MIG-320
@@ -1553,8 +1583,8 @@ Please save radio-profile with a new name without setting reset-button in RF8. T
 
 Find the [Reset21] section and change Input=INT:-1 to Input=INT:9 
 
-### Sub_protocol SLT6_Tx - *7*
-Models using SLT6 transmitter:  Revolution 90 FP heli, and others.
+### Sub_protocol SLT6TX - *7*
+Models using SLT6 transmitter: Revolution 90 FP heli, HobbyZone Apprentice STOL S 700mm, and others.
 * The complex triple layer output of this sub protocol requires the use of the NRF24L01 chip. Changing the freq tune to any value other than the default "0", upon module restart, will change to the CC2500 module (if installed) and cause intermittent, jerky servo movements.
 
 CH1|CH2|CH3|CH4|CH5|CH6
@@ -1565,8 +1595,7 @@ FMODE: flight mode switch (3-positions available)
 * Revolution 90 FP: (only 2-positions needed) -100% or 0%=stab with alt hold, +100%=stabilized mode
 
 PANIC: panic/recovery button, -100%=down (on), +100%=up (off)
-* Revolution 90 FP: not used for this model
-
+* Revolution 90 FP: Panic not used for this model
 
 ## V911S - *46*
 
@@ -1639,20 +1668,24 @@ If a CC2500 is installed it will be used for this sub protocol. Option in this c
 
 If only a NRF24L01 is installed then this sub protocol might be problematic because it is using the xn297L emulation with a transmission speed of 250kbps which doesn't work very well with every NRF24L01, this is an hardware issue with the authenticity and accuracy of the components.
 
-CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8
----|---|---|---|---|---|---|---
-A|E|T|R|Rate|Mode|Hover|Light
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
+---|---|---|---|---|---|---|---|---
+A|E|T|R|Rate|Mode|Hover|Light|Stunt
 
 The plane does not need to be bound each time if it is powered on **after** the radio/protocol is on.
 
-Telemetry is supported. The plane sends a battery status of good->empty which is visible in A1 (good=8.4V->empty=7.1V) and RSSI gets a dummy value of 100.
+Telemetry is supported. The plane sends a battery status of good->empty which is visible in A1 (good=8.4V->empty=7.1V) and RSSI gets a dummy value of 100. For the Sky Viper Vector, the battery telemetry will still appear  in A1 with good=8.4V->empty=7.1V despite being a 1S plane with a switch good/bad in reality at 3.3V.
 
 The rudder trim is driven from the rudder channel to increase the range (Original TX rudder has no range once the motor has been turned on...).
 
 Mode: -100%=6G, 0%=3D, +100%=Gyro off (Senior mode)
 
+Stunt: Sky Viper Vector
+
 ### Sub_protocol X4 - *0*
 Transmitter: XK X4-A160, X5S, model: XK A160S, XK A280, XK A300
+
+Model: Sky Viper Vector
 
 ### Sub_protocol P10 - *1*
 Model: Park10 J3-CUB
@@ -1904,7 +1937,7 @@ FMODE and AUX7 have 4 positions: -100%..-50%=>0, -50%..5%=>1, 5%..50%=>2, 50%..1
 ## FX - *58*
 FEI XIONG
 
-### Sub_protocol 816 - *0*
+### Sub_protocol FX816 - *0*
 Model: FX816 P38, B17
 
 Only 8 TX IDs available
@@ -1913,7 +1946,7 @@ CH1|CH2|CH3|CH4
 ---|---|---|---
 A|-|T|-
 
-### Sub_protocol 620 - *1*
+### Sub_protocol FX620 - *1*
 Model: FX620 SU35
 
 CH1|CH2|CH3|CH4
@@ -1932,7 +1965,7 @@ FX9630 and FX9603 Gyro: -100%=6G small throw, 0%=6G large throw, +100%=3D
 QIDI-550 Gyro: -100%=3D, 0%=6G, +100%=Torque
 
 ### Sub_protocol Q560 - *3*
-Model: QIDI-560
+Model: QIDI-560, QIDI-580, QIDI-590
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7
 ---|---|---|---|---|---|---
@@ -1940,7 +1973,8 @@ A|E|T|R|FLIP|GYRO|LEDs
 
 FLIP is a toggle channel meaning that -100% to +100% is a command and +100% to -100% is also a command
 
-Gyro: -100%=6G, 0%=3D+Gyro, +100%=3D
+- GYRO QIDI-560: -100%=6G, 0%=3D+Gyro, +100%=3D
+- GYRO QIDI-580: -100%=6G, 0%=6G+Inverted, +100%=3D+Gyro
 
 ### Sub_protocol QF012 - *4*
 Model: QF012 SBD Dauntless
@@ -1955,7 +1989,18 @@ Gyro: -100%=6G, 0%=3D+Gyro, +100%=3D
 
 Reset: Restore fine tunning midpoint
 
-### Sub_protocol A570 - *5*
+### Sub_protocol BM26 - *5*
+Model: BM26 P51
+
+Telemetry supported. The plane sends a battery status of good->empty which is visible in A1 (good=4.2V->empty=3.1V) and RSSI gets a dummy value of 100.
+
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9
+---|---|---|---|---|---|---|---|---
+A|E|T|R|FLIP|GYRO|LEDs|Turning Light switch|Calib
+
+Gyro: -100%=6G, 0%=3D+Gyro, +100%=3D
+
+### Sub_protocol A570 - *6*
 VTOL Model: Kootai A570, QIDI-570
 
 This model has no telemetry. Low battery indicated by model LED's turning flashing red.
@@ -1996,7 +2041,7 @@ CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8
 ---|---|---|---|---|---|---|---
 A|E|T|R|FLIP|RTH|HEADLESS|EXPERT
 
-### Sub_protocol XBM-37 - *1*
+### Sub_protocol XBM37 - *1*
 Model: T-Smart XBM-37 (with SV7241A)
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11|CH12|CH13|CH14
@@ -2104,13 +2149,15 @@ ARM|
 
 ### Sub_protocol XKK170 - *3*
 
-Model: XK K170 UH-60L Black hawk
+Model: XK K170 UH-60L Black hawk, XK K270 UH-60L
 
-CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10
----|---|---|---|---|---|---|---|---|---
-A|E|T|R|RATE|EMERGENCY|TAKE_OFF/LANDING|CALIB|TrimA|TrimE
+CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11
+---|---|---|---|---|---|---|---|---|---|---
+A|E|T|R|RATE|EMERGENCY|TAKE_OFF/LANDING|CALIB|TrimA|TrimE|Optical
 
 RATE: -100% Low, 0% Mid, +100% High
+
+Optic: enable/disable the optical flow sensor for K270
 
 ## JIABAILE - *102*
 
@@ -2319,13 +2366,30 @@ A|E|T|R|FLIP|LED|PICTURE|VIDEO|HEADLESS|RTH|XCAL|YCAL
 Model: JXD 509 is using Q282 with CH12=Start/Stop motors
 
 ## Realacc - *76*
-Model: Realacc R11, Eachine E017
 
 Autobind protocol
+
+### Sub_protocol R11 - *0*
+
+Models: Realacc R11, Eachine E017
 
 CH1|CH2|CH3|CH4|CH5|CH6|CH7|CH8|CH9|CH10|CH11
 ---|---|---|---|---|---|---|---|---|----|----
 A|E|T|R|FLIP|LIGHT|CALIB|HLESS|RTH|THR_CUT|ROTATE
+
+### Sub_protocol WLV8TX - *1*
+
+Models: WLtoys 284019A, 284191, Cars using V8 Transmitter
+
+CH1|CH2|CH3|CH4|CH5
+---|---|---|---|---
+Steering|Throttle|GY_TRIM|TH_TRIM|ST_TRIM
+
+GY TRIM: (Rate) -100% Min, +100% Max, variable/set up on a adj. pot.
+
+TH TRIM: (Rate) -100% Min, +100% Max, variable/set up on a adj. pot.
+
+ST TRIM: -100% Left, +100% Right, variable/shouldn't be needed? CH1 trim on steering is available on most radios.
 
 ## Redpine - *50*
 [Link to the forum](https://www.rcgroups.com/forums/showthread.php?3236043-Redpine-Lowest-latency-RC-protocol)
