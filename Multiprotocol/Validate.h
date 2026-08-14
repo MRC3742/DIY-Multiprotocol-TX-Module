@@ -422,7 +422,7 @@
 	// Save flash space...
 	#undef	BUMBLEB_CCNRF_INO
 	#undef	CABELL_NRF24L01_INO
-	#undef	FQ777_NRF24L01_INO
+	//#undef	FQ777_NRF24L01_INO
 	#undef	NCC1701_NRF24L01_INO
 	#undef	Q303_CCNRF_INO
 	#undef	Q90C_CCNRF_INO
