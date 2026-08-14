@@ -261,8 +261,8 @@ static void __attribute__((unused)) SLT6_configure_radio(uint8_t addr_xor, uint8
 static void __attribute__((unused)) SLT_send_bind_packet()
 {
 	SLT_wait_radio();
-	if(phase == SLT_BIND2)
-		NRF250K_Hopping(SLT_NFREQCHANNELS);	//Bind channel for BIND2 only
+	if(phase == SLT_BIND2 || phase == SLT6_BIND)
+		NRF250K_Hopping(SLT_NFREQCHANNELS);	//Bind channel for BIND2 and SLT6 BIND
 	BIND_IN_PROGRESS;					//Limit TX power to bind level
 	NRF250K_SetPower();
 	BIND_DONE;
