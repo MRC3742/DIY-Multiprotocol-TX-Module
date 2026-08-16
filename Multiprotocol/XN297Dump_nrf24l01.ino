@@ -809,11 +809,11 @@ static uint16_t XN297Dump_callback()
 			if(phase==0)
 			{
 				// Use configuration defines or RX_num for address selection
-				address_length = CC2500_DUMP_ADDR_LEN;
 				
 				// If not in RAW mode, use RX_num to select predefined addresses
 				if(CC2500_DUMP_RAW_MODE == 0 && RX_num < 8)
 				{
+					// Filtered mode always uses 5-byte addresses for predefined addresses
 					address_length=5;
 					switch(RX_num)
 					{
@@ -976,7 +976,6 @@ static uint16_t XN297Dump_callback()
 					if(ok)
 					{
 						// Build output with metadata
-						debug("[");
 						#if CC2500_DUMP_SHOW_TIMESTAMP
 							XN297Dump_overflow();
 							uint16_t timeL=TCNT1;
@@ -986,10 +985,10 @@ static uint16_t XN297Dump_callback()
 								timeL=0;
 							}
 							uint32_t timestamp = (timeH<<16)+timeL;
-							debug("T:%luus", timestamp>>1);
+							debug("[T:%luus]", timestamp>>1);
 						#endif
 						
-						debug("][CH:%d", hopping_frequency_no);
+						debug("[CH:%d", hopping_frequency_no);
 						
 						#if CC2500_DUMP_SHOW_RSSI
 							debug("][RSSI:%ddBm", rssi_dbm);
@@ -999,7 +998,8 @@ static uint16_t XN297Dump_callback()
 							debug("][LQI:%d", lqi & 0x7F);
 						#endif
 						
-						debug("] PKT:");
+						debug("]");
+						debug(" PKT:");
 						for(uint8_t i=0;i<packet_length;i++)
 							debug(" %02X",packet[i]);
 						debugln("");

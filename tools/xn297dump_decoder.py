@@ -27,8 +27,10 @@ class PacketParser:
     
     # Regex pattern to match packet output format:
     # [T:12345us][CH:54][RSSI:-45dBm][LQI:80] PKT: 01 02 03 ... FF
+    # [CH:54][RSSI:-45dBm][LQI:80] PKT: 01 02 03 ... FF (no timestamp)
+    # [CH:54] PKT: 01 02 03 ... FF (minimal)
     PACKET_PATTERN = re.compile(
-        r'\[(?:T:(?P<timestamp>\d+)us)?\]?'
+        r'(?:\[T:(?P<timestamp>\d+)us\])?'
         r'\[CH:(?P<channel>\d+)\]'
         r'(?:\[RSSI:(?P<rssi>-?\d+)dBm\])?'
         r'(?:\[LQI:(?P<lqi>\d+)\])?\s+'
@@ -274,11 +276,11 @@ def print_packet(packet, index=None):
     prefix = f"[{index:04d}] " if index is not None else ""
     
     print(f"{prefix}Channel: {packet['channel']}", end='')
-    if packet['timestamp']:
+    if packet['timestamp'] is not None:
         print(f" | Time: {packet['timestamp']:6d}us", end='')
-    if packet['rssi']:
+    if packet['rssi'] is not None:
         print(f" | RSSI: {packet['rssi']:4d}dBm", end='')
-    if packet['lqi']:
+    if packet['lqi'] is not None:
         print(f" | LQI: {packet['lqi']:3d}", end='')
     print(f" | Len: {packet['length']:2d}")
     

@@ -141,15 +141,26 @@ Each captured packet is displayed with the following format:
 [T:<timestamp>us][CH:<channel>][RSSI:<rssi>dBm][LQI:<lqi>] PKT: <hex_data>
 ```
 
+**Note:** Fields in brackets are optional depending on configuration. At minimum, `[CH:<channel>] PKT: <hex_data>` is always present.
+
+Examples:
+```
+[T:1234567us][CH:54][RSSI:-75dBm][LQI:80] PKT: AA BB CC DD EE     (all fields)
+[CH:54][RSSI:-80dBm][LQI:75] PKT: 11 22 33 44 55 66               (no timestamp)
+[CH:55] PKT: FF EE DD CC BB AA                                     (minimal)
+```
+
 ### Field Descriptions
 
-| Field | Description | Range/Units |
-|-------|-------------|-------------|
-| T: | Timestamp | Microseconds (us) |
-| CH: | RF Channel | 0-255 |
-| RSSI: | Received Signal Strength Indicator | -100 to 0 dBm |
-| LQI: | Link Quality Indicator | 0-127 (higher is better) |
-| PKT: | Packet data | Hex bytes (space-separated) |
+| Field | Description | Range/Units | Required |
+|-------|-------------|-------------|----------|
+| T: | Timestamp | Microseconds (us) | Optional* |
+| CH: | RF Channel | 0-255 | Always |
+| RSSI: | Received Signal Strength Indicator | -100 to 0 dBm | Optional* |
+| LQI: | Link Quality Indicator | 0-127 (higher is better) | Optional* |
+| PKT: | Packet data | Hex bytes (space-separated) | Always |
+
+\* Optional fields depend on compile-time configuration (`CC2500_DUMP_SHOW_TIMESTAMP`, `CC2500_DUMP_SHOW_RSSI`, `CC2500_DUMP_SHOW_LQI`)
 
 ### RSSI Interpretation
 
