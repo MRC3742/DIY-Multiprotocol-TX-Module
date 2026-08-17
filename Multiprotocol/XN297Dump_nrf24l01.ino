@@ -27,6 +27,35 @@
 #define XN297DUMP_MAX_PACKET		50 		// 20
 #define XN297DUMP_MAX_RF_CHANNEL	84		// Default 84
 
+//***************************************************
+// CC2500 DUMP Configuration - Modify these for different capture scenarios
+//***************************************************
+// Data rate configuration: 0=250K (default), 1=500K, 2=Custom
+#define CC2500_DUMP_DATA_RATE		0
+
+// Packet length: 1-64 bytes (default 38)
+#define CC2500_DUMP_PACKET_LEN		38
+
+// Address/Sync word length: 0-5 bytes (0=no sync, 3-5=sync+addr)
+#define CC2500_DUMP_ADDR_LEN		5
+
+// Raw mode: 1=capture all packets (no filtering), 0=use address filtering
+#define CC2500_DUMP_RAW_MODE		1
+
+// Custom sync word (used when ADDR_LEN > 0)
+#define CC2500_DUMP_SYNC1			0xD3
+#define CC2500_DUMP_SYNC0			0x91
+
+// RF channel configuration
+// If option == -1 (0xFF), scanner will cycle through channels
+// Otherwise, option sets the fixed RF channel (0-255)
+#define CC2500_DUMP_DEFAULT_CHANNEL	54
+
+// Output configuration
+#define CC2500_DUMP_SHOW_RSSI		1	// Include RSSI in output
+#define CC2500_DUMP_SHOW_LQI		1	// Include LQI in output  
+#define CC2500_DUMP_SHOW_TIMESTAMP	1	// Include timestamp in output
+
 // Do not touch from there
 #define XN297DUMP_INITIAL_WAIT		500
 #define XN297DUMP_MAX_PACKET_LEN	32
@@ -779,52 +808,95 @@ static uint16_t XN297Dump_callback()
 		#if defined (CC2500_INSTALLED)
 			if(phase==0)
 			{
-				address_length=5;
-				switch(RX_num)
+				// Use configuration defines or RX_num for address selection
+				
+				// If not in RAW mode, use RX_num to select predefined addresses
+				if(CC2500_DUMP_RAW_MODE == 0 && RX_num < 8)
 				{
-					case 0:
-						memcpy(rx_tx_addr, (uint8_t *)"\xAE\xD2\x71\x79\x46", address_length);
-						break;
-					case 1:
-						memcpy(rx_tx_addr, (uint8_t *)"\x5D\xA4\xE2\xF2\x8C", address_length);
-						break;
-					case 2:
-						memcpy(rx_tx_addr, (uint8_t *)"\xBB\x49\xC5\xE5\x18", address_length);
-						break;
-					case 3:
-						memcpy(rx_tx_addr, (uint8_t *)"\x76\x93\x8B\xCA\x30", address_length);
-						break;
-					case 4:
-						memcpy(rx_tx_addr, (uint8_t *)"\xED\x27\x17\x94\x61", address_length);
-						break;
-					case 5:
-						memcpy(rx_tx_addr, (uint8_t *)"\xDA\x4E\x2F\x28\xC2", address_length);
-						break;
-					case 6:
-						memcpy(rx_tx_addr, (uint8_t *)"\xAB\xB4\x9C\x5E\x51", address_length);
-						break;
-					case 7:
-						memcpy(rx_tx_addr, (uint8_t *)"\x57\x69\x38\xBC\xA3", address_length);
-						break;
+					// Filtered mode always uses 5-byte addresses for predefined addresses
+					address_length=5;
+					switch(RX_num)
+					{
+						case 0:
+							memcpy(rx_tx_addr, (uint8_t *)"\xAE\xD2\x71\x79\x46", address_length);
+							break;
+						case 1:
+							memcpy(rx_tx_addr, (uint8_t *)"\x5D\xA4\xE2\xF2\x8C", address_length);
+							break;
+						case 2:
+							memcpy(rx_tx_addr, (uint8_t *)"\xBB\x49\xC5\xE5\x18", address_length);
+							break;
+						case 3:
+							memcpy(rx_tx_addr, (uint8_t *)"\x76\x93\x8B\xCA\x30", address_length);
+							break;
+						case 4:
+							memcpy(rx_tx_addr, (uint8_t *)"\xED\x27\x17\x94\x61", address_length);
+							break;
+						case 5:
+							memcpy(rx_tx_addr, (uint8_t *)"\xDA\x4E\x2F\x28\xC2", address_length);
+							break;
+						case 6:
+							memcpy(rx_tx_addr, (uint8_t *)"\xAB\xB4\x9C\x5E\x51", address_length);
+							break;
+						case 7:
+							memcpy(rx_tx_addr, (uint8_t *)"\x57\x69\x38\xBC\xA3", address_length);
+							break;
+					}
 				}
-				packet_length=38;
-				hopping_frequency_no=54; //bind 30, normal 54
-				debugln("CC2500 dump, len=%d, rf=%d, address length=%d, bitrate=250K",packet_length,hopping_frequency_no,address_length);
+				else
+				{
+					// RAW mode - use custom sync word
+					rx_tx_addr[0] = CC2500_DUMP_SYNC1;
+					rx_tx_addr[1] = CC2500_DUMP_SYNC0;
+					rx_tx_addr[2] = 0x00;
+					rx_tx_addr[3] = 0x00;
+					rx_tx_addr[4] = 0x00;
+				}
+				
+				packet_length = CC2500_DUMP_PACKET_LEN;
+				hopping_frequency_no = (option == 0xFF) ? CC2500_DUMP_DEFAULT_CHANNEL : option;
+				old_option = option;
+				
+				debug("CC2500 dump, len=%d, rf=%d, addr_len=%d",packet_length,hopping_frequency_no,address_length);
+				
+				// Data rate configuration
+				if(CC2500_DUMP_DATA_RATE == 0)
+				{	debugln(", bitrate=250K"); }
+				else if(CC2500_DUMP_DATA_RATE == 1)
+				{	debugln(", bitrate=500K"); }
+				else
+				{	debugln(", bitrate=Custom"); }
+				
+				debugln("Mode: %s", CC2500_DUMP_RAW_MODE ? "RAW (no filtering)" : "Filtered");
 				
 				//Config CC2500
 				CC2500_250K_Init();
 				CC2500_SetFreqOffset();
-				CC2500_WriteReg(CC2500_04_SYNC1, rx_tx_addr[0]);	// Sync word, high byte
-				CC2500_WriteReg(CC2500_05_SYNC0, rx_tx_addr[1]);	// Sync word, low byte
-				CC2500_WriteReg(CC2500_09_ADDR,  rx_tx_addr[2]);	// Set addr
-				CC2500_WriteReg(CC2500_12_MDMCFG2,  0x12);			// Modem Configuration, GFSK, 16/16 Sync Word TX&RX
+				
+				// Configure sync word and address
+				if(address_length >= 2)
+				{
+					CC2500_WriteReg(CC2500_04_SYNC1, rx_tx_addr[0]);	// Sync word, high byte
+					CC2500_WriteReg(CC2500_05_SYNC0, rx_tx_addr[1]);	// Sync word, low byte
+				}
+				if(address_length >= 3)
+					CC2500_WriteReg(CC2500_09_ADDR,  rx_tx_addr[2]);	// Set addr
+				
+				// Configure modem for sync word detection
+				if(CC2500_DUMP_RAW_MODE)
+					CC2500_WriteReg(CC2500_12_MDMCFG2,  0x10);			// No preamble/sync
+				else
+					CC2500_WriteReg(CC2500_12_MDMCFG2,  0x12);			// 16/16 Sync Word TX&RX
+				
+				// Set packet length
 				CC2500_WriteReg(CC2500_06_PKTLEN, packet_length);	// Packet len
 
-				//2.4001GHz: offfset of 100KHz
+				// Frequency configuration (2.4001GHz: offset of 100KHz)
 				CC2500_WriteReg(CC2500_0D_FREQ2,    0x5C);   // Frequency Control Word, High Byte
 				CC2500_WriteReg(CC2500_0E_FREQ1,    0x4F);   // Frequency Control Word, Middle Byte
 				CC2500_WriteReg(CC2500_0F_FREQ0,    0xC1);   // Frequency Control Word, Low Byte
 
+				// Set initial RF channel
 				CC2500_250K_RFChannel(hopping_frequency_no);
 
 				CC2500_SetTxRxMode(RX_EN);
@@ -835,50 +907,105 @@ static uint16_t XN297Dump_callback()
 			else
 			{
 				CC2500_SetFreqOffset();
-				if((CC2500_ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F) == packet_length + 2) // 2 = RSSI + LQI
+				
+				// Check if channel option changed
+				if(old_option != option && option != 0xFF)
+				{
+					hopping_frequency_no = option;
+					CC2500_250K_RFChannel(hopping_frequency_no);
+					debugln("Channel changed to: %d", hopping_frequency_no);
+					old_option = option;
+					// Restart RX
+					CC2500_SetTxRxMode(TXRX_OFF);
+					CC2500_SetTxRxMode(RX_EN);
+					CC2500_Strobe(CC2500_SFRX);
+					CC2500_Strobe(CC2500_SRX);
+				}
+				
+				uint8_t rx_bytes = CC2500_ReadReg(CC2500_3B_RXBYTES | CC2500_READ_BURST) & 0x7F;
+				if(rx_bytes >= packet_length + 2) // 2 = RSSI + LQI
 				{ // RX fifo data ready
-					//debugln("f_off=%02X", CC2500_ReadReg(0x32 | CC2500_READ_BURST));
 					CC2500_ReadData(packet, packet_length+2);
-					bool ok=true;
-					//filter address
-					if(rx_tx_addr[2]!=packet[0] || rx_tx_addr[3]!=packet[1] || rx_tx_addr[4]!=packet[2] )
-						ok=false;
-					//filter constants
-					if(RX_num == 0 && ok)
+					
+					bool ok = true;
+					uint8_t rssi_raw = packet[packet_length];
+					uint8_t lqi = packet[packet_length+1];
+					
+					// Calculate RSSI in dBm
+					int16_t rssi_dbm;
+					if(rssi_raw >= 128)
+						rssi_dbm = (rssi_raw - 256) / 2 - 74;
+					else
+						rssi_dbm = rssi_raw / 2 - 74;
+					
+					// In RAW mode, accept all packets
+					if(CC2500_DUMP_RAW_MODE == 0)
 					{
-						if (packet[3] != 0x10 || (packet[4] & 0xFC) != 0x54 || packet[5] != 0x64)
-							ok=false;
-						else if(packet[6] != 0x10 && packet[6] != 0x25)
-								ok=false;
-						else if(memcmp(&packet[9],"\xC6\xE7\x50\x02\xAA\x49",6)!=0)
-								ok=false;
-					}
-					else if(RX_num == 4 && ok)
-					{
-						if (packet[3] != 0x05 || (packet[4] & 0xCF) != 0x46)
-							ok=false;
-						else if(packet[5] != 0x41 && packet[5] != 0x42)
-								ok=false;
-						else if((packet[6]&0xF0) != 0x50 && (packet[6]&0xF0) != 0x00)
-								ok=false;
-						else if((packet[8]&0x0F) != 0x0C)
-								ok=false;
-						else if(memcmp(&packet[9],"\x6E\x75\x00\x2A\xA4\x94\xA4\x6F",8)!=0)
-								ok=false;
-					}
-					if(ok)
-					{
-						//uint8_t buffer[100];
-						//memcpy(buffer,packet,packet_length);
-						//if(memcmp(&packet_in[0],&packet[0],packet_length))
+						// Filter by address (first 3 bytes after sync)
+						if(address_length >= 3)
 						{
-							debug("P:");
-							for(uint8_t i=0;i<packet_length;i++)
-								debug(" %02X",packet[i]);
-							debugln("");
-							memcpy(packet_in,packet,packet_length);
+							if(rx_tx_addr[2]!=packet[0] || rx_tx_addr[3]!=packet[1] || rx_tx_addr[4]!=packet[2])
+								ok=false;
+						}
+						
+						// Apply additional pattern filtering based on RX_num
+						if(RX_num == 0 && ok)
+						{
+							if (packet[3] != 0x10 || (packet[4] & 0xFC) != 0x54 || packet[5] != 0x64)
+								ok=false;
+							else if(packet[6] != 0x10 && packet[6] != 0x25)
+									ok=false;
+							else if(memcmp(&packet[9],"\xC6\xE7\x50\x02\xAA\x49",6)!=0)
+									ok=false;
+						}
+						else if(RX_num == 4 && ok)
+						{
+							if (packet[3] != 0x05 || (packet[4] & 0xCF) != 0x46)
+								ok=false;
+							else if(packet[5] != 0x41 && packet[5] != 0x42)
+									ok=false;
+							else if((packet[6]&0xF0) != 0x50 && (packet[6]&0xF0) != 0x00)
+									ok=false;
+							else if((packet[8]&0x0F) != 0x0C)
+									ok=false;
+							else if(memcmp(&packet[9],"\x6E\x75\x00\x2A\xA4\x94\xA4\x6F",8)!=0)
+									ok=false;
 						}
 					}
+					
+					if(ok)
+					{
+						// Build output with metadata
+						#if CC2500_DUMP_SHOW_TIMESTAMP
+							XN297Dump_overflow();
+							uint16_t timeL=TCNT1;
+							if(TIMER2_BASE->SR & TIMER_SR_UIF)
+							{
+								XN297Dump_overflow();
+								timeL=0;
+							}
+							uint32_t timestamp = (timeH<<16)+timeL;
+							debug("[T:%luus]", timestamp>>1);
+						#endif
+						
+						debug("[CH:%d", hopping_frequency_no);
+						
+						#if CC2500_DUMP_SHOW_RSSI
+							debug("][RSSI:%ddBm", rssi_dbm);
+						#endif
+						
+						#if CC2500_DUMP_SHOW_LQI
+							debug("][LQI:%d", lqi & 0x7F);
+						#endif
+						
+						debug("]");
+						debug(" PKT:");
+						for(uint8_t i=0;i<packet_length;i++)
+							debug(" %02X",packet[i]);
+						debugln("");
+					}
+					
+					// Restart RX
 					CC2500_SetTxRxMode(TXRX_OFF);
 					CC2500_SetTxRxMode(RX_EN);
 					CC2500_Strobe(CC2500_SFRX);
