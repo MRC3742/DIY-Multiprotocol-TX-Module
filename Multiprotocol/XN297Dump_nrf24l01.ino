@@ -861,11 +861,11 @@ static uint16_t XN297Dump_callback()
 				
 				// Data rate configuration
 				if(CC2500_DUMP_DATA_RATE == 0)
-					debugln(", bitrate=250K");
+				{	debugln(", bitrate=250K"); }
 				else if(CC2500_DUMP_DATA_RATE == 1)
-					debugln(", bitrate=500K");
+				{	debugln(", bitrate=500K"); }
 				else
-					debugln(", bitrate=Custom");
+				{	debugln(", bitrate=Custom"); }
 				
 				debugln("Mode: %s", CC2500_DUMP_RAW_MODE ? "RAW (no filtering)" : "Filtered");
 				
