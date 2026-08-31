@@ -181,6 +181,7 @@ static void __attribute__((unused)) UDIRC_RF_init()
 uint16_t UDIRC_callback()
 {
 	bool rx;
+	static uint8_t telem_count = 0;
 	switch(phase)
 	{
 		case UDIRC_DATA1:
@@ -280,7 +281,6 @@ void UDIRC_init()
 	phase = UDIRC_DATA1;
 	hopping_frequency_no = 0;
 	packet_count = 0;
-	telem_count = 0;
 	telemetry_lost = 1;
 	RX_RSSI = 100;	// Dummy value
 }
