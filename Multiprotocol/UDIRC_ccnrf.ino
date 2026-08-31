@@ -41,8 +41,10 @@ Multiprotocol is distributed in the hope that it will be useful,
 // TX-ID binding note: The RX stores the paired TX ID in internal EEPROM.
 // It will respond to the bind handshake from any TX ID but will only
 // accept control (and send 0x10 telemetry) from the ID it has stored.
-// A new TX ID can only be stored by factory-resetting the model (hold bind
-// button while powering on, per model instructions) before binding.
+// Based on all available captures and documentation, this TX ID appears to be
+// permanently stored at the factory. No user-accessible reset procedure has been
+// found for the Pinecone SG-1205. Use FORCE_UDIRC_ORIGINAL_ID with the model's
+// factory TX ID to control it.
 //
 // F8 and 30 bytes: from packet_in[11] and packet_in[14] of any received packet.
 // They are placed into the normal TX control packet at positions [5] and [8].
@@ -250,7 +252,7 @@ uint16_t UDIRC_callback()
 					}
 					else if(packet_in[0] == 0x02)
 					{//RX rebind request - model stores a different TX ID in EEPROM
-					 //Must factory-reset model (hold bind button on power-up) for new TX ID
+					 //TX ID appears permanently stored at factory; use FORCE_UDIRC_ORIGINAL_ID
 						debug(" RX rebind-req (wrong TX ID?)");
 					}
 					else

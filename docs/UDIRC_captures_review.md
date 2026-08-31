@@ -306,11 +306,20 @@ already paired to a different TX ID and is asking to re-pair.
 
 ### How to Use a New TX ID
 
-To bind the model to a new TX ID, the model must be factory-reset first:
-1. Power off the model.
-2. Hold the model's bind button while powering on (consult model manual for exact procedure).
-3. The RX will enter factory-reset mode and clear the stored TX ID.
-4. Run the MPM bind procedure normally.
+**No user-accessible reset procedure has been found for the Pinecone SG-1205.**
+The model has only a red power button (hold ~1 second to power on/off); there is
+no documented bind button or factory-reset sequence in any available manual or
+online forum. The TX ID stored in the RX EEPROM appears to be **permanently set
+at the factory** and is not user-reprogrammable.
+
+**Practical consequence:** To control the Pinecone SG-1205 with MPM, use
+`FORCE_UDIRC_ORIGINAL_ID` in the firmware and set `rx_tx_addr` to match the
+TX ID that was programmed into your specific model at the factory. For the
+reference model this is `C3:E4:04:00:81`.
+
+If you acquire a new model with a different factory TX ID, you will need to
+capture that ID from a sniffer trace and add it to the `FORCE_UDIRC_ORIGINAL_ID`
+block for the appropriate `RX_num`.
 
 ### Telemetry Flapping Fix
 
