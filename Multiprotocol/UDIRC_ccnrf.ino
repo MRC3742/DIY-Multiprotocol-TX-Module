@@ -14,17 +14,25 @@ Multiprotocol is distributed in the hope that it will be useful,
  */
 // Models: UDIRC UD160x(PRO), Pinecone Models SG-160x/SG-1205, Eachine EAT15
 //
-// Binding / normal packet flow (from captures):
+// Packet flow (from RF captures of Pinecone SG-1205):
 //
-// BIND phase (hop all 4 channels, bind address 01:03:05:07:09):
-//   TX sends: 01 <TX_ID[0..4]> 00 00 00 64 60 6C 00 00 <csum>   (packet[0]=0x01)
-//   RX replies: 01 F8 00 00 30 00 00 00 00 00 00 F8 00 00 30     (stores F8/30 bytes)
-//   TX acks:  02 F8 00 00 30 00 00 00 00 64 60 6C 00 00 <csum>   (packet[0]=0x02)
-//   RX echoes: 02 F8 00 00 30 ...                                 (bind confirmed)
+// BIND phase – TX hops all 4 channels using bind address 01:03:05:07:09:
+//   TX sends: 01 <TX_ID[0..4]> 00 00 00 64 60 6C 00 00 <csum>
+//   RX replies (zero-length enhanced ACK): P(0)=  (XN297 auto-ack)
+//   Once bind_phase detected via RX 0x01 packet:
+//   TX sends: 02 <TX_ID[0..4]> 00 00 00 64 60 6C 00 00 <csum>
+//   After bind_counter reaches 0, bind is complete.
 //
-// NORMAL phase (stay on one hop channel, TX address):
+// NORMAL phase – TX stays on one fixed channel using TX address:
 //   TX sends: 08 ST TH CH3 CH4 F8 00 00 30 GYRO TRIM DR FLAGS 00 <csum>
 //   RX telemetry: 10 00 00 00 30 00 00 00 00 00 00 F8 00 00 30
+//
+// F8 and 30 bytes: captured from first RX packet (bind reply or telemetry).
+// They appear at packet_in[11] and packet_in[14] and are placed into the
+// normal TX control packet at positions [5] and [8].
+//
+// Checksum: sum of bytes [0..13], stored in [14].  packet[14] is zeroed by
+// memset(&packet[3], 0, 12) before the accumulation, so += is correct.
 
 #if defined(UDIRC_CCNRF_INO)
 
@@ -34,119 +42,89 @@ Multiprotocol is distributed in the hope that it will be useful,
 
 #define UDIRC_PAYLOAD_SIZE		15
 #define UDIRC_RF_NUM_CHANNELS	4
-#define UDIRC_PACKET_PERIOD		21000
-#define UDIRC_BIND_COUNT		2000
-#define UDIRC_P1_P2_TIME		5000
-#define UDIRC_WRITE_TIME		1500
+#define UDIRC_PACKET_PERIOD		20000
+#define UDIRC_BIND_COUNT		10
+#define UDIRC_WRITE_TIME		6000
+#define UDIRC_RX_TIME			6000
 
-// Bind sub-states
 enum {
-	UDIRC_BIND_TX1=0,	// Send bind packet (0x01)
-	UDIRC_BIND_TX2,		// Resend bind packet
-	UDIRC_BIND_RX,		// Listen for RX 0x01 reply, capture F8/30 bytes
-	UDIRC_ACK_TX1,		// Send ack packet (0x02) with F8/30
-	UDIRC_ACK_TX2,		// Resend ack packet
-	UDIRC_ACK_RX,		// Listen for RX 0x02 echo, confirm bind
-	UDIRC_DATA1,		// Normal: send control packet (0x08)
-	UDIRC_DATA2,		// Normal: resend control packet
-	UDIRC_DATA3,		// Normal: wait for TX complete, switch to RX
+	UDIRC_DATA1=0,
+	UDIRC_RX,
+	UDIRC_CHECK,
 };
 
-// Bytes returned by RX during bind, inserted into normal packets
-static uint8_t udirc_rx_byte5;	// e.g. 0xF8
-static uint8_t udirc_rx_byte8;	// e.g. 0x30
-
-static void __attribute__((unused)) UDIRC_build_checksum()
+static void __attribute__((unused)) UDIRC_send_packet()
 {
-	// Checksum = sum of bytes [0..13], stored in byte [14]
-	uint8_t sum = 0;
-	for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE - 1; i++)
-		sum += packet[i];
-	packet[14] = sum;
-}
-
-static void __attribute__((unused)) UDIRC_send_bind_packet()
-{
-	// Hop channels during bind
-	XN297_Hopping(hopping_frequency_no);
-	debugln("UDIRC bind hop ch=%d", hopping_frequency[hopping_frequency_no]);
-	hopping_frequency_no = (hopping_frequency_no + 1) & 3;
-
-	memset(packet, 0x00, UDIRC_PAYLOAD_SIZE);
-	packet[0] = 0x01;
-	memcpy(&packet[1], rx_tx_addr, 5);
-	// Known constant bytes seen in original TX captures
-	packet[9]  = 0x64;
-	packet[10] = 0x60;
-	packet[11] = 0x6C;
-	UDIRC_build_checksum();
-
+	memset(&packet[3], 0x00, 12);
+	debug("bp=%d ", bind_phase);
+	if(IS_BIND_IN_PROGRESS)
+	{//Bind in progress
+		if(packet_count > 4 && bind_phase == 0)
+		{
+			//Hop frequencies until the RX responds
+			XN297_Hopping(hopping_frequency_no);
+			debug("H%d(%d) ", hopping_frequency_no, hopping_frequency[hopping_frequency_no]);
+			hopping_frequency_no++;
+			hopping_frequency_no &= 3;
+			packet_count = 0;
+		}
+		if(bind_phase && bind_counter)
+		{
+			bind_counter--;
+			if(bind_counter == 0)
+			{
+				bind_phase = 3;
+				BIND_DONE;
+				debugln("UDIRC bind complete");
+			}
+		}
+		//Build bind packet: 0x01 during initial invite, 0x02 after RX responds
+		packet[0] = 0x01;
+		if(bind_phase)
+			packet[0]++;	// 0x02 ack phase
+		memcpy(&packet[1], rx_tx_addr, 5);
+	}
+	if(bind_phase > 1)
+	{//Switch to normal TX address
+		XN297_SetTXAddr(rx_tx_addr, 5);
+		XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
+		debugln("UDIRC switched to TX addr");
+	}
+	if(IS_BIND_DONE)
+	{//Normal control packet
+		packet[0] = 0x08;
+		//Channels SG-16xx/SG-1205: ST/TH/CH3/CH4 / F8/00/00/30 / GYRO/ST_TRIM/ST_DR
+		//Channels EAT15           : ST/TH/RATE/LIGHT / F8/00/00/30 / GYRO/ST_TRIM/ST_DR
+		for(uint8_t i = 0; i < 12; i++)
+			packet[i+1] = convert_channel_16b_limit(i, 0, 200);
+		// Bytes from RX (captured at packet_in[11..14]) go into packet[5..8]
+		// Verified from captures: telemetry 0x10 has F8 at [11] and 30 at [14]
+		if(packet_in[0] != 0)
+		{
+			packet[5] = packet_in[11];	// F8 (RX-assigned)
+			packet[6] = packet_in[12];	// 00
+			packet[7] = packet_in[13];	// 00
+			packet[8] = packet_in[14];	// 30 (RX-assigned)
+		}
+		else
+		{
+			packet[5] = packet[6] = packet[7] = packet[8] = 0;
+		}
+	}
+	packet[12] = GET_FLAG(CH12_SW, 0x40)		//TH.REV
+				|GET_FLAG(CH13_SW, 0x80);		//ST.REV
+	//packet[13] = 00; //Unknown, future flags?
+	// Checksum: sum of [0..13]. packet[14] is already 0 from memset above.
+	for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE-1; i++)
+		packet[14] += packet[i];
+	// Send
 	XN297_SetFreqOffset();
 	XN297_SetPower();
 	XN297_SetTxRxMode(TX_EN);
 	XN297_WriteEnhancedPayload(packet, UDIRC_PAYLOAD_SIZE, false);
-	debug("UDIRC TX bind: ");
+	packet_count++;
 	#ifdef DEBUG_SERIAL
-		for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-			debug("%02X ", packet[i]);
-		debugln();
-	#endif
-}
-
-static void __attribute__((unused)) UDIRC_send_ack_packet()
-{
-	// ACK packet (0x02): echo back F8/30 bytes from RX bind reply
-	memset(packet, 0x00, UDIRC_PAYLOAD_SIZE);
-	packet[0] = 0x02;
-	packet[1] = udirc_rx_byte5;	// F8
-	packet[2] = 0x00;
-	packet[3] = 0x00;
-	packet[4] = udirc_rx_byte8;	// 30
-	packet[9]  = 0x64;
-	packet[10] = 0x60;
-	packet[11] = 0x6C;
-	UDIRC_build_checksum();
-
-	XN297_SetFreqOffset();
-	XN297_SetPower();
-	XN297_SetTxRxMode(TX_EN);
-	XN297_WriteEnhancedPayload(packet, UDIRC_PAYLOAD_SIZE, false);
-	debug("UDIRC TX ack: ");
-	#ifdef DEBUG_SERIAL
-		for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-			debug("%02X ", packet[i]);
-		debugln();
-	#endif
-}
-
-static void __attribute__((unused)) UDIRC_send_normal_packet()
-{
-	memset(packet, 0x00, UDIRC_PAYLOAD_SIZE);
-	packet[0] = 0x08;
-	// Channels SG-16xx/SG-1205: ST/TH/CH3/CH4/F8/00/00/30/GYRO/ST_TRIM/ST_DR/FLAGS
-	// Channels EAT15           : ST/TH/RATE/LIGHT/F8/00/00/30/GYRO/ST_TRIM/ST_DR/FLAGS
-	packet[1] = convert_channel_16b_limit(0, 0, 200);	// Steering
-	packet[2] = convert_channel_16b_limit(1, 0, 200);	// Throttle
-	packet[3] = convert_channel_16b_limit(2, 0, 200);	// CH3
-	packet[4] = convert_channel_16b_limit(3, 0, 200);	// CH4
-	packet[5] = udirc_rx_byte5;							// F8 from bind (RX-assigned)
-	packet[6] = 0x00;
-	packet[7] = 0x00;
-	packet[8] = udirc_rx_byte8;							// 30 from bind (RX-assigned)
-	packet[9]  = convert_channel_16b_limit(8, 0, 200);	// Gyro
-	packet[10] = convert_channel_16b_limit(9, 0, 200);	// ST Trim
-	packet[11] = convert_channel_16b_limit(10, 0, 200);// ST DR
-	packet[12] = GET_FLAG(CH12_SW, 0x40)				// TH.REV
-				|GET_FLAG(CH13_SW, 0x80);				// ST.REV
-	packet[13] = 0x00;									// Unknown, future flags
-	UDIRC_build_checksum();
-
-	XN297_SetFreqOffset();
-	XN297_SetPower();
-	XN297_SetTxRxMode(TX_EN);
-	XN297_WriteEnhancedPayload(packet, UDIRC_PAYLOAD_SIZE, false);
-	#ifdef DEBUG_SERIAL
-		debug("UDIRC TX: ");
+		debug("TX: ");
 		for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
 			debug("%02X ", packet[i]);
 		debugln();
@@ -156,7 +134,7 @@ static void __attribute__((unused)) UDIRC_send_normal_packet()
 static void __attribute__((unused)) UDIRC_initialize_txid()
 {
 	#ifdef FORCE_UDIRC_ORIGINAL_ID
-		if(RX_num)
+		if(RX_num == 1)
 		{
 			rx_tx_addr[0] = 0xD0;
 			rx_tx_addr[1] = 0x06;
@@ -164,182 +142,92 @@ static void __attribute__((unused)) UDIRC_initialize_txid()
 			rx_tx_addr[3] = 0x00;
 			rx_tx_addr[4] = 0x81;
 		}
-		else
+		else if(RX_num == 2)
 		{
-			// Captured TX ID: C3 E4 04 00 81
+			rx_tx_addr[0] = 0xF6;
+			rx_tx_addr[1] = 0x96;
+			rx_tx_addr[2] = 0x01;
+			rx_tx_addr[3] = 0x00;
+			rx_tx_addr[4] = 0x81;
+		}
+		else	// Pinecone SG-1205 (RX_num=0 or default)
+		{
 			rx_tx_addr[0] = 0xC3;
 			rx_tx_addr[1] = 0xE4;
 			rx_tx_addr[2] = 0x04;
 			rx_tx_addr[3] = 0x00;
 			rx_tx_addr[4] = 0x81;
 		}
-		// Captured hopping channels: 45, 52, 59, 67
-		hopping_frequency[0] = 45;
-		hopping_frequency[1] = 52;
-		hopping_frequency[2] = 59;
-		hopping_frequency[3] = 67;
 	#endif
+	// Capture-verified hop channel order: 45, 52, 59, 67 (hex: 2D 34 3B 43)
+	memcpy(hopping_frequency, (uint8_t*)"\x2D\x34\x3B\x43", UDIRC_RF_NUM_CHANNELS);
 }
 
 static void __attribute__((unused)) UDIRC_RF_init()
 {
 	XN297_Configure(XN297_CRCEN, XN297_SCRAMBLED, XN297_250K);
-	// Start with bind address
+	// Use bind address during bind phase
 	XN297_SetTXAddr((uint8_t*)"\x01\x03\x05\x07\x09", 5);
 	XN297_SetRXAddr((uint8_t*)"\x01\x03\x05\x07\x09", UDIRC_PAYLOAD_SIZE);
 	XN297_HoppingCalib(UDIRC_RF_NUM_CHANNELS);
+	XN297_Hopping(0);
 }
 
 uint16_t UDIRC_callback()
 {
-	bool rx_ready;
-	uint8_t rx_len;
-
+	bool rx;
 	switch(phase)
 	{
-		// --- BIND phase ---
-		case UDIRC_BIND_TX1:
-			XN297_SetTxRxMode(TXRX_OFF);
-			#ifdef MULTI_SYNC
-				telemetry_set_input_sync(UDIRC_PACKET_PERIOD);
-			#endif
-			if(bind_counter)
-			{
-				UDIRC_send_bind_packet();
-				bind_counter--;
-				phase = UDIRC_BIND_TX2;
-			}
-			else
-			{
-				// Bind timed out without any RX reply - restart bind counter
-				debugln("UDIRC bind timeout, restarting");
-				bind_counter = UDIRC_BIND_COUNT;
-				phase = UDIRC_BIND_TX2;
-			}
-			return UDIRC_P1_P2_TIME;
-
-		case UDIRC_BIND_TX2:
-			XN297_ReSendPayload();
-			phase = UDIRC_BIND_RX;
-			return UDIRC_WRITE_TIME;
-
-		case UDIRC_BIND_RX:
-			// Wait for TX complete, then listen for RX bind reply (0x01)
-			while(XN297_IsPacketSent() == false);
-			XN297_SetTxRxMode(TXRX_OFF);
-			XN297_SetTxRxMode(RX_EN);
-			phase = UDIRC_BIND_TX1;		// Default: loop bind packets
-			rx_ready = XN297_IsRX();
-			if(rx_ready)
-			{
-				rx_len = XN297_ReadEnhancedPayload(packet_in, UDIRC_PAYLOAD_SIZE);
-				debug("UDIRC RX bind(%d): ", rx_len);
-				#ifdef DEBUG_SERIAL
-					for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-						debug("%02X ", packet_in[i]);
-					debugln();
-				#endif
-				if(rx_len == UDIRC_PAYLOAD_SIZE && packet_in[0] == 0x01)
-				{
-					// Capture the RX-assigned F8/30 bytes
-					udirc_rx_byte5 = packet_in[1];		// e.g. 0xF8
-					udirc_rx_byte8 = packet_in[4];		// e.g. 0x30
-					debugln("UDIRC captured rx_byte5=%02X rx_byte8=%02X", udirc_rx_byte5, udirc_rx_byte8);
-					phase = UDIRC_ACK_TX1;
-				}
-			}
-			return UDIRC_PACKET_PERIOD - UDIRC_P1_P2_TIME - UDIRC_WRITE_TIME;
-
-		case UDIRC_ACK_TX1:
-			XN297_SetTxRxMode(TXRX_OFF);
-			UDIRC_send_ack_packet();
-			phase = UDIRC_ACK_TX2;
-			return UDIRC_P1_P2_TIME;
-
-		case UDIRC_ACK_TX2:
-			XN297_ReSendPayload();
-			phase = UDIRC_ACK_RX;
-			return UDIRC_WRITE_TIME;
-
-		case UDIRC_ACK_RX:
-			// Wait for TX complete, then listen for RX 0x02 echo confirming bind
-			while(XN297_IsPacketSent() == false);
-			XN297_SetTxRxMode(TXRX_OFF);
-			XN297_SetTxRxMode(RX_EN);
-			phase = UDIRC_ACK_TX1;		// Default: resend ack if no echo
-			rx_ready = XN297_IsRX();
-			if(rx_ready)
-			{
-				rx_len = XN297_ReadEnhancedPayload(packet_in, UDIRC_PAYLOAD_SIZE);
-				debug("UDIRC RX ack(%d): ", rx_len);
-				#ifdef DEBUG_SERIAL
-					for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-						debug("%02X ", packet_in[i]);
-					debugln();
-				#endif
-				if(rx_len == UDIRC_PAYLOAD_SIZE && packet_in[0] == 0x02)
-				{
-					// Bind confirmed - switch to normal TX address and normal channel
-					debugln("UDIRC bind complete, switching to normal");
-					BIND_DONE;
-					bind_counter = 0;
-					XN297_SetTXAddr(rx_tx_addr, 5);
-					XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
-					// Stay on current hop channel (first channel from bind sequence)
-					XN297_Hopping(0);
-					phase = UDIRC_DATA1;
-				}
-			}
-			return UDIRC_PACKET_PERIOD - UDIRC_P1_P2_TIME - UDIRC_WRITE_TIME;
-
-		// --- NORMAL phase ---
 		case UDIRC_DATA1:
-			rx_ready = XN297_IsRX();
-			XN297_SetTxRxMode(TXRX_OFF);
 			#ifdef MULTI_SYNC
 				telemetry_set_input_sync(UDIRC_PACKET_PERIOD);
 			#endif
-			if(rx_ready)
-			{
-				rx_len = XN297_ReadEnhancedPayload(packet_in, UDIRC_PAYLOAD_SIZE);
-				debug("UDIRC RX telem(%d): ", rx_len);
-				#ifdef DEBUG_SERIAL
-					for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-						debug("%02X ", packet_in[i]);
-					debugln();
-				#endif
-				// Telemetry packet starts with 0x10
-				if(rx_len == UDIRC_PAYLOAD_SIZE && packet_in[0] == 0x10)
-				{
-					// RX-assigned bytes appear at [11] and [14] in telemetry packets;
-					// update only if the captured bind values are still zero (pre-bind
-					// reconnect), otherwise trust the bind-time values.
-					if(!udirc_rx_byte5)
-						udirc_rx_byte5 = packet_in[11];
-					if(!udirc_rx_byte8)
-						udirc_rx_byte8 = packet_in[14];
-				}
-			}
-			UDIRC_send_normal_packet();
-			phase = UDIRC_DATA2;
-			return UDIRC_P1_P2_TIME;
-
-		case UDIRC_DATA2:
-			// Resend normal packet
-			XN297_ReSendPayload();
-			phase = UDIRC_DATA3;
+			UDIRC_send_packet();
+			phase++;	// → UDIRC_RX
 			return UDIRC_WRITE_TIME;
 
-		case UDIRC_DATA3:
-			// Wait for TX complete, switch to RX for telemetry window
-			while(XN297_IsPacketSent() == false);
+		case UDIRC_RX:
+			// Switch to RX to listen for telemetry or bind reply
 			XN297_SetTxRxMode(TXRX_OFF);
 			XN297_SetTxRxMode(RX_EN);
-			phase = UDIRC_DATA1;
-			return UDIRC_PACKET_PERIOD - UDIRC_P1_P2_TIME - UDIRC_WRITE_TIME;
+			phase++;	// → UDIRC_CHECK
+			return UDIRC_RX_TIME;
 
-		default:
-			break;
+		default:	// UDIRC_CHECK
+			rx = XN297_IsRX();
+			XN297_SetTxRxMode(TXRX_OFF);
+			if(rx)
+			{
+				uint8_t val = XN297_ReadEnhancedPayload(packet_in, UDIRC_PAYLOAD_SIZE);
+				debug("RX(%d):", val);
+				if(val == UDIRC_PAYLOAD_SIZE)
+				{//Good CRC and length
+					#ifdef DEBUG_SERIAL
+						for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
+							debug(" %02X", packet_in[i]);
+					#endif
+					if(packet_in[0] == 0x10)
+					{//Telemetry packet
+						v_lipo1 = (packet_in[1] == 0x01) ? 0x00 : 0xFF;	// Low voltage flag
+						telemetry_link = 1;
+						debug(" (telem)");
+					}
+					else
+					{//Bind reply from RX (0x01 or 0x02) - send enhanced ACK
+						XN297_SetTxRxMode(TX_EN);
+						XN297_WriteEnhancedPayload(packet, 0, false);
+						if(IS_BIND_IN_PROGRESS && packet_in[0] == 0x01)
+						{
+							// RX confirmed our TX ID - start ack phase
+							bind_phase = 1;
+							debug(" (bind reply -> start ack)");
+						}
+					}
+				}
+				debugln();
+			}
+			phase = UDIRC_DATA1;
+			return UDIRC_PACKET_PERIOD - UDIRC_WRITE_TIME - UDIRC_RX_TIME;
 	}
 	return 0;
 }
@@ -349,24 +237,20 @@ void UDIRC_init()
 	UDIRC_initialize_txid();
 	UDIRC_RF_init();
 
-	udirc_rx_byte5 = 0x00;
-	udirc_rx_byte8 = 0x00;
-	hopping_frequency_no = 0;
+	// Clear packet_in so packet_in[0] check works correctly on first normal packet
+	memset(packet_in, 0x00, UDIRC_PAYLOAD_SIZE);
 
 	if(IS_BIND_IN_PROGRESS)
 	{
 		bind_counter = UDIRC_BIND_COUNT;
-		phase = UDIRC_BIND_TX1;
+		bind_phase = 0;
 	}
 	else
-	{
-		// Already bound - use last known F8/30 bytes (0x00 until telemetry updates them)
-		bind_counter = 0;
-		XN297_SetTXAddr(rx_tx_addr, 5);
-		XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
-		XN297_Hopping(0);
-		phase = UDIRC_DATA1;
-	}
+		bind_phase = 3;
+	phase = UDIRC_DATA1;
+	hopping_frequency_no = 0;
+	packet_count = 0;
+	RX_RSSI = 100;	// Dummy value
 }
 
 #endif

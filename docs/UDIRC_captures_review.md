@@ -3,9 +3,10 @@
 ## Overview
 
 This document captures analysis of RF packet captures from a Pinecone Forest SG-1205
-model running the UDIRC protocol (XN297 Enhanced, 250K, Scrambled, CRC enabled).
-The goal is to document the full bind handshake and normal operation flow so the
-MPM firmware can faithfully reproduce it.
+model running the UDIRC protocol (XN297 Enhanced, 250 Kbps, Scrambled, CRC enabled).
+Source: the working firmware on the `add-Pinecone-UDIRC` branch cross-referenced
+against capture files `Pinecone_SG-1205_TX-Bind_RX_Bound_02.txt` and
+`Pinecone_SG-1205_TX-Bind_RX_Bound_at-each-CH-Start.txt`.
 
 ---
 
@@ -21,207 +22,251 @@ MPM firmware can faithfully reproduce it.
 | Payload length     | 15 bytes (fixed)          |
 | Hop channels       | 45, 52, 59, 67 MHz offset |
 | Bind address       | 01:03:05:07:09            |
+| Packet period      | ~20 ms                    |
 
 ---
 
-## Bind ID vs TX ID
+## Two Addresses in Use
 
-Two distinct addresses are used:
-
-- **Bind address**: `01 03 05 07 09` — used during the entire bind handshake.
+- **Bind address**: `01 03 05 07 09` — used for the entire bind phase.
 - **TX (normal) address**: the 5-byte TX ID e.g. `C3 E4 04 00 81` — used during
-  normal operation after bind completes.
+  normal operation. The TX switches to this address once `bind_phase > 1`.
 
 ---
 
-## Packet Types
+## Packet Types (Byte 0 Command Codes)
 
-### Byte 0 Command Codes
-
-| Code | Direction | Description                           |
-|------|-----------|---------------------------------------|
-| 0x01 | TX → RX   | Bind invite (TX ID in bytes [1..5])   |
-| 0x01 | RX → TX   | Bind reply (RX-assigned bytes F8/30)  |
-| 0x02 | TX → RX   | Bind ACK (echoes RX F8/30 bytes)      |
-| 0x02 | RX → TX   | Bind ACK echo (bind confirmed)        |
-| 0x08 | TX → RX   | Normal control packet                 |
-| 0x10 | RX → TX   | Telemetry / status packet             |
+| Code | Direction | Description                                      |
+|------|-----------|--------------------------------------------------|
+| 0x01 | TX → RX   | Bind invite (TX ID in bytes [1..5])              |
+| 0x02 | TX → RX   | Bind ack (TX ID in bytes [1..5], phase 2)        |
+| 0x08 | TX → RX   | Normal control packet                            |
+| 0x10 | RX → TX   | Telemetry / status packet                        |
 
 ---
 
-## Bind Handshake Flow
+## Captured Packet Details
 
-### Step 1 — TX sends bind invite (0x01) while hopping all 4 channels
-
-TX hops channels 45→52→59→67→45… using bind address `01:03:05:07:09`.
+### TX Bind Invite (0x01) — using bind address 01:03:05:07:09
 
 ```
-C=45  pid=0 A=01:03:05:07:09
-  Payload: 01 C3 E4 04 00 81 00 00 00 64 60 6C 00 00 <csum>
-           ^^ TX ID (5 bytes)  ^^^^^^^^^^^^^^ constant bytes
+C=45 Enhanced A=01:03:05:07:09
+  Payload: 01 C3 E4 04 00 81 00 00 00 64 60 6C 00 00 5D
 ```
 
-- `packet[0]` = `0x01`
-- `packet[1..5]` = TX ID (`C3 E4 04 00 81`)
-- `packet[9..11]` = `64 60 6C` (constant, likely model flags)
-- `packet[14]` = checksum (sum of bytes [0..13])
+| Byte   | Value | Notes                          |
+|--------|-------|--------------------------------|
+| [0]    | 0x01  | Bind invite command            |
+| [1..5] | TX ID | C3 E4 04 00 81                 |
+| [9]    | 0x64  | Constant (100 decimal)         |
+| [10]   | 0x60  | Constant (96 decimal)          |
+| [11]   | 0x6C  | Constant (108 decimal)         |
+| [14]   | 0x5D  | Checksum (sum of [0..13])      |
+
+The TX hops to a new channel every 5 packets (`packet_count > 4`) while no RX
+response is seen.
 
 ---
 
-### Step 2 — RX sends bind reply (0x01) with its assigned bytes
+### TX Bind Ack (0x02) — using TX address after RX responds
 
-Once the RX powers up and hears the bind invite it responds on the same channel
-using the bind address:
-
+Only one 0x02 packet was captured (at CH59):
 ```
-RX Payload: 01 F8 00 00 30 00 00 00 00 00 00 F8 00 00 30
-            ^^ ^^             ^^             ^^ (duplicated at [11] and [14])
+C=59 Enhanced A=C3:E4:04:00:81
+  Payload: 02 F8 00 00 30 00 00 00 00 64 60 6C 00 00 5A
 ```
 
-- `packet_in[0]`  = `0x01`  — RX bind reply identifier
-- `packet_in[1]`  = **`0xF8`** — RX-assigned byte (inserted at TX packet[5] going forward)
-- `packet_in[4]`  = **`0x30`** — RX-assigned byte (inserted at TX packet[8] going forward)
-- `packet_in[11]` = `0xF8` (duplicate of [1])
-- `packet_in[14]` = `0x30` (duplicate of [4])
-
-> **Key finding**: `0xF8` and `0x30` are assigned by the RX and must be echoed
-> back in the ACK and embedded in all subsequent normal control packets.
-> Changing the TX ID does **not** change these values — they appear to be
-> an RX-internal identifier (possibly derived from the RX's own serial number).
+Bytes [1..4] contain `F8 00 00 30` (the RX-assigned bytes) rather than the TX ID.
+The working firmware sends `02 <TX_ID>` but binding still succeeds, suggesting the
+RX only validates the command byte (0x02) and RF address, not the payload content.
 
 ---
 
-### Step 3 — TX sends bind ACK (0x02) echoing F8/30
-
-TX sends a 0x02 packet echoing the RX-assigned bytes back to confirm it received them:
+### Normal Control Packet (0x08) — without F8/30 (before bind completes)
 
 ```
-C=45 pid=3 A=C3:E4:04:00:81
-  Payload: 02 F8 00 00 30 00 00 00 00 64 60 6C 00 00 <csum>
-           ^^ ^^             ^^
+C=45 Enhanced A=C3:E4:04:00:81
+  Payload: 08 64 64 64 00 00 00 00 00 64 60 6C 00 00 64
 ```
 
-- `packet[0]`    = `0x02`
-- `packet[1]`    = `0xF8` (echoed from RX reply [1])
-- `packet[4]`    = `0x30` (echoed from RX reply [4])
-- `packet[9..11]`= `64 60 6C`
-
-> **Note**: At this point the TX switches from bind address to TX address
-> (`C3 E4 04 00 81`) for both TX and RX.
+Seen on all 4 channels, always on TX address. Occurs interleaved with bind-address
+0x01 packets before the RX powers up — the TX sends both packet types simultaneously.
 
 ---
 
-### Step 4 — RX echoes 0x02 to confirm bind complete
+### Normal Control Packet (0x08) — with F8/30 (after RX binds)
 
 ```
-RX Payload: 02 F8 00 00 30 00 00 00 00 00 00 F8 00 00 30
-```
-
-Once the TX receives this 0x02 echo from the RX, binding is complete and both
-sides switch to normal operation.
-
----
-
-## Normal Operation
-
-After bind, the TX stays on **one fixed hop channel** (the channel where bind
-completed — no more channel hopping). The TX uses its own address (`C3 E4 04 00 81`).
-
-### Normal TX Control Packet (0x08)
-
-```
-C=45 pid=0 A=C3:E4:04:00:81
+C=45/52/59/67 Enhanced A=C3:E4:04:00:81
   Payload: 08 64 64 64 00 F8 00 00 30 64 60 6C 00 00 8C
-           ^^ ST TH CH CH ^^             ^^
-           |              |              |
-           0x08           F8 (from bind) 30 (from bind)
 ```
 
-| Byte | Content            |
-|------|--------------------|
-| [0]  | `0x08` (cmd)       |
-| [1]  | Steering (0–200)   |
-| [2]  | Throttle (0–200)   |
-| [3]  | CH3/RATE (0–200)   |
-| [4]  | CH4/LIGHT (0–200)  |
-| [5]  | `udirc_rx_byte5` (e.g. `0xF8`) — from bind |
-| [6]  | `0x00`             |
-| [7]  | `0x00`             |
-| [8]  | `udirc_rx_byte8` (e.g. `0x30`) — from bind |
-| [9]  | Gyro (0–200)       |
-| [10] | ST Trim (0–200)    |
-| [11] | ST DR (0–200)      |
-| [12] | Flags: bit6=TH.REV, bit7=ST.REV |
-| [13] | `0x00` (unknown)   |
-| [14] | Checksum (sum of [0..13]) |
+| Byte   | Value  | Notes                                           |
+|--------|--------|-------------------------------------------------|
+| [0]    | 0x08   | Normal control command                          |
+| [1]    | 0x64   | Steering (0–200 range)                          |
+| [2]    | 0x64   | Throttle (0–200 range)                          |
+| [3]    | 0x64   | CH3/RATE (0–200 range)                          |
+| [4]    | 0x00   | CH4/LIGHT (0–200 range)                         |
+| [5]    | 0xF8   | **RX-assigned** — sourced from packet_in[11]    |
+| [6]    | 0x00   | From packet_in[12]                              |
+| [7]    | 0x00   | From packet_in[13]                              |
+| [8]    | 0x30   | **RX-assigned** — sourced from packet_in[14]    |
+| [9]    | 0x64   | Gyro (0–200 range)                              |
+| [10]   | 0x60   | ST Trim (0–200 range)                           |
+| [11]   | 0x6C   | ST DR (0–200 range)                             |
+| [12]   | 0x00   | Flags: bit6=TH.REV, bit7=ST.REV                 |
+| [13]   | 0x00   | Unknown                                         |
+| [14]   | 0x8C   | Checksum (sum of [0..13])                       |
 
 ---
 
-### RX Telemetry Packet (0x10)
+### RX Telemetry Packet (0x10) — from RX to TX
 
 ```
-RX Payload: 10 00 00 00 30 00 00 00 00 00 00 F8 00 00 30
+Payload: 10 00 00 00 30 00 00 00 00 00 00 F8 00 00 30
 ```
 
-| Byte  | Content                               |
-|-------|---------------------------------------|
-| [0]   | `0x10` (telemetry marker)             |
-| [4]   | `0x30` (same as `udirc_rx_byte8`)     |
-| [11]  | `0xF8` (same as `udirc_rx_byte5`)     |
-| [14]  | `0x30` (duplicate of [4])             |
+| Byte   | Value  | Notes                                               |
+|--------|--------|-----------------------------------------------------|
+| [0]    | 0x10   | Telemetry marker                                    |
+| [1]    | 0x00   | 0x01 = low battery; 0x00 = OK (maps to v_lipo1)    |
+| [4]    | 0x30   | RX-assigned byte (matches normal TX packet[8])      |
+| [11]   | 0xF8   | RX-assigned byte (matches normal TX packet[5])      |
+| [14]   | 0x30   | Duplicate of [4]                                    |
 
-The firmware should monitor telemetry packets and may update `udirc_rx_byte5`
-and `udirc_rx_byte8` if they change (though in practice they appear fixed).
+The telemetry provides the same F8/30 values at the same byte positions [11] and
+[14] as the bind-phase reply — confirming the firmware's use of `packet_in[11..14]`
+as the source for `packet[5..8]` works for both bind and normal phases.
 
 ---
 
-## Bugs Found in Original Firmware
+## Bind Flow (Verified from Captures)
 
-### 1. Checksum accumulation bug
+```
+TX powers on:
+  Sends 0x01 (bind address) + 0x08 (TX address) alternately on the same channel
+  Hops channel every 5 packets of the 0x01 type
 
-```c
-// BUG: += accumulates across packets instead of computing a fresh sum
-for(uint8_t i=0;i<UDIRC_PAYLOAD_SIZE-1;i++)
-    packet[14] += packet[i];
+RX powers on:
+  Flood of P(0)= zero-length enhanced ACKs appears (XN297 hardware auto-ack)
+  These are NOT firmware-generated; hardware ACKs each received TX packet
+  Timing: 15–40 µs after TX packet → confirms hardware origin
+
+TX sees auto-ACKs → counts them → eventually reads full RX payload:
+  If RX sends 0x01 payload → bind_phase=1
+  (or if ACK alone is enough to trigger bind_phase in some firmware variants)
+
+bind_phase=1: TX sends 0x02 (same structure but cmd byte incremented)
+  TX switches to TX address for both TX and RX
+  TX runs bind_counter down from 10 → 0 → BIND_DONE
+
+Normal mode:
+  TX stays on ONE fixed channel (the channel where bind completed)
+  TX sends 0x08 with F8/30 bytes inserted at [5] and [8]
+  RX sends 0x10 telemetry periodically
 ```
 
-Should be:
-```c
-uint8_t sum = 0;
-for(uint8_t i=0;i<UDIRC_PAYLOAD_SIZE-1;i++)
-    sum += packet[i];
-packet[14] = sum;
+---
+
+## P(0) Zero-Length Enhanced ACK Packets
+
+Captures show `A=C3:E4:04:00:81 P(0)=` packets flooding in after RX powers up.
+These are **XN297 hardware enhanced-mode ACKs** — sent automatically by the RX
+chip for every packet it receives successfully, without RX firmware involvement.
+Confirmed by timing: they appear 15–40 µs after the TX packet, far too fast for
+firmware processing.
+
+---
+
+## Normal Operation — Fixed Channel
+
+From `Pinecone_SG-1205_TX-Bind_RX_Bound_02.txt` (bound TX):
+- TX locked onto **channel 67** and stayed there indefinitely.
+- Alternating intervals: ~5 ms (TX send) and ~19 ms (RX window) ≈ 24 ms total.
+- No channel hopping during normal operation.
+
+From `Pinecone_SG-1205_TX-Bind_RX_Bound_at-each-CH-Start.txt` (per-channel):
+- CH45: bind completed → TX stayed on CH45.
+- CH52: bind completed → TX stayed on CH52.
+- CH59: bind completed → TX stayed on CH59 (0x02 captured here).
+- CH67: bind completed → TX stayed on CH67.
+
+Which channel the TX locks onto is the channel where the bind handshake completes.
+
+---
+
+## RX-Assigned Bytes (F8 and 30)
+
+`F8` (at packet[5]) and `0x30` (at packet[8]) are properties of the **specific RX
+unit**, not the TX. The RX returns the same values regardless of TX ID — they are
+likely derived from the RX's internal hardware ID or EEPROM. The TX must insert
+these bytes into all normal control packets or the RX rejects them.
+
+**How to obtain them**: read `packet_in[11]` and `packet_in[14]` from any valid
+received packet (bind reply 0x01 or telemetry 0x10) and store them for the
+lifetime of the session.
+
+---
+
+## Hopping Channel Order
+
+**Correct order from captures**: 45, 52, 59, 67 (hex: `0x2D 0x34 0x3B 0x43`)
+
+The original `add-Pinecone-UDIRC` branch had the order as `45, 59, 52, 67`
+(`0x2D 0x3B 0x34 0x43`). This was corrected to match the capture sequence and the
+original issue description. Since bind hops through all 4 channels regardless of
+order, the mismatch does not break binding — but the correct order is documented here.
+
+---
+
+## Checksum Notes
+
+Checksum = simple sum of bytes [0..13], truncated to 8 bits, stored in [14].
+
+The firmware uses `packet[14] += packet[i]` (accumulation). This is **correct**
+because `memset(&packet[3], 0x00, 12)` zeros `packet[14]` to 0 before the loop.
+
+Verified against captured packets:
+```
+01 C3 E4 04 00 81 00 00 00 64 60 6C 00 00  → sum = 0x5D ✓
+08 64 64 64 00 00 00 00 00 64 60 6C 00 00  → sum = 0x64 ✓
+02 F8 00 00 30 00 00 00 00 64 60 6C 00 00  → sum = 0x5A ✓
+08 64 64 64 00 F8 00 00 30 64 60 6C 00 00  → sum = 0x8C ✓
 ```
 
-### 2. Missing bind handshake ACK (0x02 step)
+---
 
-The original code never sends the 0x02 ACK packet after receiving the RX 0x01
-reply, so binding never completes properly.
+## Changes Applied to Working Code
 
-### 3. Missing F8/30 bytes in normal packets
+Based on capture analysis, the following changes were made to the `add-Pinecone-UDIRC`
+working firmware before merging:
 
-The original code zeroed out `packet[5..8]` instead of inserting the RX-assigned
-`F8` and `30` bytes. Without these bytes the RX rejects all normal packets.
+1. **Hopping order corrected**: `"\x2D\x3B\x34\x43"` → `"\x2D\x34\x3B\x43"`
+   (45,59,52,67 → 45,52,59,67)
 
-### 4. Wrong TX ID in FORCE_UDIRC_ORIGINAL_ID
+2. **`packet_in` initialized**: `memset(packet_in, 0x00, UDIRC_PAYLOAD_SIZE)` added
+   to `UDIRC_init()` so the `packet_in[0] != 0` guard in normal mode starts safe.
 
-The original `else` branch had TX ID `F6 96 01 00 81` instead of the captured
-`C3 E4 04 00 81`.
+3. **`packet_in[0]` guard changed**: from `>= 0x01` (passes on garbage data) to
+   `!= 0` (same behaviour but explicit intent).
 
-### 5. Hopping channel order mismatch
+4. **Debug output improved**: added bind_phase, channel, and state labels to all
+   debug output for easier protocol decoding.
 
-Channels were ordered `45, 59, 52, 67` but the capture shows `45, 52, 59, 67`.
+5. **Comment on checksum clarified**: documented why `+=` is safe here.
 
 ---
 
 ## Unanswered Questions
 
-1. How does the RX determine which single channel to lock onto after bind?
-   (It may be the channel where the 0x02 ACK was successfully exchanged.)
-2. Are `F8` and `0x30` always the same for a given RX, or do they vary per power cycle?
-3. Does the TX hop channels during normal mode if telemetry is lost for an extended period?
-4. What are bytes `64 60 6C` in positions [9..11] during bind and normal packets?
-   Possibly: `64`=100 (midpoint 0–200), `60`=96, `6C`=108 — or model-specific constants.
+1. Why does the RX assign specific F8/30 bytes — are they stored in the RX EEPROM?
+2. Does the RX hop channels in normal mode if it misses too many control packets?
+3. What are the exact conditions that trigger the RX to send a full 15-byte 0x01
+   payload vs. only P(0)= hardware ACKs?
+4. What do bytes [9..11] (`64 60 6C`) represent physically?
+   `64`=100, `60`=96, `6C`=108 — possibly gyro sensitivity, trim presets, or
+   model-specific hardware parameters.
 
 ---
 
