@@ -19,6 +19,7 @@ Multiprotocol is distributed in the hope that it will be useful,
 // BIND phase – TX hops all 4 channels using bind address 01:03:05:07:09:
 //   TX sends: 01 <TX_ID[0..4]> 00 00 00 00 00 00 00 00 <csum>
 //   RX replies with 0x01 payload (F8/30 bytes) -> TX starts ack phase
+//   TX sends software P(0) ACK so RX does not retry its 0x01 packet
 //   TX sends: 02 <TX_ID[0..4]> 00 00 00 00 00 00 00 00 <csum>
 //   After bind_counter reaches 0, firmware considers bind complete.
 //
@@ -26,6 +27,16 @@ Multiprotocol is distributed in the hope that it will be useful,
 //   TX sends: 08 ST TH CH3 CH4 F8 00 00 30 GYRO TRIM DR FLAGS 00 <csum>
 //   RX sends 0x10 telemetry when accepting control from the correct TX ID.
 //   RX sends 0x02 rebind request when it does not recognise the TX ID.
+//
+// P(0)= packets explained (two distinct types):
+//  1. Hardware auto-ACKs: In XN297 Enhanced ShockBurst, every TX packet sent with
+//     noack=false causes the receiving radio chip to reply with a zero-length RF ACK
+//     within ~15-40us. These appear as P(0)= in sniffer captures. Our firmware cannot
+//     intercept these — they happen at chip level before we switch to RX mode (~6ms later).
+//     The flood of P(0)= on the bind address when RX powers on is all hardware auto-ACKs.
+//  2. Software P(0): After receiving the RX's 0x01 bind reply, we explicitly send a
+//     zero-length enhanced payload so the RX chip knows we received its packet.
+//     This appears as TX-P(0) in debug output.
 //
 // TX-ID binding note: The RX stores the paired TX ID in internal EEPROM.
 // It will respond to the bind handshake from any TX ID but will only
@@ -218,8 +229,16 @@ uint16_t UDIRC_callback()
 			if(rx)
 			{
 				uint8_t val = XN297_ReadEnhancedPayload(packet_in, UDIRC_PAYLOAD_SIZE);
-				debug("RX(%d):", val);
-				if(val == UDIRC_PAYLOAD_SIZE)
+				// NOTE: P(0)= hardware auto-ACKs (from RX chip acknowledging our TX packets)
+				// happen within ~40us of our TX and cannot be captured here — we are in RX mode
+				// 6ms after sending. Any val==0 seen here is a *software* zero-length packet
+				// from the RX microcontroller, distinct from hardware-level auto-ACKs.
+				debug("CH%d RX(%d):", hopping_frequency[(hopping_frequency_no - 1) & 3], val);
+				if(val == 0)
+				{//Zero-length packet (software P(0)) from RX — rare; hardware ACKs are not visible here
+					debug(" P(0)-from-RX [addr:%s]", IS_BIND_IN_PROGRESS ? "BIND" : "TXID");
+				}
+				else if(val == UDIRC_PAYLOAD_SIZE)
 				{//Good CRC and length
 					if(packet_in[0] == 0x10)
 					{//Telemetry packet - RX accepts our control (correct TX ID)
@@ -235,20 +254,27 @@ uint16_t UDIRC_callback()
 						debug(" RX rebind-req (wrong TX ID?)");
 					}
 					else
-					{//Bind reply from RX (0x01) - send enhanced ACK
+					{//Bind reply from RX (0x01) — send software P(0) ACK so RX knows we got it,
+					 //then next TX cycle will send the full 0x02 ack packet
 						if(IS_BIND_IN_PROGRESS && packet_in[0] == 0x01)
 						{
-							// RX confirmed TX ID - start ack phase
+							// RX responded — advance to ack phase
 							bind_phase = 1;
 							debug(" bind-reply->ack");
 						}
+						// Send zero-length enhanced ACK so RX does not retry its 0x01 packet
 						XN297_SetTxRxMode(TX_EN);
+						debug(" TX-P(0)");
 						XN297_WriteEnhancedPayload(packet, 0, false);
 					}
 					#ifdef DEBUG_SERIAL
 						for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
 							debug(" %02X", packet_in[i]);
 					#endif
+				}
+				else
+				{//CRC error or unexpected length
+					debug(" CRC-err/len=%d", val);
 				}
 				debugln();
 			}
