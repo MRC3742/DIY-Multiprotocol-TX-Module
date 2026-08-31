@@ -202,27 +202,27 @@ uint16_t UDIRC_callback()
 				debug("RX(%d):", val);
 				if(val == UDIRC_PAYLOAD_SIZE)
 				{//Good CRC and length
-					#ifdef DEBUG_SERIAL
-						for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
-							debug(" %02X", packet_in[i]);
-					#endif
 					if(packet_in[0] == 0x10)
 					{//Telemetry packet
 						v_lipo1 = (packet_in[1] == 0x01) ? 0x00 : 0xFF;	// Low voltage flag
 						telemetry_link = 1;
-						debug(" (telem)");
+						debug(" telem");
 					}
 					else
 					{//Bind reply from RX (0x01 or 0x02) - send enhanced ACK
-						XN297_SetTxRxMode(TX_EN);
-						XN297_WriteEnhancedPayload(packet, 0, false);
 						if(IS_BIND_IN_PROGRESS && packet_in[0] == 0x01)
 						{
 							// RX confirmed our TX ID - start ack phase
 							bind_phase = 1;
-							debug(" (bind reply -> start ack)");
+							debug(" bind-reply->ack");
 						}
+						XN297_SetTxRxMode(TX_EN);
+						XN297_WriteEnhancedPayload(packet, 0, false);
 					}
+					#ifdef DEBUG_SERIAL
+						for(uint8_t i = 0; i < UDIRC_PAYLOAD_SIZE; i++)
+							debug(" %02X", packet_in[i]);
+					#endif
 				}
 				debugln();
 			}
