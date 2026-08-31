@@ -17,19 +17,24 @@ Multiprotocol is distributed in the hope that it will be useful,
 // Packet flow (from RF captures of Pinecone SG-1205):
 //
 // BIND phase – TX hops all 4 channels using bind address 01:03:05:07:09:
-//   TX sends: 01 <TX_ID[0..4]> 00 00 00 64 60 6C 00 00 <csum>
-//   RX replies (zero-length enhanced ACK): P(0)=  (XN297 auto-ack)
-//   Once bind_phase detected via RX 0x01 packet:
-//   TX sends: 02 <TX_ID[0..4]> 00 00 00 64 60 6C 00 00 <csum>
-//   After bind_counter reaches 0, bind is complete.
+//   TX sends: 01 <TX_ID[0..4]> 00 00 00 00 00 00 00 00 <csum>
+//   RX replies with 0x01 payload (F8/30 bytes) -> TX starts ack phase
+//   TX sends: 02 <TX_ID[0..4]> 00 00 00 00 00 00 00 00 <csum>
+//   After bind_counter reaches 0, firmware considers bind complete.
 //
 // NORMAL phase – TX stays on one fixed channel using TX address:
 //   TX sends: 08 ST TH CH3 CH4 F8 00 00 30 GYRO TRIM DR FLAGS 00 <csum>
-//   RX telemetry: 10 00 00 00 30 00 00 00 00 00 00 F8 00 00 30
+//   RX sends 0x10 telemetry when accepting control from the correct TX ID.
+//   RX sends 0x02 rebind request when it does not recognise the TX ID.
 //
-// F8 and 30 bytes: captured from first RX packet (bind reply or telemetry).
-// They appear at packet_in[11] and packet_in[14] and are placed into the
-// normal TX control packet at positions [5] and [8].
+// TX-ID binding note: The RX stores the paired TX ID in internal EEPROM.
+// It will respond to the bind handshake from any TX ID but will only
+// accept control (and send 0x10 telemetry) from the ID it has stored.
+// A new TX ID can only be stored by factory-resetting the model (hold bind
+// button while powering on, per model instructions) before binding.
+//
+// F8 and 30 bytes: from packet_in[11] and packet_in[14] of any received packet.
+// They are placed into the normal TX control packet at positions [5] and [8].
 //
 // Checksum: sum of bytes [0..13], stored in [14].  packet[14] is zeroed by
 // memset(&packet[3], 0, 12) before the accumulation, so += is correct.
@@ -46,6 +51,9 @@ Multiprotocol is distributed in the hope that it will be useful,
 #define UDIRC_BIND_COUNT		10
 #define UDIRC_WRITE_TIME		6000
 #define UDIRC_RX_TIME			6000
+// Telemetry is sent roughly every N*20ms. Declare lost after ~3.5 s of silence.
+// telem_count is incremented each packet; 4*63 ≈ 252 * 20ms ≈ 5s
+#define UDIRC_TELEM_TIMEOUT		(4*63)
 
 enum {
 	UDIRC_DATA1=0,
@@ -75,7 +83,10 @@ static void __attribute__((unused)) UDIRC_send_packet()
 			{
 				bind_phase = 3;
 				BIND_DONE;
-				debugln("UDIRC bind complete");
+				// Switch to normal TX address once at bind completion
+				XN297_SetTXAddr(rx_tx_addr, 5);
+				XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
+				debugln("UDIRC bind complete -> TX addr");
 			}
 		}
 		//Build bind packet: 0x01 during initial invite, 0x02 after RX responds
@@ -84,12 +95,6 @@ static void __attribute__((unused)) UDIRC_send_packet()
 			packet[0]++;	// 0x02 ack phase
 		memcpy(&packet[1], rx_tx_addr, 5);
 	}
-	if(bind_phase > 1)
-	{//Switch to normal TX address
-		XN297_SetTXAddr(rx_tx_addr, 5);
-		XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
-		debugln("UDIRC switched to TX addr");
-	}
 	if(IS_BIND_DONE)
 	{//Normal control packet
 		packet[0] = 0x08;
@@ -97,7 +102,7 @@ static void __attribute__((unused)) UDIRC_send_packet()
 		//Channels EAT15           : ST/TH/RATE/LIGHT / F8/00/00/30 / GYRO/ST_TRIM/ST_DR
 		for(uint8_t i = 0; i < 12; i++)
 			packet[i+1] = convert_channel_16b_limit(i, 0, 200);
-		// Bytes from RX (captured at packet_in[11..14]) go into packet[5..8]
+		// Bytes from RX (packet_in[11..14]) go into packet[5..8]
 		// Verified from captures: telemetry 0x10 has F8 at [11] and 30 at [14]
 		if(packet_in[0] != 0)
 		{
@@ -183,6 +188,19 @@ uint16_t UDIRC_callback()
 				telemetry_set_input_sync(UDIRC_PACKET_PERIOD);
 			#endif
 			UDIRC_send_packet();
+			// SGF22-style telemetry lost detection: count packets, declare lost after timeout
+			if(IS_BIND_DONE)
+			{
+				if(telem_count > UDIRC_TELEM_TIMEOUT)
+					telemetry_lost = 1;
+				else
+				{
+					telem_count++;
+					// Keep telemetry alive to the radio while we haven't declared it lost yet
+					if(!telemetry_lost && (telem_count & 0x3F) == 0)
+						telemetry_link = 1;
+				}
+			}
 			phase++;	// → UDIRC_RX
 			return UDIRC_WRITE_TIME;
 
@@ -203,16 +221,23 @@ uint16_t UDIRC_callback()
 				if(val == UDIRC_PAYLOAD_SIZE)
 				{//Good CRC and length
 					if(packet_in[0] == 0x10)
-					{//Telemetry packet
+					{//Telemetry packet - RX accepts our control (correct TX ID)
 						v_lipo1 = (packet_in[1] == 0x01) ? 0x00 : 0xFF;	// Low voltage flag
 						telemetry_link = 1;
+						telemetry_lost = 0;
+						telem_count = 0;
 						debug(" telem");
 					}
+					else if(packet_in[0] == 0x02)
+					{//RX rebind request - model stores a different TX ID in EEPROM
+					 //Must factory-reset model (hold bind button on power-up) for new TX ID
+						debug(" RX rebind-req (wrong TX ID?)");
+					}
 					else
-					{//Bind reply from RX (0x01 or 0x02) - send enhanced ACK
+					{//Bind reply from RX (0x01) - send enhanced ACK
 						if(IS_BIND_IN_PROGRESS && packet_in[0] == 0x01)
 						{
-							// RX confirmed our TX ID - start ack phase
+							// RX confirmed TX ID - start ack phase
 							bind_phase = 1;
 							debug(" bind-reply->ack");
 						}
@@ -246,10 +271,17 @@ void UDIRC_init()
 		bind_phase = 0;
 	}
 	else
+	{
 		bind_phase = 3;
+		// Already bound - switch to TX address immediately
+		XN297_SetTXAddr(rx_tx_addr, 5);
+		XN297_SetRXAddr(rx_tx_addr, UDIRC_PAYLOAD_SIZE);
+	}
 	phase = UDIRC_DATA1;
 	hopping_frequency_no = 0;
 	packet_count = 0;
+	telem_count = 0;
+	telemetry_lost = 1;
 	RX_RSSI = 100;	// Dummy value
 }
 

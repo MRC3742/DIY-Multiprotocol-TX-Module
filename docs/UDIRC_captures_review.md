@@ -274,3 +274,59 @@ working firmware before merging:
 
 - `Pinecone_SG-1205_TX-Bind_RX_Bound_02.txt`
 - `Pinecone_SG-1205_TX-Bind_RX_Bound_at-each-CH-Start.txt`
+
+---
+
+## TX-ID Binding Limitation (from PR #31 debug captures)
+
+### Observation
+
+Three TX IDs were tested:
+- **TX-ID_0** (`C3 E4 04 00 81`): binds and receives 0x10 telemetry → model responds to controls ✓
+- **TX-ID_1** (`D0 06 00 00 81`): firmware reports bind complete, RX sends 0x02 but NO 0x10 telemetry → model ignores controls ✗
+- **TX-ID_2** (`F6 96 01 00 81`): same as TX-ID_1 ✗
+
+### Root Cause
+
+The RX **stores the paired TX ID in internal EEPROM**. It responds to the bind
+handshake from any TX ID (sends 0x01 reply, receives 0x02 ack) but will only
+accept control packets and send 0x10 telemetry from the TX ID that is stored in
+its EEPROM. This is a hardware security feature, not a firmware issue.
+
+### RX Packet Interpretation
+
+| RX Packet[0] | Meaning                                      |
+|--------------|----------------------------------------------|
+| 0x01         | Bind reply — RX heard TX invite              |
+| 0x02         | **Rebind request** — RX has a stored ID that does not match current TX |
+| 0x10         | Telemetry — RX accepts control (TX ID matches stored ID) |
+
+The 0x02 packet from RX is NOT a bind confirmation. It is sent when the RX is
+already paired to a different TX ID and is asking to re-pair.
+
+### How to Use a New TX ID
+
+To bind the model to a new TX ID, the model must be factory-reset first:
+1. Power off the model.
+2. Hold the model's bind button while powering on (consult model manual for exact procedure).
+3. The RX will enter factory-reset mode and clear the stored TX ID.
+4. Run the MPM bind procedure normally.
+
+### Telemetry Flapping Fix
+
+`telemetry_link = 1` was set on every 0x10 packet but `telemetry_lost` was never
+managed, causing the radio to toggle telemetry lost/found approximately once per
+second. Fixed by adopting the SGF22 pattern:
+
+- Added `telem_count` counter incremented each packet.
+- When a 0x10 packet arrives: `telemetry_lost = 0`, `telem_count = 0`.
+- If `telem_count > UDIRC_TELEM_TIMEOUT` (~5 s): `telemetry_lost = 1`.
+- While not lost, send `telemetry_link = 1` every 64 packets (~1.3 s) to keep the radio alive.
+
+### bind_phase > 1 Address Switch Bug Fixed
+
+The `XN297_SetTXAddr` / `XN297_SetRXAddr` calls were inside `UDIRC_send_packet()`
+under `if(bind_phase > 1)`, which caused them to be called on **every packet** during
+normal operation (since `bind_phase` stays at 3). This was inefficient and potentially
+caused RF instability. Fixed by moving the address switch to happen exactly once at
+the moment `bind_counter` reaches 0.
