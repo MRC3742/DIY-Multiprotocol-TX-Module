@@ -31,6 +31,9 @@ on:
   # Allows the workflow to be triggered manually from the Actions tab
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -66,7 +69,7 @@ jobs:
       MULTI_MAX_BIN_SIZE: 119808
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v2
@@ -260,7 +263,7 @@ jobs:
       MULTI_MAX_BIN_SIZE: 119808
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v2
@@ -344,7 +347,7 @@ jobs:
 
       - name: 'Upload Artifacts'
         if: env.HAVE_FILES == 'true'
-        uses: actions/upload-artifact/@v4
+        uses: actions/upload-artifact@v7
         with:
           name: multi-${{ matrix.release }}
           path: ./binaries/
@@ -355,7 +358,7 @@ jobs:
     needs: [test, build]
     steps:
       - name: Combine and upload build artifacts
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@v7
         with:
           name: multi-test-build
           pattern: multi-*
@@ -369,7 +372,7 @@ jobs:
     needs: deploy
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: multi-test-build
           path: ./artifacts/
@@ -378,7 +381,7 @@ jobs:
         run: ls -R ./artifacts/
       
       - name: Deploy artifacts to release
-        uses: AButler/upload-release-assets@v3.0
+        uses: AButler/upload-release-assets@v4.0.0
         with:
           files: './artifacts/*'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
